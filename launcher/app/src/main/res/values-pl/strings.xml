@@ -19,6 +19,10 @@
     <string name="not_available">Niedostępne na tym telewizorze</string>
     <string name="cant_open">Nie można otworzyć: %1$s</string>
     <string name="date_format">EEEE  d MMMM</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Pamięć %1$d MB wolne</string>
+    <string name="stats_storage">Miejsce %1$s wolne</string>
     <string name="dream_name">Zegar</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN wyłączony</string>
@@ -58,4 +62,24 @@
     <string name="on">Wł.</string>
     <string name="off">Wył.</string>
     <string name="enable">Włącz</string>
+    <string name="reorder">Zmień kolejność aplikacji</string>
+    <string name="reorder_hint">OK podnosi aplikację, strzałki ją przesuwają, Wstecz ją upuszcza. Ponownie Wstecz, aby zakończyć.</string>
+    <string name="reorder_not_saved">Nie udało się zapisać nowej kolejności</string>
+    <string name="app_library">Biblioteka aplikacji</string>
+    <string name="library_empty">Brak aplikacji do uruchomienia</string>
+    <string name="library_on_home">Na ekranie głównym</string>
+    <string name="library_add_home">Dodaj do ekranu głównego</string>
+    <string name="library_remove_shortcut">Usuń z ekranu głównego</string>
+    <string name="library_open">Otwórz</string>
+    <string name="library_app_info">Informacje o aplikacji</string>
+    <string name="library_save_failed">Nie udało się zapisać skrótu</string>
+    <string name="library_recent">Nowa · Dodaj do ekranu głównego</string>
+    <string name="library_hint_add">Naciśnij, aby dodać do ekranu · Przytrzymaj: opcje</string>
+    <string name="library_hint_open">Naciśnij, aby otworzyć · Przytrzymaj: opcje</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d aplikacja</item>
+        <item quantity="few">%1$d aplikacje</item>
+        <item quantity="many">%1$d aplikacji</item>
+        <item quantity="other">%1$d aplikacji</item>
+    </plurals>
 </resources>

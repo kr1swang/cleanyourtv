@@ -85,6 +85,20 @@
             android:fontFeatureSettings="tnum"
             android:letterSpacing="0"
             android:includeFontPadding="false" />
+
+        <!-- Optional upstream stats; hidden by default and independent of the grid. -->
+        <TextView
+            android:id="@+id/stats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="#D9FFFFFF"
+            android:textSize="14sp"
+            android:fontFamily="@font/inter_display_medium"
+            android:focusable="false"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout
@@ -130,6 +144,13 @@
                     android:ellipsize="end"
                     android:text="@string/wifi"
                     android:drawableStart="@drawable/ic_wifi"
+                    android:nextFocusDown="@+id/grid" />
+
+                <TextView
+                    android:id="@+id/btnReorder"
+                    style="@style/TopButtonIcon"
+                    android:contentDescription="@string/reorder"
+                    android:drawableStart="@drawable/ic_swap_vert"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

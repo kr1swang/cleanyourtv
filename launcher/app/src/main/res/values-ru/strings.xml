@@ -19,6 +19,10 @@
     <string name="not_available">Недоступно на этом телевизоре</string>
     <string name="cant_open">Не удалось открыть %1$s</string>
     <string name="date_format">EEEE, d MMMM</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Память %1$d МБ свободно</string>
+    <string name="stats_storage">Накопитель %1$s свободно</string>
     <string name="dream_name">Часы</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN отключён</string>
@@ -58,4 +62,24 @@
     <string name="on">Вкл.</string>
     <string name="off">Выкл.</string>
     <string name="enable">Включить</string>
+    <string name="reorder">Изменить порядок приложений</string>
+    <string name="reorder_hint">ОК — взять приложение, стрелки — переместить, Назад — поставить. Ещё раз Назад — готово.</string>
+    <string name="reorder_not_saved">Не удалось сохранить новый порядок</string>
+    <string name="app_library">Библиотека приложений</string>
+    <string name="library_empty">Нет приложений для запуска</string>
+    <string name="library_on_home">На главном экране</string>
+    <string name="library_add_home">Добавить на главный экран</string>
+    <string name="library_remove_shortcut">Убрать с главного экрана</string>
+    <string name="library_open">Открыть</string>
+    <string name="library_app_info">О приложении</string>
+    <string name="library_save_failed">Не удалось сохранить ярлык</string>
+    <string name="library_recent">Новое · Добавить на главный экран</string>
+    <string name="library_hint_add">Нажать: добавить на главный экран · Удержать: опции</string>
+    <string name="library_hint_open">Нажать: открыть · Удержать: опции</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d приложение</item>
+        <item quantity="few">%1$d приложения</item>
+        <item quantity="many">%1$d приложений</item>
+        <item quantity="other">%1$d приложения</item>
+    </plurals>
 </resources>

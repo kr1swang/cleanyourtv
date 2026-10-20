@@ -19,6 +19,10 @@
     <string name="not_available">Não disponível nesta TV</string>
     <string name="cant_open">Não foi possível abrir %1$s</string>
     <string name="date_format">EEE  d \'de\' MMMM</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Memória %1$d MB livres</string>
+    <string name="stats_storage">Armazenamento %1$s livre</string>
     <string name="dream_name">Relógio</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN desligada</string>
@@ -46,4 +50,22 @@
     <string name="card_state_new">Novo</string>
     <string name="card_state_new_key">Nova chave</string>
     <string name="card_state_new_label">Novo nome</string>
+    <string name="reorder">Reordenar apps</string>
+    <string name="reorder_hint">OK pega numa app, as setas movem-na, Voltar pousa-a. Voltar outra vez para terminar.</string>
+    <string name="reorder_not_saved">Não foi possível guardar a nova ordem</string>
+    <string name="app_library">Biblioteca de apps</string>
+    <string name="library_empty">Nenhum app disponível para abrir</string>
+    <string name="library_on_home">Na tela inicial</string>
+    <string name="library_add_home">Adicionar à tela inicial</string>
+    <string name="library_remove_shortcut">Remover da tela inicial</string>
+    <string name="library_open">Abrir</string>
+    <string name="library_app_info">Informações do app</string>
+    <string name="library_save_failed">Não foi possível salvar o atalho</string>
+    <string name="library_recent">Novo · Adicionar à tela inicial</string>
+    <string name="library_hint_add">Pressione para adicionar à tela inicial · Segure para ver opções</string>
+    <string name="library_hint_open">Pressione para abrir · Segure para ver opções</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
 </resources>

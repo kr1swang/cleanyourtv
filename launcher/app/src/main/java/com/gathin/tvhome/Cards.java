@@ -337,7 +337,7 @@ final class Cards {
     /** The launcher's own UI names in the TV's language, folded. */
     private static Set<String> uiNames(Resources res) {
         int[] ids = {R.string.app_name, R.string.settings, R.string.inputs, R.string.choose_input, R.string.wifi,
-                R.string.live_tv, R.string.home_settings, R.string.dream_name};
+                R.string.live_tv, R.string.home_settings, R.string.app_library, R.string.dream_name};
         Set<String> out = new HashSet<>();
         for (int id : ids) out.add(fold(res.getString(id)));
         return out;

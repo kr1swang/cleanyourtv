@@ -161,6 +161,23 @@
                             android:letterSpacing="0.08"
                             android:textAllCaps="true" />
                     </LinearLayout>
+
+                    <!-- Shown only when show_stats is on. Gone, it takes no space, so the clock stays put. -->
+                    <TextView
+                        android:id="@+id/stats"
+                        android:gravity="right"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:singleLine="true"
+                        android:ellipsize="end"
+                        android:textColor="#D9FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 500"
+                        android:letterSpacing="0.04"
+                        android:focusable="false"
+                        android:visibility="gone" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -178,6 +195,13 @@
                     style="@style/TopButton"
                     android:text="@string/settings"
                     android:drawableStart="@drawable/ic_settings"
+                    android:nextFocusDown="@+id/grid" />
+
+                <TextView
+                    android:id="@+id/btnReorder"
+                    style="@style/TopButtonIcon"
+                    android:contentDescription="@string/reorder"
+                    android:drawableStart="@drawable/ic_swap_vert"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

@@ -68,8 +68,21 @@
          VPN you use. Empty: the pill opens Wi-Fi settings. The green VPN badge shows for any VPN either way;
          with an app set here, a red "VPN off" badge also shows while no VPN is up. -->
     <string name="vpn_app" translatable="false"></string>
-    <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. -->
+    <!-- The dock as its own row: a lighter band, no names under the tiles, parked low on the screen with the top
+         shelf above it. false makes the dock apps simply the first tiles of one plain grid (still in dock_apps
+         order, no empty slots), with names under every tile and the glow behind every focused tile. -->
+    <bool name="dock_row">true</bool>
+    <!-- A reorder button (two arrows) in the top bar. Off by default: reordering is also in the Settings
+         button's long-press menu, so it needs no extra button on screen. -->
+    <bool name="reorder_button">false</bool>
+
+    <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
+         the dock, its title and this many rows would not otherwise fit the screen height. -->
     <integer name="rows_below_dock">0</integer>
+
+    <!-- The focused dock app's name in large type above the dock. false keeps only the glow, which leaves room
+         for bigger tiles when rows_below_dock is 2 or 3. -->
+    <bool name="dock_title">true</bool>
 
     <!-- Tiles per row in the grid; the dock always has this many slots. Tiles are 180dp wide at 4 columns and
          shrink to fit from 5 up (about 144dp at 5, 117dp at 6 on a 1080p TV). -->
@@ -83,6 +96,9 @@
          Off by default because the chooser is also available from launcher settings. -->
     <bool name="show_home_settings_shortcut">false</bool>
 
+    <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
+    <bool name="app_library">false</bool>
+
     <!-- Module cards: an app that declares a card (docs/specs/card.md) can stand in for its tile with its own
          label, caption and glow colour, once you answer Show on the prompt. false: never look for cards or ask. -->
     <bool name="module_cards">true</bool>
@@ -92,6 +108,10 @@
          tiles that zoom without overshoot, shorter fades and no tile entrance when Home comes back. Set it
          here or with "reduced_motion": true in a theme's config.json; false keeps the normal motion. -->
     <bool name="reduced_motion">false</bool>
+
+    <!-- One line under the clock: CPU, free memory and free storage. Off by default; a theme can set
+         "show_stats": true. Nothing is read, and the clock does not move, while this is false. -->
+    <bool name="show_stats">false</bool>
 
     <!-- Time-of-day backdrop behind everything: a dark gradient that follows the clock, with a warm
          horizon glow around sunrise and sunset. 0 keeps the plain background (the default); 1 to 100

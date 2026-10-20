@@ -21,6 +21,10 @@
     <string name="date_format">EEEE, d. MMMM</string>
     <!-- Two lines next to the clock: the long German weekday and month names do not fit on one. -->
     <string name="date_format_home">EEEE\nd. MMMM</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Speicher %1$d MB frei</string>
+    <string name="stats_storage">Speicherplatz %1$s frei</string>
     <string name="dream_name">Uhr</string>
     <string name="input_key_service_description">Öffnet die Quellenauswahl, wenn die Input-Taste der Fernbedienung gedrückt wird.</string>
     <string name="launcher_settings">Launcher-Einstellungen</string>
@@ -35,4 +39,22 @@
     <string name="on">Ein</string>
     <string name="off">Aus</string>
     <string name="enable">Aktivieren</string>
+    <string name="reorder">Apps anordnen</string>
+    <string name="reorder_hint">OK hebt eine App an, Pfeiltasten verschieben sie, Zurück legt sie ab. Nochmals Zurück zum Beenden.</string>
+    <string name="reorder_not_saved">Neue Reihenfolge konnte nicht gespeichert werden</string>
+    <string name="app_library">App-Bibliothek</string>
+    <string name="library_empty">Keine startbaren Apps gefunden</string>
+    <string name="library_on_home">Auf dem Startbildschirm</string>
+    <string name="library_add_home">Zum Startbildschirm</string>
+    <string name="library_remove_shortcut">Vom Startbildschirm entfernen</string>
+    <string name="library_open">Öffnen</string>
+    <string name="library_app_info">App-Info</string>
+    <string name="library_save_failed">Verknüpfung konnte nicht gespeichert werden</string>
+    <string name="library_recent">Neu · Zum Startbildschirm</string>
+    <string name="library_hint_add">Drücken: zu Start hinzufügen · Halten: Optionen</string>
+    <string name="library_hint_open">Drücken: öffnen · Halten: Optionen</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d App</item>
+        <item quantity="other">%1$d Apps</item>
+    </plurals>
 </resources>

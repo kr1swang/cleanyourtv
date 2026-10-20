@@ -19,6 +19,10 @@
     <string name="not_available">No disponible en este TV</string>
     <string name="cant_open">No se puede abrir %1$s</string>
     <string name="date_format">EEEE d \'de\' MMMM</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Memoria %1$d MB libres</string>
+    <string name="stats_storage">Almacenamiento %1$s libre</string>
     <string name="dream_name">Reloj</string>
     <string name="launcher_settings">Ajustes del lanzador</string>
     <string name="columns_label">Aplicaciones por fila</string>
@@ -32,4 +36,22 @@
     <string name="on">Sí</string>
     <string name="off">No</string>
     <string name="enable">Activar</string>
+    <string name="reorder">Reordenar apps</string>
+    <string name="reorder_hint">OK coge una app, las flechas la mueven, Atrás la suelta. Atrás de nuevo para terminar.</string>
+    <string name="reorder_not_saved">No se pudo guardar el nuevo orden</string>
+    <string name="app_library">Biblioteca de aplicaciones</string>
+    <string name="library_empty">No hay aplicaciones que se puedan abrir</string>
+    <string name="library_on_home">En Inicio</string>
+    <string name="library_add_home">Añadir a Inicio</string>
+    <string name="library_remove_shortcut">Quitar de Inicio</string>
+    <string name="library_open">Abrir</string>
+    <string name="library_app_info">Información de la aplicación</string>
+    <string name="library_save_failed">No se pudo guardar el acceso directo</string>
+    <string name="library_recent">Nueva · Añadir a Inicio</string>
+    <string name="library_hint_add">Pulsa para añadir a Inicio · Mantén para opciones</string>
+    <string name="library_hint_open">Pulsa para abrir · Mantén para opciones</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d aplicación</item>
+        <item quantity="other">%1$d aplicaciones</item>
+    </plurals>
 </resources>

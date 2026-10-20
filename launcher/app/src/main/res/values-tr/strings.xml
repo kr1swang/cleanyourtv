@@ -19,6 +19,10 @@
     <string name="not_available">Bu TV’de kullanılamıyor</string>
     <string name="cant_open">%1$s açılamıyor</string>
     <string name="date_format">d MMMM EEEE</string>
+    <string name="stats_cpu">CPU %1$d%%</string>
+    <string name="stats_cpu_unknown">CPU —</string>
+    <string name="stats_memory">Bellek %1$d MB boş</string>
+    <string name="stats_storage">Depolama %1$s boş</string>
     <string name="dream_name">Saat</string>
     <string name="vpn">VPN</string>
     <string name="vpn_off">VPN Kapalı</string>
@@ -58,4 +62,22 @@
     <string name="on">Açık</string>
     <string name="off">Kapalı</string>
     <string name="enable">Etkinleştir</string>
+    <string name="reorder">Uygulamaları sırala</string>
+    <string name="reorder_hint">Tamam bir uygulamayı alır, oklar taşır, Geri bırakır. Bitirmek için tekrar Geri.</string>
+    <string name="reorder_not_saved">Yeni sıra kaydedilemedi</string>
+    <string name="app_library">Uygulama kitaplığı</string>
+    <string name="library_empty">Açılabilecek uygulama bulunamadı</string>
+    <string name="library_on_home">Ana ekranda</string>
+    <string name="library_add_home">Ana ekrana ekle</string>
+    <string name="library_remove_shortcut">Ana ekrandan kaldır</string>
+    <string name="library_open">Aç</string>
+    <string name="library_app_info">Uygulama bilgileri</string>
+    <string name="library_save_failed">Kısayol kaydedilemedi</string>
+    <string name="library_recent">Yeni · Ana ekrana ekle</string>
+    <string name="library_hint_add">Ana ekrana eklemek için bas · Seçenekler için basılı tut</string>
+    <string name="library_hint_open">Açmak için bas · Seçenekler için basılı tut</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d uygulama</item>
+        <item quantity="other">%1$d uygulama</item>
+    </plurals>
 </resources>

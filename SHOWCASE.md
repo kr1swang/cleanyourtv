@@ -26,6 +26,8 @@ project's own issue tracker.
 | [Rotating wallpapers and a Wallpaper picker](https://github.com/Alafazam/cleanyourtv/tree/axso2-launcher) | A folder of photos rotating behind Home every 30 minutes, a Wallpaper tile with a thumbnail picker, and an eight-app dock | Xiaomi MiTV-AXSO2, Android TV 9 | [Alafazam](https://github.com/Alafazam) |
 | [tv-bookshelf](https://github.com/griffincockfoster56/tv-bookshelf) | A home screen that is a walnut bookcase: every app is a book, and OK pulls it off the shelf and opens it in 3D. About 60 fps on a 2.3 GB set | Sony BRAVIA 4K UR2, Android TV 10 | [griffincockfoster56](https://github.com/griffincockfoster56) |
 | [Hisense 55U6K: reorder and weather](https://github.com/vlaship/cleanyourtv/tree/hisense-55u6k) | A fork with remote reordering (hold OK), the dock under the clock, a weather line and a click on every move | Hisense 55U6K, Google TV 11 | [vlaship](https://github.com/vlaship) |
+| [KIDŌ](https://github.com/glidiandev/kido) | A command-center home screen built as its own app: a seven-segment clock, favorite apps as big panels and the rest as a honeycomb, live Wi-Fi and memory readouts, an HDMI input alert, three color themes and a drifting screensaver against burn-in. No internet permission | Sharp AQUOS 4K, Android TV 11 | [glidiandev](https://github.com/glidiandev) |
+| [Cosy Home](https://github.com/oliverjwroberts/cosy-home-tv) | A home screen with a big clock over a valley that follows the real sunrise and sunset, live weather from Open-Meteo, a frosted-glass panel of apps and inputs on Down, and a slow pixel shift for OLED panels. Started from this repo's launcher | Philips 55OLED707, Android TV 11 | [oliverjwroberts](https://github.com/oliverjwroberts) |
 
 ## Add yours
 
