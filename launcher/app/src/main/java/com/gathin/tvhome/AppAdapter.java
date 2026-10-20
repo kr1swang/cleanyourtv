@@ -572,7 +572,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     /** Keep the same rounded shape as tiles scale with the column count. */
     static float cornerRadius(int tileWidthPx, float density) {
-        return 16f * density * Math.min(1f, tileWidthPx / (124f * density));
+        return 15f * density * Math.min(1f, tileWidthPx / (124f * density));
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
