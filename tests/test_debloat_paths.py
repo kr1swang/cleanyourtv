@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -32,29 +33,56 @@ class DebloatPathsTest(unittest.TestCase):
             with self.subTest(script=script):
                 self.check_windows_list(script)
 
+    def prepare(self, repo, script):
+        """Copy the script under test and stand in for tools/venv/bin/python.
+
+        Both scripts ask tools/recovery.py first: disable.sh for the record of what it is about to
+        change, restore.sh for the batch that replays it. Taking a record needs a TV, so the fake
+        accepts --save as a no-op; building the batch from a record does not, so --commands goes to
+        the real recovery.py and the test sees exactly what would be sent (#239).
+        """
+        tools = repo / "tools"
+        tools.mkdir(parents=True)
+        shutil.copy2(ROOT / "tools" / script, tools / script)
+        client = tools / "venv" / "bin" / "python"
+        client.parent.mkdir(parents=True)
+        client.write_text(
+            '#!/bin/sh\n'
+            'if [ "$1" = "-I" ] && [ "$2" = "tools/recovery.py" ]; then\n'
+            '  [ "$3" = "--save" ] && exit 0\n'
+            '  shift 2\n'
+            f'  exec "{sys.executable}" "{ROOT / "tools" / "recovery.py"}" "$@"\n'
+            'fi\n'
+            'cat > "$CAPTURE"\n'
+        )
+        client.chmod(0o755)
+        home = repo.parent / "home"
+        home.mkdir(exist_ok=True)
+        return tools, home
+
+    def run_script(self, script_path, argument, cwd, base, home):
+        capture = base / "commands.txt"
+        # No TV_HOST, so recovery.py looks for a record that cannot exist: that is the fallback these
+        # tests exercise. HOME is isolated so a record from a real run cannot answer instead.
+        env = {k: v for k, v in os.environ.items() if k != "TV_HOST"}
+        env.update(CAPTURE=str(capture), HOME=str(home))
+        result = subprocess.run(
+            ["bash", str(script_path), argument], cwd=cwd, env=env,
+            capture_output=True, text=True,
+        )
+        return result, capture
+
     def check_windows_list(self, script):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
-            tools = base / "repo" / "tools"
-            tools.mkdir(parents=True)
-            shutil.copy2(ROOT / "tools" / script, tools / script)
-            client = tools / "venv" / "bin" / "python"
-            client.parent.mkdir(parents=True)
-            client.write_text('#!/bin/sh\ncat > "$CAPTURE"\n')
-            client.chmod(0o755)
-
+            tools, home = self.prepare(base / "repo", script)
             package_list = base / "debloat.txt"
             package_list.write_bytes(
                 b"\xef\xbb\xbf# My TV, saved in Notepad\r\n"
                 b"com.example.one\r\n"
                 b"com.example.two   # a note\r\n"
             )
-            capture = base / "commands.txt"
-            result = subprocess.run(
-                ["bash", str(tools / script), str(package_list)], cwd=base,
-                env=dict(os.environ, CAPTURE=str(capture)),
-                capture_output=True, text=True,
-            )
+            result, capture = self.run_script(tools / script, str(package_list), base, base, home)
             self.assertEqual(result.returncode, 0, result.stderr)
             sent = capture.read_bytes()
             self.assertNotIn(b"\xef\xbb\xbf", sent, "BOM reached the TV")
@@ -68,24 +96,12 @@ class DebloatPathsTest(unittest.TestCase):
     def check_injected_line(self, script):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
-            tools = base / "repo" / "tools"
-            tools.mkdir(parents=True)
-            shutil.copy2(ROOT / "tools" / script, tools / script)
-            client = tools / "venv" / "bin" / "python"
-            client.parent.mkdir(parents=True)
-            client.write_text('#!/bin/sh\ncat > "$CAPTURE"\n')
-            client.chmod(0o755)
-
+            tools, home = self.prepare(base / "repo", script)
             package_list = base / "debloat.txt"
             package_list.write_text(
                 "# My TV\ncom.example.good\ncom.example.evil;settings put global adb_enabled 0\n"
             )
-            capture = base / "commands.txt"
-            result = subprocess.run(
-                ["bash", str(tools / script), str(package_list)], cwd=base,
-                env=dict(os.environ, CAPTURE=str(capture)),
-                capture_output=True, text=True,
-            )
+            result, capture = self.run_script(tools / script, str(package_list), base, base, home)
             self.assertNotEqual(result.returncode, 0, "the list should have been refused")
             self.assertIn("not a package name", result.stderr)
             sent = capture.read_text() if capture.exists() else ""
@@ -96,13 +112,7 @@ class DebloatPathsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             repo = base / "repo checkout"
-            tools = repo / "tools"
-            tools.mkdir(parents=True)
-            shutil.copy2(ROOT / "tools" / script, tools / script)
-            client = tools / "venv" / "bin" / "python"
-            client.parent.mkdir(parents=True)
-            client.write_text('#!/bin/sh\ncat > "$CAPTURE"\n')
-            client.chmod(0o755)
+            tools, home = self.prepare(repo, script)
 
             caller = base / "caller folder"
             caller.mkdir()
@@ -117,12 +127,7 @@ class DebloatPathsTest(unittest.TestCase):
                 decoy.parent.mkdir()
                 decoy.write_text("com.example.wrong_tv\n")
             argument = str(package_list) if path_kind == "absolute" else str(relative)
-            capture = base / "commands.txt"
-            env = dict(os.environ, CAPTURE=str(capture))
-            result = subprocess.run(
-                ["bash", str(tools / script), argument], cwd=cwd, env=env,
-                capture_output=True, text=True,
-            )
+            result, capture = self.run_script(tools / script, argument, cwd, base, home)
             self.assertEqual(result.returncode, 0, result.stderr)
             commands = capture.read_text().splitlines()
             operation = "pm disable-user --user 0" if script == "disable.sh" else "pm enable"

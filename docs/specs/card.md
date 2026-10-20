@@ -135,8 +135,10 @@ any violation drops that one card, with a log line and no other effect.
    next to it. A package in `hidden_apps` (`config.xml`) shows neither a tile nor a card. A package in
    `dock_apps` gets its card in that dock slot. Other cards sort right after the configured dock apps
    and before the alphabetical grid, by label. On the default configuration, four dock apps and four
-   columns, that is the first grid tile. With fewer `dock_apps` than columns, a shown card fills the
-   empty dock slot, since the dock is simply the first row. In the dock, the top shelf shows the label and the glow uses
+   columns, that is the first grid tile. With fewer `dock_apps` than columns, the free dock slots take
+   the first grid apps (`fill_dock`, on by default), so a shown card fills the free dock slot, since
+   the dock is then simply the first row; with `fill_dock` false the free slots stay empty and a
+   shown card is the first grid tile. In the dock, the top shelf shows the label and the glow uses
    the accent; in the grid, the name line under the focused tile shows the label and the caption,
    as far as they fit on one line. A card uses the app's own banner (or icon) for its artwork.
 7. Hide. A hidden card leaves the app's ordinary tile exactly as before: hiding a card never

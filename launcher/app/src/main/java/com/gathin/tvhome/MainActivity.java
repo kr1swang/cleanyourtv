@@ -43,6 +43,7 @@ import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.SoundEffectConstants;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.animation.AnimationUtils;
@@ -78,6 +79,8 @@ import java.util.Set;
 public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private static final int LAUNCHER_SETTINGS_REQUEST = 42;
+    /** Sent by QuickSettingsActivity: open Launcher settings from here so Home rebuilds when they close. */
+    static final String ACTION_LAUNCHER_SETTINGS = "com.gathin.tvhome.action.LAUNCHER_SETTINGS";
     /** Tiles per row and dock slots (res/values/config.xml, columns). Set in onCreate. */
     static int COLUMNS = 4;
     private boolean rtlAppGrid;
@@ -256,6 +259,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             protected boolean isLayoutRTL() {
                 return rtlAppGrid;
             }
+
+            /**
+             * Every "bring this tile on screen" scroll lands here, both RecyclerView's own on focus and
+             * onTileFocused's. The stock version treats the grid's top padding as the visible top, but that
+             * padding only pushes the dock down the screen: grid rows scroll up into it. With the stock rule,
+             * Up into a row above the padding dragged that row down to the padding line, cut it off at the
+             * bottom of the screen and could scroll the focused tile out entirely, dropping focus into the
+             * top bar. Grid tiles now scroll just enough to show the rect between the grid's top edge and its
+             * bottom; dock tiles are left to onTileFocused, which parks the dock row on the padding line.
+             */
+            @Override
+            public boolean requestChildRectangleOnScreen(@NonNull RecyclerView parent, @NonNull View child,
+                                                         @NonNull Rect rect, boolean immediate,
+                                                         boolean focusedChildVisible) {
+                if (getPosition(child) < COLUMNS) return false;
+                int top = child.getTop() + rect.top;
+                int bottom = top + rect.height();
+                int limitBottom = getHeight() - getPaddingBottom();
+                int dy;
+                if (top < 0) dy = top;
+                else if (bottom > limitBottom) dy = Math.min(top, bottom - limitBottom);
+                else dy = 0;
+                if (dy == 0) return false;
+                if (immediate || reducedMotion || !animations) parent.scrollBy(0, dy);
+                else parent.smoothScrollBy(0, dy);
+                return true;
+            }
         });
         grid.setHasFixedSize(true);
         grid.setItemAnimator(null);
@@ -385,11 +415,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                     .build(), vpnCallback);
         }
+        // Not after recreate(): the launch intent survives it and would open the settings again.
+        if (savedInstanceState == null) openLauncherSettingsIfAsked(getIntent());
+    }
+
+    private boolean openLauncherSettingsIfAsked(Intent intent) {
+        if (intent == null || !ACTION_LAUNCHER_SETTINGS.equals(intent.getAction())) return false;
+        setIntent(new Intent(Intent.ACTION_MAIN));
+        startActivityForResult(new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST);
+        return true;
     }
 
     /**
-     * A theme's full-screen picture behind everything. Decoded once, downsampled to the screen so a 4K
-     * JPEG costs a 1080p bitmap at most (about 8 MB), which is the price of a wallpaper on a 1 GB TV.
+     * A theme's full-screen picture behind everything. Decoded once at the size CENTER_CROP shows, so it
+     * costs a screen-sized bitmap (about 4 MB at 1080p), which is the price of a wallpaper on a 1 GB TV.
+     * A picture over 4K is refused rather than decoded (#166); the plain colour stays.
      */
     private void showWallpaper(File file) {
         try {
@@ -397,10 +437,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
             opts.inJustDecodeBounds = true;
             android.graphics.BitmapFactory.decodeFile(file.getPath(), opts);
-            int sample = 1;
-            while (opts.outWidth / (sample * 2) >= dm.widthPixels && opts.outHeight / (sample * 2) >= dm.heightPixels) sample *= 2;
+            int w = opts.outWidth, h = opts.outHeight;
+            if (w <= 0 || h <= 0) return;
+            int sample = WallpaperSize.sampleSize(w, h, dm.widthPixels, dm.heightPixels);
+            // The limit applies to what is decoded, so a 12 MP photo still works once it is sampled down.
+            if (!WallpaperSize.accepted(w / sample, h / sample)) return;
             opts.inJustDecodeBounds = false;
             opts.inSampleSize = sample;
+            int[] scale = WallpaperSize.coverScale(w / sample, h / sample, dm.widthPixels, dm.heightPixels);
+            if (scale != null) {
+                opts.inScaled = true;
+                opts.inDensity = scale[0];
+                opts.inTargetDensity = scale[1];
+            }
             opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;   // no alpha needed, half the memory
             android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(file.getPath(), opts);
             if (bmp == null) return;
@@ -421,6 +470,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (openLauncherSettingsIfAsked(intent)) return;
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
         grid.scrollToPosition(0);
         lastFocused = 0;
@@ -599,7 +649,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             lp.width = (int) w;
             lp.height = (int) h;
             glass.setLayoutParams(lp);
-            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density) * scale + pad);
+            // GlassView draws its slab inset by pad, i.e. exactly over the zoomed tile: same corners as the tile.
+            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density) * scale);
         }
         glassTargetX = x;
         glassTargetY = y;
@@ -787,7 +838,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Horizontal: swallow the key at a row's ends so focus never wraps to the next row or
         // escapes up into the top bar. Mid-row moves fall through to the default focus search.
         if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-            return GridNavigation.atHorizontalEdge(position, count, COLUMNS,
+            // In the dock, the last app is the row's end: the empty slots after it take no focus.
+            int rowCount = position < COLUMNS ? Math.min(count, adapter.dockFilled()) : count;
+            return GridNavigation.atHorizontalEdge(position, rowCount, COLUMNS,
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
@@ -799,6 +852,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             target = Math.min(position + COLUMNS, count - 1);
         }
         focusTile(target);
+        // The default focus search clicks for Left/Right; Up/Down are handled here, so click for them too.
+        grid.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_UP
+                ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
         return true;
     }
 
@@ -807,7 +863,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.requestFocus();
             return;
         }
-        final int pos = Math.max(0, Math.min(position, adapter.getItemCount() - 1));
+        final int pos = adapter.focusablePosition(Math.max(0, Math.min(position, adapter.getItemCount() - 1)));
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         if (vh != null) {
             View card = vh.itemView.findViewById(R.id.card);
@@ -1223,7 +1279,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
-        dropIn(popup, panel, anchor, Gravity.END);
+        // Hebrew puts Settings at the left of the header: grow the menu inward from it.
+        dropIn(popup, panel, anchor, getResources().getBoolean(R.bool.rtl_menu_bar)
+                ? Gravity.START : Gravity.END);
         rows.getChildAt(0).requestFocus();
     }
 

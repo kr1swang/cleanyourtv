@@ -15,6 +15,15 @@ from adb_shell.adb_device import AdbDeviceTcp
 from adb_shell.auth.keygen import keygen
 from adb_shell.auth.sign_pythonrsa import PythonRSASigner
 
+# Windows consoles often use an old code page (cp1251, cp1252 and others) that cannot print every character
+# in dumpsys output. Python then stops with an error in the middle. disable.ps1 reads this output to see if
+# setupwraith owns the Wi-Fi network, so print a replacement character instead of stopping.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 HOST = os.environ.get("TV_HOST")
 PORT = int(os.environ.get("TV_PORT", "5555"))
 if not HOST:

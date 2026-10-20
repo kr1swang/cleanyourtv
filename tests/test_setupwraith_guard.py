@@ -16,7 +16,7 @@ LIST = f"# My TV\ncom.example.before\n{SETUP}  # wizard\ncom.example.after\n"
 
 
 class SetupwraithGuardTest(unittest.TestCase):
-    def run_disable(self, wifi_owner, extra_env=None):
+    def run_disable(self, wifi_owner, extra_env=None, dumpsys=None):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"
             tools = repo / "tools"
@@ -25,10 +25,11 @@ class SetupwraithGuardTest(unittest.TestCase):
             client = tools / "venv" / "bin" / "python"
             client.parent.mkdir(parents=True)
             # Fake tv.py client: answers `dumpsys wifi` with the given owner, records --batch input.
+            answer = dumpsys or f'echo " cuid=10031 cname={wifi_owner} allowAutojoin=true"'
             client.write_text(
                 '#!/bin/sh\n'
                 'case "$*" in\n'
-                f'  *dumpsys*) echo " cuid=10031 cname={wifi_owner} allowAutojoin=true" ;;\n'
+                f'  *dumpsys*) {answer} ;;\n'
                 '  *) cat > "$CAPTURE" ;;\n'
                 'esac\n')
             client.chmod(0o755)
@@ -52,6 +53,17 @@ class SetupwraithGuardTest(unittest.TestCase):
         self.assertEqual(commands[:3], ["pm disable-user --user 0 com.example.before",
                                         f"pm disable-user --user 0 {SETUP}",
                                         "pm disable-user --user 0 com.example.after"])
+
+    def test_skipped_when_dumpsys_fails(self):
+        # for example tv.py stopping in the middle (a console encoding error, a timeout)
+        commands, stderr = self.run_disable(None, dumpsys='echo "partial output"; exit 1')
+        self.assertNotIn(f"pm disable-user --user 0 {SETUP}", commands)
+        self.assertIn("could not check", stderr)
+
+    def test_skipped_when_no_network_listed(self):
+        commands, stderr = self.run_disable(None, dumpsys='echo "Wi-Fi is off"')
+        self.assertNotIn(f"pm disable-user --user 0 {SETUP}", commands)
+        self.assertIn("could not check", stderr)
 
     def test_force(self):
         commands, _ = self.run_disable(f"{SETUP}:10031", {"FORCE_SETUPWRAITH": "1"})

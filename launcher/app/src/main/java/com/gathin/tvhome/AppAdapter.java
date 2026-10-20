@@ -41,8 +41,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * App tiles. The first {@link MainActivity#COLUMNS} positions are the pinned dock (favourites, fixed order),
- * then the module cards the owner chose to show (by label), the rest is alphabetical.
+ * App tiles. The first {@link MainActivity#COLUMNS} positions are the pinned dock (favourites, fixed order,
+ * then empty slots up to a full row, see {@link DockSlots}), then the module cards the owner chose to show
+ * (by label), the rest is alphabetical.
  */
 public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
@@ -54,7 +55,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3;
 
         final int kind;
         final String label;
@@ -113,6 +114,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private final int dockSize;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
     private final List<String> favourites;
+    /** Grid apps fill the dock slots dock_apps leaves free (config.xml, fill_dock). */
+    private final boolean fillDock;
+    /** Dock apps found at the last reload, and the empty slots after them. */
+    private int docked, emptySlots;
     /** Never shown as tiles (res/values/config.xml, hidden_apps). */
     private final Set<String> hidden;
     private final boolean animations;
@@ -127,6 +132,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.listener = listener;
         this.dockSize = dockSize;
         this.favourites = cfg.dockApps;
+        this.fillDock = cfg.fillDock;
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.animations = cfg.animations;
         this.advancedEffects = cfg.animations && cfg.advancedEffects;
@@ -184,6 +190,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     new ComponentName(ctx, HomeSettingsActivity.class), null,
                     ctx.getDrawable(R.drawable.ic_home_settings), null, 0));
         }
+        docked = 0;
+        while (docked < fresh.size() && favourites.contains(fresh.get(docked).pkg)) docked++;
+        emptySlots = DockSlots.empty(docked, dockSize, fresh.size(), fillDock);
+        for (int i = 0; i < emptySlots; i++) {
+            fresh.add(docked + i, new Entry(Entry.EMPTY, "", new ComponentName(ctx, "empty-dock-slot-" + i),
+                    null, null, null, 0));
+        }
         items.clear();
         items.addAll(fresh);
         notifyDataSetChanged();
@@ -228,6 +241,19 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     @Override
     public void onBindViewHolder(@NonNull Holder h, int position) {
         Entry e = items.get(position);
+        if (e.kind == Entry.EMPTY) {
+            // A free dock slot keeps its place in the row and the band, but shows nothing and takes no focus.
+            h.card.setVisibility(View.INVISIBLE);
+            h.card.setFocusable(false);
+            h.name.setVisibility(View.INVISIBLE);
+            h.banner.setImageDrawable(null);
+            h.icon.setImageDrawable(null);
+            h.card.setOnClickListener(null);
+            h.card.setOnLongClickListener(null);
+            return;
+        }
+        h.card.setVisibility(View.VISIBLE);
+        h.card.setFocusable(true);
         h.name.setText(e.name);
         h.name.setVisibility(position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
@@ -306,6 +332,16 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (items.get(i).component.flattenToShortString().equals(key)) return i;
         }
         return -1;
+    }
+
+    /** Dock slots that hold an app: the whole dock unless some slots are empty. */
+    int dockFilled() {
+        return emptySlots > 0 ? docked : dockSize;
+    }
+
+    /** A position focus can land on: an empty dock slot gives the last dock app. */
+    int focusablePosition(int position) {
+        return DockSlots.focusable(position, docked, emptySlots);
     }
 
     String labelAt(int position) {

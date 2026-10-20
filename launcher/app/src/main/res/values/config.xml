@@ -14,6 +14,10 @@
         <item>com.google.android.youtube.tv</item>
         <item>in.startv.hotstar</item>
     </string-array>
+    <!-- With fewer dock_apps than columns (or a dock app that is not installed), the free dock slots take
+         the first grid apps, so the dock never shows a gap. false leaves them empty (#162); a theme can
+         set "fill_dock": false. -->
+    <bool name="fill_dock">true</bool>
 
     <!-- Apps never shown as tiles (e.g. the Live TV app, which the Inputs menu already covers). -->
     <string-array name="hidden_apps">
@@ -52,6 +56,10 @@
          with `tools/tv.py 'logcat -v time -s InputReader:D'` while pressing the button. Leave empty to omit. -->
     <integer-array name="settings_key_keycodes">
     </integer-array>
+    <!-- What those Settings buttons open: false, the TV's Settings; true, a small glass panel at the top right
+         with TV settings, Display, Network, Apps (re-enable an app) and Launcher settings, over whatever is on screen.
+         Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
+    <bool name="settings_key_panel">false</bool>
 
     <!-- Show the Solar Hijri (Shamsi) date used in Iran and Afghanistan, e.g. "27 Mehr 1405", above the
          Gregorian date. -->

@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,6 +43,13 @@ public final class LauncherSettingsActivity extends Activity {
                 setResult(RESULT_OK);
                 refresh();
             });
+        }
+        // Keep the numeric choices increasing in the Hebrew reading direction. Reorder the
+        // actual views so D-pad focus follows their positions without changing the saved values.
+        if (getResources().getBoolean(R.bool.rtl_app_grid)) {
+            LinearLayout row = (LinearLayout) columnChoices[0].getParent();
+            row.removeAllViews();
+            for (int i = columnChoices.length - 1; i >= 0; i--) row.addView(columnChoices[i]);
         }
         animationsChoice = findViewById(R.id.animationsChoice);
         animationsChoice.setOnClickListener(v -> {

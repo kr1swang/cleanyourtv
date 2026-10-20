@@ -28,10 +28,20 @@ if ($bad.Count -gt 0) {
 $setup = 'com.google.android.tungsten.setupwraith'
 if ($pkgs -contains $setup -and -not $env:FORCE_SETUPWRAITH) {
     $wifi = (& $py -I (Join-Path $repo 'tools\tv.py') 'dumpsys wifi') -join "`n"
-    if ($wifi -match 'cname=[^ ]*setupwraith') {
+    # Be safe: if we cannot read the owners (tv.py failed, timed out, or showed no network at all),
+    # do not disable setupwraith, so the TV cannot lose the network it is on.
+    if ($LASTEXITCODE -ne 0 -or $wifi -notmatch 'cname=') {
+        Write-Warning "Skipping ${setup}: could not check which app owns the saved Wi-Fi networks (dumpsys wifi failed or showed none). Try again, or set `$env:FORCE_SETUPWRAITH=1 if the TV uses Ethernet."
+        $pkgs = @($pkgs | Where-Object { $_ -ne $setup })
+    } elseif ($wifi -match 'cname=[^ ]*setupwraith') {
         Write-Warning "Skipping ${setup}: the saved Wi-Fi network belongs to it, and disabling it would delete that network and take the TV off Wi-Fi. Forget the network and join it again in Settings > Network & Internet, then run this again (or set `$env:FORCE_SETUPWRAITH=1 on Ethernet)."
         $pkgs = @($pkgs | Where-Object { $_ -ne $setup })
     }
 }
+# Same as disable.sh: the state undo needs is recorded before the first command reaches the TV, and
+# a failed save leaves the TV untouched (#239).
+& $py -I (Join-Path $repo 'tools\recovery.py') --save $List
+if ($LASTEXITCODE -ne 0) { throw 'no recovery record was written, so nothing was disabled' }
+
 $cmds = @($pkgs | ForEach-Object { "pm disable-user --user 0 $_" }) + 'pm list packages -d'
 $cmds | & $py -I (Join-Path $repo 'tools\tv.py') --batch

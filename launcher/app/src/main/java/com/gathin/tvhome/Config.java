@@ -36,6 +36,8 @@ final class Config {
     private static final String THEME_SIGNATURE_KEY = "theme_signature";
 
     final List<String> dockApps;
+    /** Grid apps fill the dock slots dock_apps leaves free (config.xml, fill_dock); on by default, false leaves the slots empty. */
+    final boolean fillDock;
     final List<String> hiddenApps;
     final String liveTvPackage;
     final String liveTvAction;
@@ -56,6 +58,10 @@ final class Config {
     final int backgroundColor;
     /** Time-of-day backdrop, 0 to 100 (config.xml, sky_intensity); 0 keeps the plain background. */
     final int skyIntensity;
+    /** Remote keycodes that open Settings through HomeKeyService (config.xml, settings_key_keycodes). */
+    final int[] settingsKeycodes;
+    /** The Settings button opens the quick settings panel instead of the TV's Settings (settings_key_panel). */
+    final boolean settingsKeyPanel;
     /** Full-screen picture behind the launcher, or null for the plain colour. */
     final File wallpaper;
     /** Whether the overlay file was present and parsed. */
@@ -63,13 +69,15 @@ final class Config {
     /** Festive skin from a theme (festival, festival_until, greeting, accent_color); {@link Festival#NONE} if none. */
     final Festival festival;
 
-    private Config(List<String> dockApps, List<String> hiddenApps, String liveTvPackage, String liveTvAction,
-                   String sourcePanelService, String sourcePanelAction, String inputAction,
+    private Config(List<String> dockApps, boolean fillDock, List<String> hiddenApps, String liveTvPackage,
+                   String liveTvAction, String sourcePanelService, String sourcePanelAction, String inputAction,
                    int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, boolean moduleCards, boolean reducedMotion, String vpnApp,
                    boolean showHomeSettingsShortcut, int backgroundColor, int skyIntensity,
-                   File wallpaper, boolean overlayApplied, Festival festival) {
+                   int[] settingsKeycodes, boolean settingsKeyPanel, File wallpaper, boolean overlayApplied,
+                   Festival festival) {
         this.dockApps = Collections.unmodifiableList(dockApps);
+        this.fillDock = fillDock;
         this.hiddenApps = Collections.unmodifiableList(hiddenApps);
         this.liveTvPackage = liveTvPackage;
         this.liveTvAction = liveTvAction;
@@ -87,6 +95,8 @@ final class Config {
         this.showHomeSettingsShortcut = showHomeSettingsShortcut;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
+        this.settingsKeycodes = settingsKeycodes;
+        this.settingsKeyPanel = settingsKeyPanel;
         this.wallpaper = wallpaper;
         this.overlayApplied = overlayApplied;
         this.festival = festival;
@@ -100,6 +110,7 @@ final class Config {
     static Config load(Context ctx) {
         Resources res = ctx.getResources();
         List<String> dock = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.dock_apps)));
+        boolean fillDock = res.getBoolean(R.bool.fill_dock);
         List<String> hidden = new ArrayList<>(Arrays.asList(res.getStringArray(R.array.hidden_apps)));
         String liveTv = res.getString(R.string.live_tv_package).trim();
         String liveTvAction = res.getString(R.string.live_tv_action).trim();
@@ -117,6 +128,8 @@ final class Config {
         boolean homeSettings = res.getBoolean(R.bool.show_home_settings_shortcut);
         int background = 0xFF000000;
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
+        int[] settingsKeycodes = res.getIntArray(R.array.settings_key_keycodes);
+        boolean settingsKeyPanel = res.getBoolean(R.bool.settings_key_panel);
         boolean applied = false;
 
         File dir = dir(ctx);
@@ -125,6 +138,7 @@ final class Config {
         if (json != null) {
             applied = true;
             dock = stringList(json, "dock_apps", dock);
+            fillDock = bool(json, "fill_dock", fillDock);
             hidden = stringList(json, "hidden_apps", hidden);
             liveTv = string(json, "live_tv_package", liveTv);
             liveTvAction = string(json, "live_tv_action", liveTvAction);
@@ -142,6 +156,8 @@ final class Config {
             homeSettings = bool(json, "show_home_settings_shortcut", homeSettings);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
+            settingsKeycodes = intArray(json, "settings_key_keycodes", settingsKeycodes);
+            settingsKeyPanel = bool(json, "settings_key_panel", settingsKeyPanel);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
         // current theme without clearing choices from an older launcher version.
@@ -159,10 +175,11 @@ final class Config {
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),
                 string(json, "festival_until", ""), string(json, "greeting", ""), string(json, "accent_color", ""));
 
-        return new Config(dock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
+        return new Config(dock, fillDock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
                 Math.max(1, columns), Math.max(0, rowsBelow), animations, advancedEffects,
                 shamsi, moduleCards, reducedMotion, vpn, homeSettings, background,
-                Math.max(0, Math.min(100, skyIntensity)), wallpaper, applied, festival);
+                Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, wallpaper, applied,
+                festival);
     }
 
     private static void syncThemeChoices(SharedPreferences choices, File dir, File config) {
@@ -244,6 +261,21 @@ final class Config {
         } catch (IllegalArgumentException e) {
             return fallback;
         }
+    }
+
+    /** Positive keycodes only (vendor remotes use codes in the thousands); a list with anything else in it is ignored as a whole. */
+    private static int[] intArray(JSONObject o, String key, int[] fallback) {
+        Object v = o.opt(key);
+        if (!(v instanceof JSONArray)) return fallback;
+        JSONArray a = (JSONArray) v;
+        int[] out = new int[a.length()];
+        for (int i = 0; i < a.length(); i++) {
+            Object item = a.opt(i);
+            if (!(item instanceof Number)) return fallback;
+            out[i] = ((Number) item).intValue();
+            if (out[i] < 1) return fallback;
+        }
+        return out;
     }
 
     private static List<String> stringList(JSONObject o, String key, List<String> fallback) {

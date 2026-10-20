@@ -20,12 +20,16 @@ public class HomeKeyService extends AccessibilityService {
     /** Remote buttons that should open Settings (config.xml, settings_key_scancodes and settings_key_keycodes). */
     private int[] settingsScancodes = new int[0];
     private int[] settingsKeycodes = new int[0];
+    private boolean settingsPanel;
 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         settingsScancodes = getResources().getIntArray(R.array.settings_key_scancodes);
-        settingsKeycodes = getResources().getIntArray(R.array.settings_key_keycodes);
+        // Keycodes and the panel choice can also come from a theme; theme.sh restarts this service.
+        Config config = Config.load(this);
+        settingsKeycodes = config.settingsKeycodes;
+        settingsPanel = config.settingsKeyPanel;
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -40,7 +44,9 @@ public class HomeKeyService extends AccessibilityService {
         // The stock launcher handled the remote's Settings button; with it disabled the button does nothing.
         if (isSettingsKey(event)) {
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-                startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                Intent open = settingsPanel ? new Intent(this, QuickSettingsActivity.class)
+                        : new Intent(Settings.ACTION_SETTINGS);
+                startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }
             return true;
         }

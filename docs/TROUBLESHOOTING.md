@@ -134,5 +134,10 @@ tools/tv.py 'dumpsys accessibility'
 
 Enabled but never bound points at a firmware restriction on auto-starting sideloaded services (some TCL
 builds log `OP_AUTO_START` denials). Look at `logcat` for the binding failure before changing settings,
-and do not rewrite the enabled-services list or grant app-ops as a blanket fix. When reporting, give the
+and do not rewrite the enabled-services list or grant app-ops as a blanket fix. On a TCL 55S470G (Google
+TV 12) the line is `[TclAppBoot] ... calleeComponent = 'com.gathin.tvhome/.HomeKeyService', bootType =
+'bind_service', isAllow = 'false', reason = 'callee_does't_have_OP_AUTO_START_permission.'`, and
+`appops get com.gathin.tvhome` shows `APP_AUTO_START: ignore`. Allowing that one op for the launcher only
+(`appops set com.gathin.tvhome APP_AUTO_START allow`) made the service bind on its own after a restart;
+toggling the service off and on in Accessibility works until the next restart. When reporting, give the
 model, build, current user and the relevant redacted lines, not the raw dump.

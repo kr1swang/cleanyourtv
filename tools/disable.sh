@@ -5,8 +5,10 @@
 # Usage: TV_HOST=192.168.1.50 tools/disable.sh examples/xiaomi-mi-tv-4a/debloat.txt
 set -euo pipefail
 LIST="${1:?usage: disable.sh <debloat list>}"
-# Resolve the list against the caller's directory before moving into the repo.
-LIST_DIR="$(cd "$(dirname "$LIST")" && pwd)"
+# Resolve the list against the caller's directory before moving into the repo. Git Bash's pwd says
+# /c/Users/..., which the Windows Python cannot open with MSYS_NO_PATHCONV=1 set; pwd -W gives
+# C:/Users/..., the same path (and so the same record) as the PowerShell scripts.
+LIST_DIR="$(cd "$(dirname "$LIST")" && { pwd -W 2>/dev/null || pwd; })"
 LIST="$LIST_DIR/$(basename "$LIST")"
 cd "$(dirname "$0")/.."
 PY=tools/venv/bin/python
@@ -30,15 +32,27 @@ fi
 # android.uid.system). FORCE_SETUPWRAITH=1 disables it anyway, e.g. on Ethernet.
 SETUP=com.google.android.tungsten.setupwraith
 if printf '%s\n' "$PKGS" | grep -x "$SETUP" >/dev/null && [ -z "${FORCE_SETUPWRAITH:-}" ]; then
-  WIFI="$("$PY" -I tools/tv.py "dumpsys wifi" || true)"
+  # Be safe: if we cannot read the owners (tv.py failed, timed out, or showed no network at all),
+  # do not disable setupwraith, so the TV cannot lose the network it is on.
+  WIFI="$("$PY" -I tools/tv.py "dumpsys wifi")" || WIFI=""
+  OWNERS="$(printf '%s\n' "$WIFI" | grep -o 'cname=[^ ]*' || true)"
+  if [ -z "$OWNERS" ]; then
+    echo "Skipping $SETUP: could not check which app owns the saved Wi-Fi networks (dumpsys wifi failed" >&2
+    echo "or showed none). Try again, or set FORCE_SETUPWRAITH=1 if the TV uses Ethernet." >&2
+    PKGS="$(printf '%s\n' "$PKGS" | grep -vx "$SETUP" || true)"
   # no grep -q here: with pipefail its early exit would SIGPIPE the grep before it and fail open
-  if printf '%s\n' "$WIFI" | grep -o 'cname=[^ ]*' | grep setupwraith >/dev/null; then
+  elif printf '%s\n' "$OWNERS" | grep setupwraith >/dev/null; then
     echo "Skipping $SETUP: the saved Wi-Fi network belongs to it, and disabling it would delete that" >&2
     echo "network and take the TV off Wi-Fi. On the TV, forget the network and join it again in" >&2
     echo "Settings > Network & Internet, then run this again (or set FORCE_SETUPWRAITH=1 on Ethernet)." >&2
     PKGS="$(printf '%s\n' "$PKGS" | grep -vx "$SETUP" || true)"
   fi
 fi
+
+# The state undo needs goes to disk before the first command reaches the TV, and a failed save stops
+# here with the TV untouched: a record written afterwards would describe a TV that is already broken,
+# and a retry must not overwrite the one taken before the first change (#239).
+"$PY" -I tools/recovery.py --save "$LIST"
 
 {
   [ -n "$PKGS" ] && printf '%s\n' "$PKGS" | sed 's/^/pm disable-user --user 0 /'

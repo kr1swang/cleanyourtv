@@ -1,0 +1,48 @@
+# Sony BRAVIA VU31 4K (device BRAVIA_VU31_4K, Realtek SoC), India firmware, 2 GB RAM
+# Google TV 14 (API 34), build UKR1.240726.001
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/sony-bravia-vu31/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/sony-bravia-vu31/debloat.txt com.google.android.apps.tv.launcherx
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# Stock launcher: com.google.android.apps.tv.launcherx (Google TV); pass it to restore.sh as above.
+# Debloat only so far: the launcher half was not attempted, so launcherx and setupwraith stay on.
+# Tuner / inputs on this Realtek set are com.realtek.dtv, com.realtek.tv.atv and com.android.tv (Live
+# Channels): keep them, plus com.sony.dtv.tvapi-style services (sonysystemservice, smartui = Input menu,
+# m2.devicecontrolservice, ipcontrol) and all com.realtek.* overlays.
+# Unlike the MediaTek Sony sets, this firmware ships no Samba TV, Qterics or IDD agents, so there is
+# nothing of that kind to disable. com.sony.dtv.b2b.vendorprotocol was already disabled from the factory.
+# ADB: USB debugging alone opens port 5555 (no wireless-debugging pairing needed); the "Allow USB
+# debugging?" prompt appears on first connect. On macOS the terminal app needs Local Network permission
+# or every LAN host answers "No route to host".
+# Applied 2026-10-20 in two batches with a screenshot and crash-log check after each, then reboot-checked:
+# all 18 stayed disabled, no crashes, Home, Inputs and the kept apps fine. Not lived with for days yet.
+# With 2 GB of RAM the set still swaps after this; the stock home screen (~170 MB over two processes)
+# is the next thing to replace.
+
+# Sony promos, store demo and help tiles
+com.sony.dtv.promos                      # My BRAVIA promos
+com.sony.dtv.sonyselect                  # Sony Select app promos
+com.sony.dtv.sonytab                     # Sony tab / partner content on the stock home
+com.sony.dtv.multiscreendemo             # shop demo
+com.sony.dtv.smarthelp                   # Sony help tile
+
+# Google leftovers a TV never needs
+com.google.android.feedback              # Google feedback reporter
+com.google.android.play.games            # Play Games
+com.google.android.partnersetup          # RLZ install-attribution provider
+com.google.android.onetimeinitializer    # runs once after first setup
+com.google.android.syncadapters.calendar # calendar sync; also carries Google's GrowthKit promos
+com.android.printspooler                 # printing
+
+# Screensaver: set `settings put secure screensaver_components com.android.dreams.basic/.Colors` first
+com.google.android.apps.tv.dreamx        # Ambient photo/art screensaver (~46 MB resident)
+
+# Off by choice (owner does not use them). Alexa (m2.seeds.iot), Chromecast, AirPlay, the phone
+# remote and Assistant were kept on purpose.
+com.google.android.videos                # Google TV / Play Movies
+com.apple.atve.androidtv.appletv         # Apple TV (preloaded in /data)
+com.crunchyroll.crunchyroid              # Crunchyroll
+com.suntv.sunnxt                         # Sun NXT
+com.yupptv.scope.tvapp                   # YuppTV
+com.analiti.fastest.android              # analiti speed test
