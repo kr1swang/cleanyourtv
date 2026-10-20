@@ -1,5 +1,6 @@
 {
   "columns": 6,
+  "video_wallpaper": "golden-gate-wallpapers.mov",
   "dock_apps": [
     "com.google.android.youtube.tv",
     "com.netflix.ninja",
