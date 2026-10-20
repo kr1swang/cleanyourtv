@@ -17,13 +17,12 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
     private static final String TAG = "VideoWallpaper";
     private final File file;
     private final View poster;
+    private final boolean animateTransition;
     private MediaPlayer player;
     private boolean resumed;
-    private boolean prepared;
     private boolean failed;
-    private int positionMs;
 
-    static VideoWallpaper attach(Context context, FrameLayout root, View poster) {
+    static VideoWallpaper attach(Context context, FrameLayout root, View poster, boolean animateTransition) {
         File dir = Config.dir(context);
         if (dir == null) return null;
         try {
@@ -34,7 +33,7 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
             if (name.isEmpty()) return null;
             File file = new File(dir, name).getCanonicalFile();
             if (!dir.getCanonicalFile().equals(file.getParentFile()) || !file.isFile()) return null;
-            VideoWallpaper view = new VideoWallpaper(context, file, poster);
+            VideoWallpaper view = new VideoWallpaper(context, file, poster, animateTransition);
             root.addView(view, 0, new FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
             return view;
@@ -44,10 +43,11 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
         }
     }
 
-    private VideoWallpaper(Context context, File file, View poster) {
+    private VideoWallpaper(Context context, File file, View poster, boolean animateTransition) {
         super(context);
         this.file = file;
         this.poster = poster;
+        this.animateTransition = animateTransition;
         setFocusable(false);
         setClickable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -77,15 +77,26 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
             next.setLooping(true);
             next.setOnPreparedListener(mp -> {
                 if (player != mp || !resumed) return;
-                prepared = true;
                 mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-                if (positionMs > 0) mp.seekTo(positionMs);
+                // A new decoder always starts at the beginning, matching the static poster.
+                Log.i(TAG, "Playing " + mp.getVideoWidth() + "x" + mp.getVideoHeight()
+                        + " from " + mp.getCurrentPosition() + "ms");
                 mp.start();
-                Log.i(TAG, "Playing " + mp.getVideoWidth() + "x" + mp.getVideoHeight());
             });
             next.setOnInfoListener((mp, what, extra) -> {
                 if (player == mp && what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-                    if (poster != null) poster.setVisibility(GONE);
+                    if (poster != null) {
+                        if (animateTransition) {
+                            poster.animate().alpha(0f).setDuration(180).withEndAction(() -> {
+                                if (player == mp) {
+                                    poster.setVisibility(GONE);
+                                    poster.setAlpha(1f);
+                                }
+                            }).start();
+                        } else {
+                            poster.setVisibility(GONE);
+                        }
+                    }
                     Log.i(TAG, "First video frame rendered");
                 }
                 return false;
@@ -93,7 +104,6 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
             next.setOnErrorListener((mp, what, extra) -> {
                 if (player == mp) {
                     Log.w(TAG, "Playback failed: " + what + "/" + extra);
-                    prepared = false;
                     failed = true;
                     releasePlayer();
                 }
@@ -108,18 +118,14 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
     }
 
     private void releasePlayer() {
-        if (poster != null) poster.setVisibility(VISIBLE);
+        if (poster != null) {
+            poster.animate().cancel();
+            poster.setAlpha(1f);
+            poster.setVisibility(VISIBLE);
+        }
         MediaPlayer previous = player;
         player = null;
         if (previous == null) return;
-        if (prepared) {
-            try {
-                positionMs = previous.getCurrentPosition();
-            } catch (IllegalStateException ignored) {
-                positionMs = 0;
-            }
-        }
-        prepared = false;
         previous.setOnPreparedListener(null);
         previous.setOnInfoListener(null);
         previous.setOnErrorListener(null);

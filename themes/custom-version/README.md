@@ -11,14 +11,15 @@ The ordinary upstream appearance remains available by removing `video_wallpaper`
 The media files are versioned alongside this theme, but are not bundled in the APK:
 
 - `golden-gate-wallpapers.mov`: deployment copy, 3840×2160 HEVC at 60 fps, tracked with Git LFS.
-- `wallpaper.jpg`: a 4K frame from the same video, shown during preparation or if playback fails.
+- `wallpaper.png`: the exact first frame of the deployment video, stored losslessly at 3840×2160,
+  shown during preparation or if playback fails. The launcher uses ARGB_8888 to preserve gradients.
 
 Install Git LFS before cloning, or run `git lfs install --local` and `git lfs pull`
 in an existing checkout to download the video. A Git LFS pointer is not a playable
 video; check that the downloaded file is about 262 MiB before deployment.
 
 Copy both files to `/sdcard/Android/data/com.gathin.tvhome/files/` with ADB,
-then apply this folder with `tools/theme.sh`. Keep a local `wallpaper.jpg` in this
-folder when using that script, because upstream theme deployment removes the
+then apply this folder with `tools/theme.sh`. Keep `wallpaper.png` in this
+folder when using that script, because theme deployment removes the
 device's static wallpaper when the selected folder does not contain one.
-The upstream theme script does not copy video files.
+The theme script does not copy video files.

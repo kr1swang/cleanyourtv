@@ -230,7 +230,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.setBackgroundColor(cfg.backgroundColor);
         if (cfg.wallpaper != null) showWallpaper(cfg.wallpaper);
         View poster = root.getChildAt(0) instanceof android.widget.ImageView ? root.getChildAt(0) : null;
-        videoWallpaper = VideoWallpaper.attach(this, root, poster);
+        videoWallpaper = VideoWallpaper.attach(this, root, poster, cfg.animations && !cfg.reducedMotion);
         sky = findViewById(R.id.sky);
         sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
         glass = findViewById(R.id.glass);
@@ -433,7 +433,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /**
      * A theme's full-screen picture behind everything. Decoded once at the size CENTER_CROP shows, so it
-     * costs a screen-sized bitmap (about 4 MB at 1080p), which is the price of a wallpaper on a 1 GB TV.
+     * costs a screen-sized bitmap (about 8 MB at 1080p), which is the price of a wallpaper on a 1 GB TV.
      * A picture over 4K is refused rather than decoded (#166); the plain colour stays.
      */
     private void showWallpaper(File file) {
@@ -455,7 +455,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 opts.inDensity = scale[0];
                 opts.inTargetDensity = scale[1];
             }
-            opts.inPreferredConfig = android.graphics.Bitmap.Config.RGB_565;   // no alpha needed, half the memory
+            // Keep smooth gradients in the video poster; RGB_565 visibly quantizes the colours.
+            opts.inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888;
             android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeFile(file.getPath(), opts);
             if (bmp == null) return;
             android.widget.ImageView wall = new android.widget.ImageView(this);

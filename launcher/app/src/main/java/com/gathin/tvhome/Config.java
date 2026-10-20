@@ -167,7 +167,10 @@ final class Config {
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         animations = choices.getBoolean("animations", animations);
         advancedEffects = choices.getBoolean("advanced_effects", advancedEffects);
-        File wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
+        File wallpaper = dir != null ? new File(dir, "wallpaper.png") : null;
+        if (wallpaper == null || !wallpaper.isFile() || wallpaper.length() == 0) {
+            wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
+        }
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
         // A theme can also switch the wallpaper off while the file is still there.
         if (json != null && json.has("wallpaper") && !bool(json, "wallpaper", true)) wallpaper = null;

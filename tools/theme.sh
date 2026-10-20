@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push a theme (a folder with config.json and optionally wallpaper.jpg) to the launcher on the TV and
+# Push a theme (a folder with config.json and optionally wallpaper.png or wallpaper.jpg) to the launcher on the TV and
 # restart Home so it picks it up. The launcher reads the files from its external files directory and
 # overlays config.json on its built-in config.xml; see themes/README.md for the keys.
 #
@@ -28,7 +28,7 @@ tv() { "$PY" -I tv.py "$@"; }
 RESTART="a=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; case \"\$a\" in *$PKG*) sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1 ;; esac; am start -n $PKG/.MainActivity >/dev/null"
 
 if [ "${1:-}" = --reset ]; then
-  tv "mkdir -p $DIR; rm -f $DIR/config.json $DIR/wallpaper.jpg; printf '%s' '$REVISION' > $DIR/theme_revision; $RESTART; echo reset" | tail -n 1
+  tv "mkdir -p $DIR; rm -f $DIR/config.json $DIR/wallpaper.jpg $DIR/wallpaper.png; printf '%s' '$REVISION' > $DIR/theme_revision; $RESTART; echo reset" | tail -n 1
   exit 0
 fi
 THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
@@ -38,10 +38,14 @@ THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
 
 tv "mkdir -p $DIR" >/dev/null
 tv --push "$THEME/config.json" "$DIR/config.json"
-if [ -f "$THEME/wallpaper.jpg" ]; then
-  "$PY" -I b64push.py "$THEME/wallpaper.jpg" "$DIR/wallpaper.jpg"
-else
+if [ -f "$THEME/wallpaper.png" ]; then
+  "$PY" -I b64push.py "$THEME/wallpaper.png" "$DIR/wallpaper.png"
   tv "rm -f $DIR/wallpaper.jpg" >/dev/null
+elif [ -f "$THEME/wallpaper.jpg" ]; then
+  "$PY" -I b64push.py "$THEME/wallpaper.jpg" "$DIR/wallpaper.jpg"
+  tv "rm -f $DIR/wallpaper.png" >/dev/null
+else
+  tv "rm -f $DIR/wallpaper.jpg $DIR/wallpaper.png" >/dev/null
 fi
 tv "printf '%s' '$REVISION' > $DIR/theme_revision" >/dev/null
 tv "$RESTART; echo applied" | tail -n 1
