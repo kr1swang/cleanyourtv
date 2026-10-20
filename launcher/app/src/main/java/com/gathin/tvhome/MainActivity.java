@@ -98,6 +98,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private AppAdapter adapter;
     private RecyclerView grid;
+    private DockGridTransition dockTransition;
     private FrameLayout root;
     private GlassView glass;
     private View ambient;
@@ -292,6 +293,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         hiddenApps = new HashSet<>(cfg.hiddenApps);
 
         grid = findViewById(R.id.grid);
+        View clockBlock = findViewById(R.id.clockBlock);
+        if (dockRow && clockBlock != null) {
+            dockTransition = new DockGridTransition(grid, clockBlock, COLUMNS, density,
+                    animations && !reducedMotion);
+        }
         rtlAppGrid = getResources().getBoolean(R.bool.rtl_app_grid);
         // Mirror only the app grid; the header and other locales keep their own layouts.
         grid.setLayoutManager(new GridLayoutManager(this, COLUMNS) {
@@ -314,6 +320,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                                                          @NonNull Rect rect, boolean immediate,
                                                          boolean focusedChildVisible) {
                 if (dockRow && getPosition(child) < COLUMNS) return false;
+                if (dockTransition != null && getPosition(child) < COLUMNS * 2) return false;
                 int top = child.getTop() + rect.top;
                 int bottom = top + rect.height();
                 // A row already fully on screen stays put, even inside the bottom padding (the last row
@@ -386,8 +393,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (MainActivity.this.dockRow && titleVisible && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
             // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
             if (!MainActivity.this.dockRow) want = (int) (AppAdapter.TOP_ROOM_DP * density);
-            if (grid.getPaddingTop() != want) {
-                grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
+            int bottom = dockTransition == null ? grid.getPaddingBottom()
+                    : dockTransition.bottomPadding(h, itemH, adapter.appCount());
+            if (grid.getPaddingTop() != want || grid.getPaddingBottom() != bottom) {
+                grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), bottom);
             }
         });
 
@@ -688,6 +697,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        if (dockTransition != null) dockTransition.stop();
         endReorder();   // Home or another app while reordering keeps the order so far
         stopAmbientAnimation();
         heroName.animate().cancel();
@@ -961,6 +971,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Focus is rendered by the card's scale and cached shadow.
         float pad = 12f * density;
         View item = (View) card.getParent();
+        if (dockTransition != null && dockTransition.onFocused(position, item)) {
+            hideHero();
+            return;
+        }
         if (dockRow && position < COLUMNS) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app.
             int decoratedTop = item.getTop() - (int) (6 * density);
@@ -1359,6 +1373,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override public void onLibraryFocused() {
         libraryFocusPending = false;
+        if (dockTransition != null) dockTransition.setExpanded(true);
         hideGlass();
         hideHero();
     }
