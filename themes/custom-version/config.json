@@ -1,0 +1,11 @@
+{
+  "columns": 6,
+  "dock_apps": [
+    "com.google.android.youtube.tv",
+    "com.netflix.ninja",
+    "tv.twitch.android.app",
+    "com.spotify.tv.android",
+    "com.limelight",
+    "com.android.vending"
+  ]
+}
