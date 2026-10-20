@@ -122,6 +122,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private static int lastFocused = 0;
     /** App of the last focused tile, so focus follows it when the app list changes. */
     private static String lastFocusedKey;
+    private boolean homeFocusPending;
     private float density;
     /** Module cards (res/values/config.xml, module_cards): discovered on resume, shown only after the owner's Show. */
     private boolean moduleCards;
@@ -476,15 +477,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onNewIntent(intent);
         if (openLauncherSettingsIfAsked(intent)) return;
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
-        grid.scrollToPosition(0);
+        homeFocusPending = true;
         lastFocused = 0;
         lastFocusedKey = adapter.getItemCount() > 0 ? adapter.keyAt(0) : null;
-        rebuildOnResume = true;
+        // onResume restores Home after any app-list refresh, so the old tile cannot win focus.
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        if (videoWallpaper != null) videoWallpaper.resumePlayback();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -495,7 +497,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
-        if (videoWallpaper != null) videoWallpaper.resumePlayback();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -505,6 +506,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (rebuildOnResume) {
             tilesReady = false;
             reloadApps(true);
+        } else if (homeFocusPending) {
+            restoreFocus();
         }
         rebuildOnResume = false;
         updateGreeting();
@@ -580,6 +583,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * reload() the view that holds focus may no longer show the app it had.
      */
     private void restoreFocus() {
+        if (homeFocusPending) {
+            homeFocusPending = false;
+            grid.stopScroll();
+            // Position 0 being visible is not enough: anchor it at the dock's padding line.
+            // Wait for that layout (including RecyclerView's focus recovery) before selecting it.
+            grid.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int l, int t, int r, int b,
+                                           int oldL, int oldT, int oldR, int oldB) {
+                    grid.removeOnLayoutChangeListener(this);
+                    grid.post(() -> {
+                        focusTile(0);
+                        tilesReady = true;
+                        showCardPrompt();
+                    });
+                }
+            });
+            ((GridLayoutManager) grid.getLayoutManager()).scrollToPositionWithOffset(0, 0);
+            return;
+        }
         final String returnKey = lastFocusedKey;
         final int returnSlot = lastFocused;
         grid.post(() -> {
@@ -593,7 +616,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
-        if (videoWallpaper != null) videoWallpaper.pausePlayback();
         stopAmbientAnimation();
         heroName.animate().cancel();
         ambient.animate().cancel();
@@ -607,6 +629,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         super.onStop();
+        // singleTask Home intents briefly pause/resume us without hiding the wallpaper.
+        if (videoWallpaper != null) videoWallpaper.pausePlayback();
         unregisterReceiver(packageReceiver);
         rebuildOnResume = true;
     }
