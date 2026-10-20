@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 /** Draws the tvOS style lighter band behind the first (dock) row and adds a gap below it. */
 public class DockDecoration extends RecyclerView.ItemDecoration {
+    static final int BACKGROUND_COLOR = 0x54222228;
 
     private final int dockSize;
     private final float density;
@@ -21,7 +22,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     DockDecoration(int dockSize, float density) {
         this.dockSize = dockSize;
         this.density = density;
-        band.setColor(0x54222228);
+        band.setColor(BACKGROUND_COLOR);
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
         edge.setColor(0x1FFFFFFF);

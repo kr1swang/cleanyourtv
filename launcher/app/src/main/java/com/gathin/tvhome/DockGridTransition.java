@@ -22,13 +22,16 @@ final class DockGridTransition {
     private final int rowGap;
     private float rowOffset;
     private ValueAnimator spacing;
+    private final View backdropShade;
 
-    DockGridTransition(RecyclerView grid, View clock, int columns, float density, boolean animate) {
+    DockGridTransition(RecyclerView grid, View clock, int columns, float density, boolean animate,
+                       View backdropShade) {
         this.grid = grid;
         this.clock = clock;
         this.columns = columns;
         this.density = density;
         this.animate = animate;
+        this.backdropShade = backdropShade;
         dockGap = Math.round(15 * density);
         rowGap = Math.round(12 * density);
         rowOffset = -dockGap;
@@ -116,6 +119,7 @@ final class DockGridTransition {
 
     private void setRowOffset(float offset) {
         rowOffset = offset;
+        backdropShade.setAlpha(Math.max(0f, Math.min(1f, 1f + offset / dockGap)));
         for (int i = 0; i < grid.getChildCount(); i++) offsetRow(grid.getChildAt(i));
     }
 

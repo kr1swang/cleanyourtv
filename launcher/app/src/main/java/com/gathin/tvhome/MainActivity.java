@@ -295,8 +295,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid = findViewById(R.id.grid);
         View clockBlock = findViewById(R.id.clockBlock);
         if (dockRow && clockBlock != null) {
+            // A single translucent fill above the wallpaper, below all foreground UI.
+            View backdropShade = new View(this);
+            // Same tint as the dock, with a slightly stronger 45% opacity behind the app grid.
+            backdropShade.setBackgroundColor(0x73000000 | (DockDecoration.BACKGROUND_COLOR & 0x00FFFFFF));
+            backdropShade.forceHasOverlappingRendering(false);
+            backdropShade.setAlpha(0f);
+            backdropShade.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            root.addView(backdropShade, root.indexOfChild(ambient) + 1,
+                    new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT));
             dockTransition = new DockGridTransition(grid, clockBlock, COLUMNS, density,
-                    animations && !reducedMotion);
+                    animations && !reducedMotion, backdropShade);
         }
         rtlAppGrid = getResources().getBoolean(R.bool.rtl_app_grid);
         // Mirror only the app grid; the header and other locales keep their own layouts.
