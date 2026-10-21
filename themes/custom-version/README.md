@@ -26,8 +26,8 @@ Clearing app storage restores six columns, the Dock order and the static wallpap
 External config keys, wallpaper files and on-TV choices can still override those defaults.
 The video files remain outside the APK:
 
-- `wallpaper_3840x2160.mov`: original deployment copy, 3840×2160 HEVC at 60 fps.
-- `wallpaper_1920x1080.mov`: 1920×1080 HEVC rendition at 60 fps.
+- `wallpaper_3840x2160.mov`: original deployment copy, 3840×2160 HEVC 10-bit at 60 fps.
+- `wallpaper_1920x1080.mov`: 1920×1080 HEVC 10-bit rendition at 60 fps.
 - `wallpaper.png`: the exact first frame of the deployment video, stored losslessly at 3840×2160,
   shown during preparation or if playback fails. Bundled at full resolution without conversion.
   The launcher uses ARGB_8888 to preserve gradients.
@@ -47,16 +47,35 @@ The tool downloads only the selected files, verifies them before replacing local
 existing files whose size and checksum match. Downloads stay ignored by Git. Building the APK does
 not require either video; `config.json` and `wallpaper.png` remain in the repository.
 
-Choose the deployment size using the [video deployment instructions](../../PROMPT.md):
-for a fixed, known output, copy only the corresponding video; for a player that moves between
-1080p and 4K displays, copy both. Ask about intended use if it is unknown. Do not use Android's
-UI size alone to make this choice. Both filenames may remain listed when only one video is present.
+Choose a deployment profile using the [deployment instructions](../../PROMPT.md). All profiles use
+one APK; only the external config and deployed media differ.
 
-After downloading, copy the selected video files to `/sdcard/Android/data/com.gathin.tvhome/files/` with ADB,
-then apply this folder with `tools/theme.sh`. Keep `wallpaper.png` in this
-folder when using that script, because theme deployment removes the
-device's static wallpaper when the selected folder does not contain one.
-The theme script does not copy video files. After clearing app storage, copy the selected videos back to
-restore motion; the built-in settings already name them. Removing the external
-theme returns to these bundled defaults. Set `wallpaper: false` to disable all backgrounds, or
+| Profile | Download option | External `video_wallpaper` |
+| --- | --- | --- |
+| `4k` | `--size 4k` | `["wallpaper_3840x2160.mov"]` |
+| `full-hd` | `--size 1080p` | `["wallpaper_1920x1080.mov"]` |
+| `static` | No download | `[]` |
+| Both, for changing displays | `--size both` | `["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]` |
+
+For a fixed TV, use the intended physical output and verified decoder capability to choose the video
+profile. Do not use Android's UI size alone. Both files require HEVC 10-bit decoding at 60 fps; the
+player does not check codec capabilities or try a different rendition after a decoding error. Such
+an error falls back to the static poster. Test smooth playback on each target device.
+
+Back up the external config and merge only the profile's video setting, preserving unrelated keys.
+A single-entry array prevents an old higher-resolution file from being selected. `static` explicitly
+disables playback even when MOV files remain on disk; keep the static wallpaper enabled. Record the
+profile per device. Clearing app data removes the external override and videos and restores the
+shared APK defaults, so reapply the profile after a reset.
+
+After downloading, copy the selected video files to `/sdcard/Android/data/<installed-package>/files/`
+with ADB and verify their checksums. The default package is `com.gathin.tvhome`. Some firmware blocks
+writes there; the current ThemeProvider has no MOV transfer fallback.
+For a full theme deployment, `tools/theme.sh` uses the default package and replaces external config,
+clears wallpaper collections and resets on-TV choices. Back those up first; do not use a full theme
+replacement just to change the profile. Keep `wallpaper.png` in the staged theme folder when using
+that script, because it removes the external static wallpaper when the folder does not contain one.
+The theme script does not copy video files. After clearing app storage, reapply the saved profile and
+copy its selected videos back to restore motion. Removing the external theme returns to the bundled
+defaults, which list both video renditions. Set `wallpaper: false` to disable all backgrounds, or
 `video_wallpaper: []` to use only the static image.
