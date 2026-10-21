@@ -137,6 +137,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean advancedEffects;
     private TextView greeting;
     private View clockBlock;
+    private boolean topButtonsVisible;
     private View btnInputs;
     private TextView btnWifi;
     private TextView shamsiDate;
@@ -194,8 +195,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private Dialog cardPrompt;
     /** Set when a decision could not be saved: no more prompts until the next resume, instead of asking in a loop. */
     private boolean promptsPaused;
-    /** Rebuild the tiles on resume: Home was fully hidden by an app, or Home was pressed. Not after a side panel such as Wi-Fi settings. */
-    private boolean rebuildOnResume = true;
+    /** Package changes are remembered while Home is hidden; rebuild once on return. */
+    private boolean appsDirty = true;
+    private boolean resumed;
+    /** Restore focus after a full stop, but leave a side panel's originating control alone. */
+    private boolean restoreOnResume;
     /** The Inputs or Module cards dropdown while one is open, so onPause can close it. */
     private PopupWindow openPopup;
     /** Reorder mode is on (top-bar button). */
@@ -261,8 +265,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // Updates send REMOVED followed by ADDED; keep the tile until the new APK is ready.
             if (Intent.ACTION_PACKAGE_REMOVED.equals(intent.getAction())
                     && intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return;
-            reloadApps(false);
-            if (appLibrary != null) appLibrary.refresh();
+            appsDirty = true;
+            if (resumed) {
+                reloadApps(false);
+                if (appLibrary != null) appLibrary.refresh();
+            }
         }
     };
     // Right after boot the clock is often wrong until network time arrives; don't wait a minute to catch up.
@@ -345,6 +352,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
         greetingColor = greeting.getCurrentTextColor();
+        topButtonsVisible = findViewById(R.id.topButtons).getVisibility() == View.VISIBLE;
         btnWifi = findViewById(R.id.btnWifi);
         shamsiDate = findViewById(R.id.shamsiDate);
         stats = findViewById(R.id.stats);
@@ -557,7 +565,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         .setDuration(160).start());
             }
         }
-        if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
+        if (festive && topButtonsVisible) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
 
         // Hide the glass when focus leaves the tiles.
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
@@ -570,11 +578,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         packageFilter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         packageFilter.addDataScheme("package");
         timeFilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
+        // Keep listening while stopped: updates during another app must invalidate the retained tiles.
+        // A killed process needs no persistent flag; its new activity starts with appsDirty = true.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(packageReceiver, packageFilter);
+        }
 
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (tim != null) tim.registerCallback(inputCallback, handler);
-        if (cm != null) {
+        if (topButtonsVisible && tim != null) tim.registerCallback(inputCallback, handler);
+        if (topButtonsVisible && cm != null) {
             cm.registerDefaultNetworkCallback(networkCallback);
             cm.registerNetworkCallback(new NetworkRequest.Builder()
                     .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
@@ -616,10 +631,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onStart();
         if (videoWallpaper != null) videoWallpaper.resumePlayback();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
             registerReceiver(timeReceiver, timeFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(packageReceiver, packageFilter);
             registerReceiver(timeReceiver, timeFilter);
         }
         updateClockVisibility();
@@ -634,13 +647,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         promptsPaused = false;
-        if (rebuildOnResume) {
+        resumed = true;
+        if (appsDirty) {
             tilesReady = false;
             reloadApps(true);
-        } else if (homeFocusPending) {
+        } else if (restoreOnResume || homeFocusPending) {
             restoreFocus();
         }
-        rebuildOnResume = false;
+        restoreOnResume = false;
         updateGreeting();
         updateRace();
         updateWifiLabel();
@@ -649,8 +663,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.update();
         if (videoWallpaper == null) wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
-        if (festive && diya != null) {
-            diya.start();
+        if (festive) {
+            if (diya != null) diya.start();
             LocalDate today = LocalDate.now();
             if (!reducedMotion && !today.equals(lastPetalShower)) {
                 lastPetalShower = today;
@@ -720,6 +734,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArtKey = null;
         cards = moduleCards ? CardFeature.run(() -> Cards.discover(this, hiddenApps, Cards.load(Cards.storeFile(this))), none) : none;
         adapter.reload(cards.isEmpty() ? none : CardFeature.run(() -> Cards.shown(cards), none));
+        appsDirty = false;
         lastFocusedKey = returnKey;
         lastFocused = returnSlot;
     }
@@ -747,6 +762,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        resumed = false;
         if (dockTransition != null) dockTransition.stop();
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
@@ -769,10 +785,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onStop();
         // singleTask Home intents briefly pause/resume us without hiding the wallpaper.
         if (videoWallpaper != null) videoWallpaper.pausePlayback();
-        unregisterReceiver(packageReceiver);
         unregisterReceiver(timeReceiver);
         handler.removeCallbacks(clockCheck);
-        rebuildOnResume = true;
+        restoreOnResume = true;
     }
 
     @Override
@@ -788,10 +803,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onDestroy() {
         super.onDestroy();
         wallpaperPlayer.close();
+        unregisterReceiver(packageReceiver);
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (tim != null) tim.unregisterCallback(inputCallback);
-        if (cm != null) {
+        if (topButtonsVisible && tim != null) tim.unregisterCallback(inputCallback);
+        if (topButtonsVisible && cm != null) {
             cm.unregisterNetworkCallback(networkCallback);
             cm.unregisterNetworkCallback(vpnCallback);
         }
@@ -1786,6 +1802,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void updateGreeting() {
+        if (shamsi) shamsiDate.setText(Shamsi.today());
+        if (greeting.getVisibility() != View.VISIBLE) return;
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         int res;
         if (hour < 5) res = R.string.good_night;
@@ -1802,7 +1820,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     : getString(R.string.greeting_with_name, getString(res), greetingName));
             greeting.setTextColor(greetingColor);
         }
-        if (shamsi) shamsiDate.setText(Shamsi.today());
     }
 
     // ---- race-weekend panel (a theme's race_calendar) -----------------------------------------------
@@ -1862,6 +1879,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
+        if (!topButtonsVisible) return;
         String text = getString(R.string.wifi);
         boolean vpn = false, online = false;
         int icon = R.drawable.ic_wifi;
@@ -2011,6 +2029,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Hides the Inputs pill when it would have nothing to list: streaming boxes have no HDMI-in, AV or tuner. */
     private void updateInputsButton() {
+        if (!topButtonsVisible) return;
         boolean any = liveTvIntent() != null || !sourcePanelService.isEmpty();
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (!any && tim != null) {
