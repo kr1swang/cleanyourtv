@@ -7,7 +7,7 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
-    <FrameLayout
+    <com.gathin.tvhome.AppCardView
         android:id="@+id/card"
         android:layout_width="180dp"
         android:layout_height="101dp"
@@ -47,7 +47,7 @@
             android:textSize="13sp"
             android:fontFamily="@font/outfit"
             android:visibility="gone" />
-    </FrameLayout>
+    </com.gathin.tvhome.AppCardView>
 
     <TextView
         android:id="@+id/name"

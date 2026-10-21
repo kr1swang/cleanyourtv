@@ -1,6 +1,6 @@
 package com.gathin.tvhome;
 
-import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,6 +16,7 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
@@ -23,8 +24,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -408,10 +407,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : 0f);
         h.card.setActivated(focused && !animations);
-        h.card.setScaleX(focused && animations ? focusScale() : 1f);
-        h.card.setScaleY(focused && animations ? focusScale() : 1f);
+        h.card.resetFeedback();
         h.card.setTranslationY(0f);
-        ((View) h.card.getParent()).invalidate();
         h.banner.setScaleX(focused && advancedEffects ? 1.035f : 1f);
         h.banner.setScaleY(focused && advancedEffects ? 1.035f : 1f);
         // A fully opaque banner covers the whole card (centerCrop), so the card's own fill under it is drawn for
@@ -444,9 +441,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
     private void launch(Entry e) {
+        // Start immediately with a short fade; card press feedback runs independently.
+        Bundle options = animations && !reducedMotion
+                ? ActivityOptions.makeCustomAnimation(ctx,
+                        R.anim.app_open_enter, R.anim.app_open_exit).toBundle()
+                : null;
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options);
             return;
         }
         Intent i = new Intent(Intent.ACTION_MAIN)
@@ -462,11 +464,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (ctx.getPackageManager().resolveActivity(byAction, 0) != null) i = byAction;
         }
         try {
-            ctx.startActivity(i);
+            ctx.startActivity(i, options);
             if (cinematic) LastOpened.record(ctx, e.pkg);
-            if (advancedEffects && ctx instanceof Activity) {
-                ((Activity) ctx).overridePendingTransition(R.anim.app_open_enter, R.anim.app_open_exit);
-            }
         } catch (Exception ex) {
             Toast.makeText(ctx, ctx.getString(R.string.cant_open, e.label), Toast.LENGTH_SHORT).show();
         }
@@ -637,7 +636,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
-        final View card;
+        final AppCardView card;
         /** item_app.xml's tile_bg: the dark card behind an icon tile, or behind a banner that has transparent parts. */
         final Drawable cardBackground;
         final ImageView banner;
@@ -660,6 +659,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.animations = animations;
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;
+            card.configureMotion(animations, reducedMotion);
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
@@ -681,39 +681,23 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
             card.setOnFocusChangeListener((view, focused) -> {
                 view.setActivated(focused && !animations);
-                view.animate().cancel();
                 banner.animate().cancel();
                 name.animate().cancel();
-                float scale = animations ? FOCUS_SCALE : 1f;
-                float s = focused ? scale : 1f;
+                card.updateScale(!animations ? 0 : reducedMotion ? (focused ? 120 : 80)
+                        : (focused ? 160 : 120));
                 if (!animations) {
-                    view.setScaleX(1f);
-                    view.setScaleY(1f);
                     view.setTranslationY(0f);
-                    ((View) view.getParent()).invalidate();
                     banner.setScaleX(1f);
                     banner.setScaleY(1f);
                     name.setAlpha(focused ? 1f : 0f);
                     name.setTranslationY(0f);
                 } else if (reducedMotion) {
-                    view.animate().scaleX(s).scaleY(s)
-                            .translationY(0f)
-                            .setUpdateListener(a -> ((View) view.getParent()).invalidate())
-                            .setDuration(focused ? 120 : 80)
-                            .setInterpolator(new DecelerateInterpolator())
-                            .withLayer().start();
                     name.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
                     // Same place as the full motion's slide ends: the layout's -6dp is only its starting point, and
                     // left there the name overlaps the zoomed tile.
                     // Only on focus: snapping it back to -6dp while it fades out would jump it up over the tile.
                     if (focused) name.setTranslationY(density * 4f);
                 } else {
-                    view.animate().scaleX(s).scaleY(s)
-                            .translationY(0f)
-                            .setUpdateListener(a -> ((View) view.getParent()).invalidate())
-                            .setDuration(focused ? 160 : 120)
-                            .setInterpolator(new DecelerateInterpolator(1.5f))
-                            .withLayer().start();
                     if (advancedEffects) {
                         banner.animate().scaleX(focused ? 1.035f : 1f).scaleY(focused ? 1.035f : 1f)
                                 .setDuration(280).start();
