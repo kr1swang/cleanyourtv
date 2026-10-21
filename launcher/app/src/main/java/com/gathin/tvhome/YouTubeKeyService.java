@@ -3,7 +3,9 @@ package com.gathin.tvhome;
 import android.accessibilityservice.AccessibilityService;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.PowerManager;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -14,6 +16,21 @@ import android.view.accessibility.AccessibilityEvent;
  */
 public class YouTubeKeyService extends AccessibilityService {
     private static final String TAG = "YouTubeKeyService";
+
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        // Stock Home may already be visible before this service can observe its window event.
+        // Handle startup once per boot; package upgrades and service reconnects must not steal focus.
+        int boot = Settings.Global.getInt(getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+        if (boot < 0) return;
+        SharedPreferences prefs = getSharedPreferences("remote_keys", MODE_PRIVATE);
+        if (prefs.getInt("home_boot", -1) == boot) return;
+        prefs.edit().putInt("home_boot", boot).apply();
+        if (!getSystemService(PowerManager.class).isInteractive()) return;
+        openHome();
+        Log.i(TAG, "Home opened on service connection for boot " + boot);
+    }
 
     @Override
     protected boolean onKeyEvent(KeyEvent event) {

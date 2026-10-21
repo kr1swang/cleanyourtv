@@ -206,6 +206,12 @@ Other-device compatibility
   redirects the exact stock `launcherx.home.HomeActivity` window while the screen is interactive;
   it does not redirect the whole package or poll the foreground app. This fallback may briefly show
   stock Home. Test physical Home from sleep and Cast while asleep as well as normal awake navigation.
+  On service connection it also opens custom Home once per `Settings.Global.BOOT_COUNT` when the
+  screen is interactive, because stock Home can appear before accessibility binds. The handled boot
+  is stored in `remote_keys` preferences so service reconnects do not interrupt apps. First activation
+  or clearing launcher data also resets that record. This is a post-boot redirect, not a replacement
+  of the firmware's HOME resolver; stock Home may briefly appear. Verify a real reboot without
+  pressing Home, and verify a service reconnect while another app is open.
   On the tested Chromecast, disabling only launcherx while leaving setupwraith enabled makes the
   system HOME resolve to `setupwraith/.RecoveryActivity`, which tries to open launcherx and logs
   `Launcherx Activity is not found`. This configuration was rolled back; keep both packages enabled
