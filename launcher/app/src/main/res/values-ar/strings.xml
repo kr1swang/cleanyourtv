@@ -20,7 +20,6 @@
     <string name="cant_open">تعذّر فتح %1$s</string>
     <string name="date_format">EEEE  d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">الذاكرة %1$d م.ب متاحة</string>
     <string name="stats_storage">التخزين %1$s متاح</string>
     <string name="dream_name">الساعة</string>
@@ -62,6 +61,9 @@
     <string name="on">تشغيل</string>
     <string name="off">إيقاف</string>
     <string name="enable">تفعيل</string>
+    <string name="dock_edit">تعديل شريط التطبيقات</string>
+    <string name="dock_edit_hint">اختر الموضع الذي تريد تغييره في الشريط واضغط موافق. اضغط رجوع للإنهاء.</string>
+    <string name="dock_edit_pick_app">اختر الآن التطبيق الذي تريد وضعه هناك واضغط موافق. اضغط رجوع لاختيار موضع آخر.</string>
     <string name="reorder">إعادة ترتيب التطبيقات</string>
     <string name="reorder_hint">اضغط موافق لالتقاط تطبيق، والأسهم لتحريكه، ورجوع لتثبيته. اضغط رجوع مرة أخرى للإنهاء.</string>
     <string name="reorder_not_saved">تعذّر حفظ الترتيب الجديد</string>
@@ -84,4 +86,5 @@
         <item quantity="many">%1$d تطبيقًا</item>
         <item quantity="other">%1$d تطبيق</item>
     </plurals>
+    <string name="greeting_with_name">%1$s، %2$s</string>
 </resources>

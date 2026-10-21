@@ -40,8 +40,7 @@
         android:textColor="@drawable/pill_text"
         android:duplicateParentState="true"
         android:textSize="15sp"
-        android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 500"
+        android:fontFamily="@font/outfit_medium"
         android:gravity="right"
         android:textDirection="locale"
         android:singleLine="true" />

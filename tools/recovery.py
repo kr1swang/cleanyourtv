@@ -73,6 +73,22 @@ def load_record(path):
                          "replace the state recorded before the first change.")
     if record.get("version") != VERSION or not isinstance(record.get("packages"), dict):
         raise SystemExit(f"{path}: unknown recovery record format; move it aside deliberately.")
+    # The record is replayed on the TV's shell, so it gets the same checks as the list and the TV's
+    # answers did when it was written: a hand-edited or damaged file stops here, before any command.
+    for name, state in record["packages"].items():
+        if not PACKAGE_RE.fullmatch(name):
+            raise SystemExit(f"{path}: not a usable recovery record (not a package name: {name!r}); "
+                             "move it aside deliberately.")
+        if state not in ("absent", "disabled", "enabled"):
+            raise SystemExit(f"{path}: not a usable recovery record (unknown state for {name}: "
+                             f"{state!r}); move it aside deliberately.")
+    home = record.get("home")
+    if home is not None and not (isinstance(home, str) and HOME_RE.fullmatch(home)):
+        raise SystemExit(f"{path}: not a usable recovery record (not a Home component: {home!r}); "
+                         "move it aside deliberately.")
+    if not isinstance(record.get("settings", {}), dict):
+        raise SystemExit(f"{path}: not a usable recovery record (settings is not a mapping); "
+                         "move it aside deliberately.")
     return record
 
 

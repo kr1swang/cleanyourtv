@@ -20,7 +20,6 @@
     <string name="cant_open">לא ניתן לפתוח את %1$s</string>
     <string name="date_format">EEEE  d בMMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">זיכרון %1$d MB פנוי</string>
     <string name="stats_storage">אחסון %1$s פנוי</string>
     <string name="dream_name">שעון</string>
@@ -66,6 +65,9 @@
     <string name="quick_network">רשת</string>
     <string name="quick_apps">אפליקציות</string>
     <string name="quick_apps_hint">הפעלה מחדש</string>
+    <string name="dock_edit">עריכת שורת המועדפים</string>
+    <string name="dock_edit_hint">בחרו מקום בשורת המועדפים ולחצו אישור. חזרה לסיום.</string>
+    <string name="dock_edit_pick_app">עכשיו בחרו את האפליקציה שתופיע שם ולחצו אישור. חזרה לבחירת מקום אחר.</string>
     <string name="reorder">סידור אפליקציות</string>
     <string name="reorder_hint">אישור מרים אפליקציה, החצים מזיזים אותה, חזרה מניחה אותה. חזרה שוב לסיום.</string>
     <string name="reorder_not_saved">לא ניתן לשמור את הסדר החדש</string>
@@ -85,4 +87,20 @@
         <item quantity="two">שתי אפליקציות</item>
         <item quantity="other">%1$d אפליקציות</item>
     </plurals>
+    <string name="greeting_with_name">%1$s, %2$s</string>
+    <string name="rows_below_dock_label">שורות מתחת לעגינה</string>
+    <string name="wallpaper_label">טפט</string>
+    <string name="wallpaper_state">טפט: %1$s</string>
+    <string name="wallpaper_none">ללא</string>
+    <string name="wallpaper_applied">הטפט שונה</string>
+    <string name="wallpaper_theme_default">ברירת המחדל של ערכת הנושא</string>
+
+    <!-- Race-weekend panel (RaceWeekend). -->
+    <string name="race_kicker">סבב %1$d · %2$s · %3$s</string>
+    <string name="race_kicker_no_place">סבב %1$d · %2$s</string>
+    <string name="race_next">%1$s בעוד %2$s</string>
+    <string name="race_lights_out">הזינוק בעוד %1$s</string>
+    <string name="race_live">%1$s · בשידור חי</string>
+    <string name="race_finished">הדגל המשובץ</string>
+    <string name="last_opened">נפתח לאחרונה %1$s</string>
 </resources>

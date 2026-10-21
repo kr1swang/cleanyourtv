@@ -48,6 +48,11 @@ com.softwinner.theme.icon              # Allwinner theme overlay
 com.softwinner.update                  # Allwinner OTA; re-enable to check for firmware updates
 android.rockchip.update.service        # Rockchip updater left in this Allwinner image
 
+# Vendor accessibility helper, separate from the NFC stack (com.android.nfc)
+# NfxAccessibilityService v1.1.3; disabled without observed issues on this firmware.
+# Re-enable if you use its accessibility/gesture or remote-key features.
+com.android.nfx                        # vendor NfxAccessibilityService, not a typo for com.android.nfc
+
 # Stock Google apps replaced here
 com.google.android.youtube.tv          # replaced by SmartTube
 com.google.android.apps.searchlite.overlay

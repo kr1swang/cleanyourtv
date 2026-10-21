@@ -348,6 +348,53 @@ class RecoveryRecordTest(unittest.TestCase):
                 self.assertIn("com.example.evil;settings", result.stderr)
                 self.assertEqual(self.sent(), [])
 
+    def test_valid_record_restores_the_same_batch(self):
+        # The whole batch for the usual case, so the checks on the record cannot change it.
+        self.tv()
+        self.assertEqual(self.run_script("disable.sh", str(self.list_path)).returncode, 0)
+        self.clear_sent()
+        result = self.run_script("restore.sh", str(self.list_path))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.sent(), [
+            "pm enable com.example.enabled",
+            "pm enable com.google.android.tvlauncher",
+            f"cmd package set-home-activity --user 0 {STOCK_HOME}",
+            "settings put global window_animation_scale 0.5",
+            "settings delete global transition_animation_scale",
+            "settings put global animator_duration_scale 1.0",
+            "pm list packages -d",
+        ])
+
+    def test_edited_record_is_refused_and_left_alone(self):
+        # The record is replayed on the TV's shell, so a hand-edited one gets the same checks the list
+        # does: nothing reaches the TV and the file stays as it was for inspection.
+        edits = {
+            "package name": lambda r: r["packages"].update(
+                {"com.example.x; settings put global adb_enabled 0 #": "enabled"}),
+            "package state": lambda r: r["packages"].update({"com.example.enabled": "on"}),
+            "home": lambda r: r.update(home=f"{STOCK_HOME}; settings put global adb_enabled 0"),
+            "settings": lambda r: r.update(settings=["window_animation_scale", "0.5"]),
+        }
+        for field, edit in edits.items():
+            for script in ("restore.sh", "disable.sh"):
+                with self.subTest(field=field, script=script):
+                    shutil.rmtree(self.home / ".cleanyourtv", ignore_errors=True)
+                    self.tv()
+                    self.assertEqual(self.run_script("disable.sh", str(self.list_path)).returncode, 0)
+                    path = next((self.home / ".cleanyourtv").glob("recovery-*.json"))
+                    record = json.loads(path.read_text())
+                    edit(record)
+                    path.write_text(json.dumps(record))
+                    before = path.read_bytes()
+                    self.clear_sent()
+
+                    result = self.run_script(script, str(self.list_path))
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(str(path), result.stderr)
+                    self.assertIn("not a usable recovery record", result.stderr)
+                    self.assertEqual(self.sent(), [], "nothing reached the TV")
+                    self.assertEqual(path.read_bytes(), before, "the file is left for inspection")
+
 
 if __name__ == "__main__":
     unittest.main()

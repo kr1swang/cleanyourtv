@@ -33,6 +33,13 @@ DynamicAnimation, no Kotlin, no Compose, no network. It targets TVs with 1 GB of
 - Verify on a real TV, not only the emulator. The easiest way is remote key injection plus a
   screenshot: `tools/tv.py 'input keyevent KEYCODE_DPAD_DOWN; screencap -p /sdcard/s.png'` then
   `tools/tv.py --pull /sdcard/s.png s.png`. Include a screenshot in your pull request.
+- Long presses (hold OK on Settings or on a tile) can't always be injected: `input keyevent --longpress`
+  arrives as a short press on some firmware (Android TV 8.0 on a Philips opens the app instead). Writing
+  to the remote's own input device works, because Android then repeats the held key itself. Find the
+  device and the OK key with `tools/tv.py 'getevent -pl'` (a remote that lists `KEY_OK` is scancode 352),
+  then hold it for a second:
+  `tools/tv.py 'e=/dev/input/event1; sendevent $e 1 352 1; sendevent $e 0 0 0; sleep 1.2; sendevent $e 1 352 0; sendevent $e 0 0 0'`.
+  This needs the shell user in the `input` group (`tools/tv.py id`).
 
 Build with `TV_HOST=<ip> launcher/build-and-install.sh` (JDK 17, Android SDK platform 34 and
 build-tools 34.0.0; on macOS `brew install openjdk@17 android-commandlinetools` then

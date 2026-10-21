@@ -32,6 +32,17 @@
 #   com.xiaomi.mitv.mediaexplorer (Media Player), com.google.android.tv.remote.service.
 # - Netflix, Prime Video, Pluto TV, YouTube Music and Chromecast kept by choice; com.mstar.netflixobserver
 #   starts Netflix at boot (about 130 MB) and needs the same treatment as in examples/xiaomi-mitv-mssp3.
+#
+# Older Android 9 firmware PI.4663 (ro.build.display.id "PI.4663 release-keys", same 1.8 GB set), Italy:
+# - com.mitv.tvhome.michannel and com.mitv.dream are not installed. The screensaver there is
+#   com.google.android.backdrop/.Backdrop, which this list already disables.
+# - The older Android TV home is still installed and enabled next to tvlauncher, and its receiver runs at
+#   every boot: com.google.android.leanbacklauncher and com.google.android.leanbacklauncher.recommendations.
+#   Both disabled here with the CleanYourTV launcher as Home, and Home kept resolving to it.
+# - The voice assistant stayed disabled across a power cycle on this build (pm list packages -d a minute
+#   after boot), unlike PI.7524 above.
+# - After 7 days of uptime MemAvailable was about 740 MB and adbd stalled; a minute after a cold boot with
+#   this list and the launcher it was about 850 MB.
 
 # Xiaomi + Google telemetry
 com.miui.tv.analytics

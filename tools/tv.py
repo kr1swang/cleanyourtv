@@ -38,10 +38,26 @@ if not os.path.exists(KEY) and os.path.exists(ADB_KEY) and os.path.exists(ADB_KE
     KEY = ADB_KEY
 
 
+def restrict(path):
+    """Keep a private key to this account. Reported, never fatal: the key still works either way.
+    Windows has no POSIX mode bits and ignores this."""
+    try:
+        os.chmod(path, 0o600)
+    except OSError as e:
+        print(f"warning: could not restrict permissions on {path}: {e}", file=sys.stderr)
+
+
 def get_signer():
-    os.makedirs(KEYDIR, exist_ok=True)
+    # This key is an ADB credential: anyone who can read it gets a shell on every TV that has
+    # accepted it, with no "Allow USB debugging?" prompt. adb_shell's keygen writes it with a plain
+    # open(), so it lands at 0666 & ~umask, which is 0644 under the usual umask: readable by every
+    # other account on the machine. Google's own adb keeps ~/.android/adbkey at 0600, so match that,
+    # on every run, so a key written by an earlier version of this script is repaired too.
+    os.makedirs(KEYDIR, mode=0o700, exist_ok=True)
     if not os.path.exists(KEY):
         keygen(KEY)
+    if KEY != ADB_KEY:   # the stock key belongs to the user's own adb; don't touch its permissions
+        restrict(KEY)
     with open(KEY) as f:
         priv = f.read()
     with open(KEY + ".pub") as f:
@@ -60,7 +76,8 @@ def main():
     dev = connect()
     if not args or args == ["--probe"]:
         for p in ("ro.product.model", "ro.product.device", "ro.build.version.release",
-                  "ro.build.version.sdk", "ro.build.display.id", "ro.product.manufacturer"):
+                  "ro.build.version.sdk", "ro.build.display.id", "ro.product.manufacturer",
+                  "ro.adb.secure", "service.adb.tcp.port"):
             print(f"{p} = {dev.shell(f'getprop {p}').strip()}")
     elif args[0] == "--push" and len(args) == 3:
         dev.push(args[1], args[2], transport_timeout_s=300.0, read_timeout_s=300.0)

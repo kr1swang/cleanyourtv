@@ -19,13 +19,14 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
-    DockDecoration(int dockSize, float density) {
+    /** @param translucent the cinematic shelf's band: the artwork and the glow show through it. */
+    DockDecoration(int dockSize, float density, boolean translucent) {
         this.dockSize = dockSize;
         this.density = density;
         band.setColor(BACKGROUND_COLOR);
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
-        edge.setColor(0x1FFFFFFF);
+        edge.setColor(translucent ? 0x26FFFFFF : 0x1FFFFFFF);
     }
 
     @Override
@@ -45,7 +46,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             View child = parent.getChildAt(i);
             int pos = parent.getChildAdapterPosition(child);
             if (pos < 0 || pos >= dockSize) continue;
-            View card = child.findViewById(R.id.card);
+            RecyclerView.ViewHolder vh = parent.getChildViewHolder(child);
+            View card = vh instanceof AppAdapter.Holder ? ((AppAdapter.Holder) vh).card : child.findViewById(R.id.card);
             if (card == null) continue;
             float l = child.getLeft() + card.getLeft();
             float t = child.getTop() + card.getTop() + child.getTranslationY();
@@ -59,7 +61,10 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             }
         }
         if (!any) return;
-        rect.inset(-20 * density, -20 * density);
+        float pad = 20 * density;
+        // Keep upstream's edge clamp, using the custom dock's measured padding and radius.
+        float side = Math.max(0f, Math.min(pad, Math.min(rect.left, parent.getWidth() - rect.right) - density));
+        rect.inset(-side, -pad);
         float radius = 32 * density;
         c.drawRoundRect(rect, radius, radius, band);
         c.drawRoundRect(rect, radius, radius, edge);

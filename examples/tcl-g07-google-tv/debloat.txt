@@ -14,6 +14,17 @@
 # once it is gone. The Wi-Fi saved at setup belonged to android.uid.system, not setupwraith, so disabling
 # setupwraith kept the network.
 #
+# Also tested 2026-10-19 on a second unit, UK firmware used in Brazil, build RP1A.200622.001 AR17, with the
+# launcher as Home and through a reboot. Two things differ from AR20 there:
+# - The Wi-Fi saved during first setup belonged to setupwraith, so disabling it made Android delete the
+#   network and the TV dropped off Wi-Fi (and ADB). Pick the network again in Settings > Network; Settings
+#   then owns it and it survives reboots. tools/disable.sh now checks the owner first and skips setupwraith
+#   while it owns the network.
+# - The adb shell may not write Android/data, so tools/theme.sh has to go through the launcher's
+#   ThemeProvider (it falls back to it on its own when the plain copy is refused).
+# TvInputManager reports AV as connected with nothing plugged in. com.tcl.notereminder was enabled on that
+# unit, not disabled at the factory, so it is listed below.
+#
 # Remote (IR, /dev/input/event0 "mtkinp"; scancodes from getevent with the real remote):
 # - Input (471, TV_INPUT) goes to TclPhoneWindowManager.startQuickPanelService, so it keeps working without
 #   launcherx and needs no InputKeyService.
@@ -22,6 +33,13 @@
 # - Netflix (566, TCL_NETFLIX) and YouTube (569, TCL_YOUTUBE) are broadcasts that only launcherx answers, so
 #   they do nothing once it is off. An accessibility service that matches those scancodes and starts the app
 #   fixes both (verified with the real remote).
+# Remote (Bluetooth, second AR20 unit, France; /dev/input/event3, vendor 0x0417 product 0x0304, Generic.kl):
+# - Its buttons send other codes, and settings_key_scancodes 561 does nothing for them. Gear is KEY_FORWARDMAIL
+#   (233, TCL_SET) and arrives as keycode 4077; Prime Video is HID usage 0x000c005f and arrives as keycode 4099.
+#   `getevent -lt` while pressing a button tells the two remotes apart (event0 mtkinp or event3).
+# - With HOME_KEY_SERVICE=1, this config.xml brought back Gear, Netflix, YouTube and Prime Video (verified with
+#   the real remote): settings_key_keycodes 4077, and app_keys KEYCODE_TCL_NETFLIX:com.netflix.ninja,
+#   KEYCODE_TCL_YOUTUBE:com.google.android.youtube.tv, 4099:com.amazon.amazonvideo.livingroom.
 # tools/b64push.py worked here (md5 match). Screenshots of Live TV and HDMI are 0 bytes; Netflix's are black.
 #
 # DO NOT DISABLE: com.tcl.tv (Live TV, HDMI playback), com.tcl.tvinput (tuner, HDMI and AV inputs),
@@ -48,6 +66,7 @@ com.tcl.channelplus                        # TCL Live FAST channels (a TV input)
 com.tcl.dashboard                          # TCL Home panel, promos
 com.tcl.partnercustomizer                  # TCL tweaks to Google TV home rows
 com.tcl.messagebox                         # pushed messages and promos
+com.tcl.notereminder                       # reminders fed by the message box (already off on AR20)
 com.tcl.tv.tclhome_passive                 # TCL home content, starts at boot
 com.tcl.usercenter                         # TCL account
 com.tcl.esticker                           # retail-demo sticker

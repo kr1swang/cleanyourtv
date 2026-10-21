@@ -34,8 +34,10 @@ com.google.android.videos                       # Google TV / Play Movies
 com.android.printspooler
 com.google.android.marvin.talkback              # re-enable if you need the screen reader
 
-# Google ambient mode screensaver (replaced by the launcher's Clock screensaver)
-com.google.android.apps.tv.dreamx
+# Google ambient mode screensaver (replaced by the launcher's Clock screensaver). Kept here: the Google
+# Photos slideshow still works with launcherx disabled, as long as screensaver_components points at
+# com.google.android.apps.tv.dreamx/.service.Backdrop. Uncomment to swap it for the Clock.
+# com.google.android.apps.tv.dreamx
 
 # Stock home. launcher/build-and-install.sh disables launcherx itself once the new launcher is installed
 # and verified, and restore.sh re-enables it; setupwraith has to go too (it re-enables launcherx),

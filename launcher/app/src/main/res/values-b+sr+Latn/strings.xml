@@ -20,7 +20,6 @@
     <string name="cant_open">Nije moguće otvoriti %1$s</string>
     <string name="date_format">EEEE, d. MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">Memorija %1$d MB slobodno</string>
     <string name="stats_storage">Skladište %1$s slobodno</string>
     <string name="dream_name">Sat</string>
@@ -43,6 +42,9 @@
     <string name="on">Uklj.</string>
     <string name="off">Isklj.</string>
     <string name="enable">Uključi</string>
+    <string name="dock_edit">Uredi dok</string>
+    <string name="dock_edit_hint">Izaberite mesto u doku i pritisnite OK. Nazad za kraj.</string>
+    <string name="dock_edit_pick_app">Sada izaberite aplikaciju za to mesto i pritisnite OK. Nazad da izaberete drugo mesto.</string>
     <string name="reorder">Promeni redosled aplikacija</string>
     <string name="reorder_hint">OK podiže aplikaciju, strelice je pomeraju, Nazad je postavlja. Ponovo Nazad za kraj.</string>
     <string name="reorder_not_saved">Novi redosled nije sačuvan</string>
@@ -62,4 +64,5 @@
         <item quantity="few">%1$d aplikacije</item>
         <item quantity="other">%1$d aplikacija</item>
     </plurals>
+    <string name="greeting_with_name">%1$s, %2$s</string>
 </resources>

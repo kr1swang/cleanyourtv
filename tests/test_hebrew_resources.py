@@ -34,7 +34,17 @@ class HebrewResourcesTest(unittest.TestCase):
         default, hebrew = views("layout"), views("layout-iw")
         for view_id, tag in default.items():
             with self.subTest(view=view_id):
+                # TightTextClock subclasses TextClock; the Hebrew header keeps the stock widget.
+                if tag == "com.gathin.tvhome.TightTextClock":
+                    tag = "TextClock"
                 self.assertEqual(tag, hebrew.get(view_id))
+
+    def test_home_layouts_have_unique_view_ids(self):
+        for folder in ("layout", "layout-iw"):
+            with self.subTest(layout=folder):
+                ids = [v.attrib[ANDROID_ID] for v in ET.parse(RES / folder / "activity_main.xml").iter()
+                       if ANDROID_ID in v.attrib]
+                self.assertEqual(len(ids), len(set(ids)))
 
 
 if __name__ == "__main__":

@@ -19,7 +19,6 @@
     <string name="not_available">No disponible en aquest televisor</string>
     <string name="cant_open">No s\'ha pogut obrir %1$s</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">Memòria %1$d MB lliures</string>
     <string name="stats_storage">Emmagatzematge %1$s lliure</string>
     <string name="dream_name">Rellotge</string>
@@ -35,6 +34,9 @@
     <string name="on">Activat</string>
     <string name="off">Desactivat</string>
     <string name="enable">Activa</string>
+    <string name="dock_edit">Edita el dock</string>
+    <string name="dock_edit_hint">Tria la posició del dock que vols canviar i prem D\'acord. Enrere per acabar.</string>
+    <string name="dock_edit_pick_app">Ara tria l\'aplicació que hi vols posar i prem D\'acord. Enrere per triar una altra posició.</string>
     <string name="reorder">Reordena les aplicacions</string>
     <string name="reorder_hint">D\'acord agafa una aplicació, les fletxes la mouen, Enrere la deixa. Torna a prémer Enrere per acabar.</string>
     <string name="reorder_not_saved">No s\'ha pogut desar el nou ordre</string>
@@ -53,4 +55,5 @@
         <item quantity="one">%1$d aplicació</item>
         <item quantity="other">%1$d aplicacions</item>
     </plurals>
+    <string name="greeting_with_name">%1$s, %2$s</string>
 </resources>

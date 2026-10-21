@@ -63,4 +63,29 @@
     <string name="card_state_new">Uusi</string>
     <string name="card_state_new_key">Uusi avain</string>
     <string name="card_state_new_label">Uusi nimi</string>
+    <string name="greeting_with_name">%1$s, %2$s</string>
+    <string name="stats_cpu">Suoritin %1$d %%</string>
+    <string name="stats_memory">Muistia vapaana %1$d Mt</string>
+    <string name="stats_storage">Tallennustilaa vapaana %1$s</string>
+    <string name="reorder">Järjestä sovellukset</string>
+    <string name="reorder_hint">OK nostaa sovelluksen, nuolet siirtävät sitä ja Takaisin laskee sen paikalleen. Lopeta painamalla Takaisin uudelleen.</string>
+    <string name="reorder_not_saved">Uutta järjestystä ei voitu tallentaa</string>
+    <string name="app_library">Sovelluskirjasto</string>
+    <string name="library_empty">Käynnistettäviä sovelluksia ei löytynyt</string>
+    <string name="library_on_home">Kotinäkymässä</string>
+    <string name="library_add_home">Lisää kotinäkymään</string>
+    <string name="library_remove_shortcut">Poista kotinäkymästä</string>
+    <string name="library_open">Avaa</string>
+    <string name="library_app_info">Sovelluksen tiedot</string>
+    <string name="library_save_failed">Pikakuvaketta ei voitu tallentaa</string>
+    <string name="library_recent">Uusi · Lisää kotinäkymään</string>
+    <string name="library_hint_add">Lisää kotinäkymään painamalla · Pidä pohjassa: valinnat</string>
+    <string name="library_hint_open">Avaa painamalla · Pidä pohjassa: valinnat</string>
+    <plurals name="library_app_count">
+        <item quantity="one">%1$d sovellus</item>
+        <item quantity="other">%1$d sovellusta</item>
+    </plurals>
+    <string name="dock_edit">Muokkaa telakkaa</string>
+    <string name="dock_edit_hint">Valitse muutettava telakan paikka ja paina OK. Takaisin lopettaa.</string>
+    <string name="dock_edit_pick_app">Valitse nyt sinne tuleva sovellus ja paina OK. Takaisin valitsee toisen paikan.</string>
 </resources>

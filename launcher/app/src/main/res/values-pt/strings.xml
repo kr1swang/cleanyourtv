@@ -18,9 +18,9 @@
     <string name="offline">Sem conexão</string>
     <string name="not_available">Não disponível nesta TV</string>
     <string name="cant_open">Não foi possível abrir %1$s</string>
-    <string name="date_format">EEE  d \'de\' MMMM</string>
+    <string name="date_format">EEEE  d \'de\' MMMM</string>
+    <string name="date_format_home">EEEE\nd \'de\' MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">Memória %1$d MB livres</string>
     <string name="stats_storage">Armazenamento %1$s livre</string>
     <string name="dream_name">Relógio</string>
@@ -50,6 +50,9 @@
     <string name="card_state_new">Novo</string>
     <string name="card_state_new_key">Nova chave</string>
     <string name="card_state_new_label">Novo nome</string>
+    <string name="dock_edit">Editar a dock</string>
+    <string name="dock_edit_hint">Escolha o lugar da dock a mudar e prima OK. Voltar para terminar.</string>
+    <string name="dock_edit_pick_app">Agora escolha a app a colocar lá e prima OK. Voltar para escolher outro lugar.</string>
     <string name="reorder">Reordenar apps</string>
     <string name="reorder_hint">OK pega numa app, as setas movem-na, Voltar pousa-a. Voltar outra vez para terminar.</string>
     <string name="reorder_not_saved">Não foi possível guardar a nova ordem</string>
@@ -68,4 +71,36 @@
         <item quantity="one">%1$d app</item>
         <item quantity="other">%1$d apps</item>
     </plurals>
+    <string name="greeting_with_name">%1$s, %2$s</string>
+
+    <!-- Launcher settings, quick settings panel, race-weekend panel and cinematic shelf. -->
+    <string name="launcher_settings">Configurações do launcher</string>
+    <string name="columns_label">Apps por fileira</string>
+    <string name="rows_below_dock_label">Fileiras abaixo do dock</string>
+    <string name="wallpaper_label">Papel de parede</string>
+    <string name="wallpaper_state">Papel de parede: %1$s</string>
+    <string name="wallpaper_none">Nenhum</string>
+    <string name="wallpaper_applied">Papel de parede alterado</string>
+    <string name="wallpaper_theme_default">Padrão do tema</string>
+    <string name="animations_state">Animações: %1$s</string>
+    <string name="advanced_effects">Efeitos avançados</string>
+    <string name="advanced_effects_state">Efeitos avançados: %1$s</string>
+    <string name="advanced_effects_warning">Adiciona elevação do bloco, zoom no ícone e transições de cor suaves. Pode usar mais memória; a diferença real depende da sua TV.</string>
+    <string name="follow_theme">Seguir o tema (desfaz as escolhas feitas na TV)</string>
+    <string name="follow_theme_hint">Usa o tema atual ou o layout e o movimento padrão. Enviar ou redefinir um tema também apaga as escolhas feitas na TV.</string>
+    <string name="tv_settings">Configurações do sistema da TV</string>
+    <string name="quick_picture">Imagem</string>
+    <string name="quick_network">Rede</string>
+    <string name="quick_apps">Apps</string>
+    <string name="quick_apps_hint">Reativar</string>
+    <string name="on">Ativado</string>
+    <string name="off">Desativado</string>
+    <string name="enable">Ativar</string>
+    <string name="race_kicker">Etapa %1$d · %2$s · %3$s</string>
+    <string name="race_kicker_no_place">Etapa %1$d · %2$s</string>
+    <string name="race_next">%1$s em %2$s</string>
+    <string name="race_lights_out">Largada em %1$s</string>
+    <string name="race_live">%1$s · ao vivo</string>
+    <string name="race_finished">Bandeira quadriculada</string>
+    <string name="last_opened">Aberto %1$s</string>
 </resources>

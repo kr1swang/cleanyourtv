@@ -44,10 +44,18 @@ in their home forwards your connection to the TV's normal local address:
 - a Mac, Windows PC or Linux machine that stays on during the session, or a Raspberry Pi for a
   permanent setup;
 - an Apple TV, through the Subnet Router option in its Tailscale app;
+- a Synology NAS, with Tailscale from Package Center. Its Tailscale page (DSM, or port 5252) has a
+  Subnet router section, but it's read-only when you open it from a tagged device. Without SSH, a
+  one-off Task Scheduler task (Control Panel → Task Scheduler → Create → Triggered Task →
+  User-defined script, user root, then Run and delete it) runs
+  `/var/packages/Tailscale/target/bin/tailscale set --advertise-routes=192.168.1.0/24`; the
+  setting persists;
 - not a phone: the Android and iOS apps can't route their home network.
 
 The helper has to be in **your** tailnet, because shared machines don't carry their subnet routes
-into other tailnets. Install Tailscale on it and send yourself the login link it shows; open it
+into other tailnets. (If they already run a tailnet, at an office say, the reverse works too: they
+add you as a user, you add their tailnet as a second account in your Tailscale app and switch to
+it for the session.) Install Tailscale on it and send yourself the login link it shows; open it
 signed in to your account. Then advertise their home network (the first three numbers of the TV's
 address, from the TV's network settings):
 

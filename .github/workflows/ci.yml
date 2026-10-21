@@ -44,8 +44,9 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon testReleaseUnitTest lintRelease assembleRelease
-      - name: The launcher stays small
+      - name: The custom launcher stays under 1 MiB
         run: |
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
-          test "$size" -lt 409600 || { echo "APK is over 400 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+          # This fork bundles two Inter Display weights in addition to the upstream fonts.
+          test "$size" -lt 1048576 || { echo "APK is over 1 MiB; keep the custom launcher small"; exit 1; }

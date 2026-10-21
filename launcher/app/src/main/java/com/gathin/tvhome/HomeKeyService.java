@@ -6,6 +6,9 @@ import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * Sends the remote's Home button to this launcher on remotes that emit KEYCODE_ALL_APPS for Home
  * (Xiaomi sticks and boxes). Android TV 9 routes that key only to the system-image launcher, so once
@@ -21,6 +24,8 @@ public class HomeKeyService extends AccessibilityService {
     private int[] settingsScancodes = new int[0];
     private int[] settingsKeycodes = new int[0];
     private boolean settingsPanel;
+    /** app_keys, the same map InputKeyService reads, for setups that run only this service. */
+    private Map<Integer, String> appKeys = Collections.emptyMap();
 
     @Override
     protected void onServiceConnected() {
@@ -30,6 +35,7 @@ public class HomeKeyService extends AccessibilityService {
         Config config = Config.load(this);
         settingsKeycodes = config.settingsKeycodes;
         settingsPanel = config.settingsKeyPanel;
+        appKeys = RemoteKeys.parseAppKeys(config.appKeys);
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -48,6 +54,11 @@ public class HomeKeyService extends AccessibilityService {
                         : new Intent(Settings.ACTION_SETTINGS);
                 startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             }
+            return true;
+        }
+        String app = appKeys.get(event.getKeyCode());
+        if (app != null) {
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) RemoteKeys.launch(this, app);
             return true;
         }
         if (event.getKeyCode() != KeyEvent.KEYCODE_ALL_APPS) return false;

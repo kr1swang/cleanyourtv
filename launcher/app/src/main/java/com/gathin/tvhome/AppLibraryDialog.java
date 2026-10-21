@@ -426,8 +426,7 @@ final class AppLibraryDialog {
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
-        view.setTypeface(activity.getResources().getFont(R.font.outfit));
-        view.setFontVariationSettings("'wght' 500");
+        view.setTypeface(activity.getResources().getFont(R.font.outfit_medium));
         view.setLetterSpacing(0.01f);
         view.setIncludeFontPadding(false);
         return view;

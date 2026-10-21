@@ -20,7 +20,6 @@
     <string name="cant_open">Impossible d\'ouvrir %1$s</string>
     <string name="date_format">EEEE d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">Mémoire %1$d Mo libres</string>
     <string name="stats_storage">Stockage %1$s libre</string>
     <string name="dream_name">Horloge</string>
@@ -62,6 +61,9 @@
     <string name="on">Activé</string>
     <string name="off">Désactivé</string>
     <string name="enable">Activer</string>
+    <string name="dock_edit">Modifier le dock</string>
+    <string name="dock_edit_hint">Choisissez l\'emplacement du dock à changer et appuyez sur OK. Retour pour terminer.</string>
+    <string name="dock_edit_pick_app">Choisissez maintenant l\'appli à y mettre et appuyez sur OK. Retour pour choisir un autre emplacement.</string>
     <string name="reorder">Réorganiser les applis</string>
     <string name="reorder_hint">OK prend une appli, les flèches la déplacent, Retour la pose. Retour à nouveau pour terminer.</string>
     <string name="reorder_not_saved">Impossible d\'enregistrer le nouvel ordre</string>
@@ -80,4 +82,5 @@
         <item quantity="one">%1$d application</item>
         <item quantity="other">%1$d applications</item>
     </plurals>
+    <string name="greeting_with_name">%1$s, %2$s</string>
 </resources>

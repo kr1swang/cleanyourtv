@@ -30,6 +30,9 @@ class SetupwraithGuardTest(unittest.TestCase):
                 '#!/bin/sh\n'
                 'case "$*" in\n'
                 f'  *dumpsys*) {answer} ;;\n'
+                # The Home guard asks which app owns Home and which ones answer it.
+                '  *resolve-activity*) echo "com.google.android.tvlauncher/.MainActivity" ;;\n'
+                '  *query-activities*) echo "  com.google.android.tvlauncher/.MainActivity" ;;\n'
                 '  *) cat > "$CAPTURE" ;;\n'
                 'esac\n')
             client.chmod(0o755)

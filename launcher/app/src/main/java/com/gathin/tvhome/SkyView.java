@@ -88,7 +88,7 @@ public class SkyView extends View {
             // A warm core low on the horizon, where the sun (or its afterglow) sits.
             int warm = Sky.lerpColor(sky.bottom, 0xFFFFD9A0, 0.65f);
             paint.setShader(new RadialGradient(
-                    sky.sunX * TEX_W, TEX_H * 0.94f, TEX_W * 0.42f,
+                    sky.sunX * TEX_W, TEX_H * 0.80f, TEX_W * 0.55f,
                     new int[]{(sky.sun << 24) | (warm & 0x00FFFFFF), warm & 0x00FFFFFF},
                     new float[]{0f, 1f}, Shader.TileMode.CLAMP));
             canvas.drawRect(0f, 0f, TEX_W, TEX_H, paint);

@@ -4,7 +4,8 @@
 #
 # Usage: launcher\build-and-install.ps1 -TvHost 192.168.1.50 [-StockLauncher <package>|none]
 #        The stock launcher is detected from the TV when -StockLauncher is not given.
-#        [-InputKeyService]   remote's Input button opens the input switcher (Google TV); re-pass on every install
+#        [-InputKeyService]   remote's Input button opens the input switcher (Google TV), plus config.xml
+#                             input_key_keycodes and app_keys; re-pass on every install
 #        [-HomeKeyService]    remotes whose Home button sends KEYCODE_ALL_APPS (Xiaomi sticks)
 param(
     [string]$TvHost = $env:TV_HOST,

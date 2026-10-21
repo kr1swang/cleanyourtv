@@ -20,7 +20,6 @@
     <string name="cant_open">เปิด %1$s ไม่ได้</string>
     <string name="date_format">EEEE  d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_cpu_unknown">CPU —</string>
     <string name="stats_memory">หน่วยความจำว่าง %1$d MB</string>
     <string name="stats_storage">พื้นที่ว่าง %1$s</string>
     <string name="dream_name">นาฬิกา</string>
@@ -37,6 +36,9 @@
     <string name="on">เปิด</string>
     <string name="off">ปิด</string>
     <string name="enable">เปิดใช้งาน</string>
+    <string name="dock_edit">แก้ไขแถบแอป</string>
+    <string name="dock_edit_hint">เลือกตำแหน่งในแถบแอปที่ต้องการเปลี่ยน แล้วกด OK กดย้อนกลับเพื่อเสร็จสิ้น</string>
+    <string name="dock_edit_pick_app">จากนั้นเลือกแอปที่จะวางตรงนั้น แล้วกด OK กดย้อนกลับเพื่อเลือกตำแหน่งอื่น</string>
     <string name="reorder">จัดเรียงแอป</string>
     <string name="reorder_hint">กด OK เพื่อเลือกแอป ใช้ลูกศรเพื่อย้าย กดย้อนกลับเพื่อวาง กดย้อนกลับอีกครั้งเพื่อเสร็จสิ้น</string>
     <string name="reorder_not_saved">บันทึกลำดับใหม่ไม่ได้</string>
@@ -54,4 +56,5 @@
     <plurals name="library_app_count">
         <item quantity="other">%1$d แอป</item>
     </plurals>
+    <string name="greeting_with_name">%1$s %2$s</string>
 </resources>

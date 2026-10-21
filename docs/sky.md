@@ -8,7 +8,7 @@ launcher built from this repository behaves exactly like before until a theme tu
 { "sky_intensity": 60 }
 ```
 
-![The backdrop at dusk, a few minutes before eight](sky-sunset.jpg)
+![The backdrop at dusk](sky-sunset.jpg)
 
 Push that as a theme's `config.json` and restart Home:
 

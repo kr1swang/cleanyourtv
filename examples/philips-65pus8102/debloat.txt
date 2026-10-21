@@ -55,6 +55,7 @@ org.droidtv.nettvrecommender                      # Philips NetTV / Top Picks re
 org.droidtv.usagelogger                           # Boot stats, remote keypress counts, panel telemetry
 org.droidtv.candeebug                             # "DAC" analytics uploader (see philips-50pus8517)
 org.droidtv.gel                                   # "GEL" metrics collector, runs inside the candeebug process; disable both
+org.droidtv.tv.frameworklogger                    # Reads the reboot reasons and firmware-install records at boot and hands them to the Philips logger (uploadRebootDetails)
 tv.inscape.tvclient.inscapeacr                    # "Inscape" ACR client: identifies what is on screen, HDMI included
 
 # Philips NetTV app store (pre-Android web app platform; Play Store replaces it)

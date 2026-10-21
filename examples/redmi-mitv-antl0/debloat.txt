@@ -10,8 +10,12 @@
 #     | awk '{print "pm hide " $1}' | TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py --batch
 # Undo: same, but `pm unhide`.
 #
-# Boot-video ad is a property, not a package (reversible, survives reboots):
+# Boot-video property method reported on firmware 22.8.17.1977 (reversible):
 #   tools/tv.py 'setprop persist.bootvideo.bootanim false'      # true restores it
+# Firmware 23.2.4.2225 with stock launcher 3.38.1017 (L43M7-EA): the property above does not remove
+# the startup ad, but one setting does (docs/devices/xiaomi-l43m7-ea-antl0.md):
+#   tools/tv.py 'settings put system boot_ad_switch 0'      # undo: 'settings delete system boot_ad_switch'
+# The package-disable list below was not re-tested on that newer configuration.
 
 # Xiaomi telemetry / analytics / quality uploads
 com.miui.tv.analytics
