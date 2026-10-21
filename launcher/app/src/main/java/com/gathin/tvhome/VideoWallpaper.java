@@ -8,8 +8,6 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import org.json.JSONObject;
 
 /** Optional, silent theme video. A SurfaceView lets the decoder compose behind the launcher UI. */
@@ -26,9 +24,8 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
         File dir = Config.dir(context);
         if (dir == null) return null;
         try {
-            File config = new File(dir, Config.FILE_NAME);
-            if (!config.isFile()) return null;
-            JSONObject json = new JSONObject(new String(Files.readAllBytes(config.toPath()), StandardCharsets.UTF_8));
+            JSONObject json = Config.readTheme(context);
+            if (json == null) return null;
             String name = json.optString("video_wallpaper", "");
             if (name.isEmpty()) return null;
             File file = new File(dir, name).getCanonicalFile();

@@ -17,11 +17,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 /**
- * The launcher's settings: the values in res/values/config.xml, with an optional overlay read from
+ * The launcher's settings: res/values/config.xml, packaged theme defaults, then an optional overlay from
  * {@code config.json} in the app's external files directory
  * ({@code /sdcard/Android/data/com.gathin.tvhome/files/}). Every key in the JSON is optional and an
  * unknown or badly typed key is ignored, so a theme can change the dock and the look without a rebuild:
@@ -202,7 +203,7 @@ final class Config {
 
         File dir = dir(ctx);
         File file = dir != null ? new File(dir, FILE_NAME) : null;
-        JSONObject json = read(file);
+        JSONObject json = readTheme(ctx);
         if (json != null) {
             applied = true;
             dock = stringList(json, "dock_apps", dock);
@@ -254,6 +255,7 @@ final class Config {
             wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
         }
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
+        if (wallpaper == null) wallpaper = BundledTheme.file(ctx, "wallpaper.png");
         // A theme can also switch the wallpaper off while the file is still there.
         boolean wallpaperEnabled = json == null || bool(json, "wallpaper", true);
         if (!wallpaperEnabled) wallpaper = null;
@@ -361,7 +363,25 @@ final class Config {
         }
     }
 
-    /** Reads and parses the overlay; any problem means "no overlay", never a crash on the home screen. */
+    /** External keys override the packaged defaults; omitted keys retain their bundled values. */
+    static JSONObject readTheme(Context ctx) {
+        JSONObject defaults = read(BundledTheme.file(ctx, FILE_NAME));
+        File dir = dir(ctx);
+        JSONObject external = read(dir == null ? null : new File(dir, FILE_NAME));
+        if (defaults == null) return external;
+        if (external == null) return defaults;
+        try {
+            for (Iterator<String> keys = external.keys(); keys.hasNext();) {
+                String key = keys.next();
+                defaults.put(key, external.get(key));
+            }
+        } catch (org.json.JSONException e) {
+            Log.w(TAG, "Cannot overlay external theme", e);
+        }
+        return defaults;
+    }
+
+    /** Reads and parses a theme; any problem means "no overlay", never a crash on the home screen. */
     private static JSONObject read(File file) {
         if (file == null || !file.isFile()) return null;
         if (file.length() > 64 * 1024) {

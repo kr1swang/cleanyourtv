@@ -47,5 +47,8 @@ jobs:
       - name: The launcher stays small
         run: |
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
+          theme_size=$(python3 -c 'import zipfile; z=zipfile.ZipFile("launcher/app/build/outputs/apk/release/app-release.apk"); print(sum(i.compress_size for i in z.infolist() if i.filename.startswith("assets/default-theme/")))')
           echo "release APK: $((size / 1024)) KB"
-          test "$size" -lt 430080 || { echo "APK is over 420 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }
+          echo "bundled theme: $((theme_size / 1024)) KB"
+          test "$theme_size" -lt 12582912 || { echo "Bundled theme exceeds 12 MiB"; exit 1; }
+          test "$((size - theme_size))" -lt 430080 || { echo "Launcher excluding bundled theme is over 420 KB"; exit 1; }

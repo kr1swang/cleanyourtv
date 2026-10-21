@@ -5,62 +5,75 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DockGridTransitionTest {
-    @Test public void firstAppRowLocatesTheSameDockAsTheDockItself() {
-        assertEquals(797, DockGridTransition.dockTop(797, 0, 241, 237));
-        assertEquals(797, DockGridTransition.dockTop(1038, 1, 241, 237));
-        assertEquals(797, DockGridTransition.dockTop(1275, 2, 241, 237));
-    }
-
-    @Test public void shortListCanStillScrollToTheExpandedTop() {
-        int bottom = DockGridTransition.bottomPadding(1080, 74, 241, 237, 7, 6);
-        assertEquals(528, bottom);
-        assertEquals(1080, 74 + 241 + 237 + bottom);
-    }
-
-    @Test public void fullGridLeavesRoomForTheLastFixedRowSlot() {
-        assertEquals(54, DockGridTransition.bottomPadding(1080, 74, 241, 237, 24, 6));
-    }
-
-    @Test public void expandedRowsMatchTheReferenceSpacing() {
-        // 1080p: dock artwork y=102, then app rows y=361, 622, 883.
+    @Test public void everyAppRowLocatesTheSameDock() {
+        assertEquals(74, DockGridTransition.dockTop(74, 0, 271, 261));
         assertEquals(74, DockGridTransition.dockTop(345, 1, 271, 261));
         assertEquals(74, DockGridTransition.dockTop(606, 2, 271, 261));
         assertEquals(74, DockGridTransition.dockTop(867, 3, 271, 261));
     }
 
-    @Test public void scrollingDownKeepsTheSameFocusSlotInFourAndSixColumns() {
-        // Real 1080p geometry: four-column MyVideo and Spotify both have card y=758.
-        assertEquals(2, DockGridTransition.visibleAppRows(1080, 74, 339, 329));
-        assertEquals(9, DockGridTransition.bottomPadding(1080, 74, 339, 329, 16, 4));
-        assertEquals(2, DockGridTransition.visibleAppRows(1080, 74, 271, 261));
-        assertEquals(213, DockGridTransition.bottomPadding(1080, 74, 271, 261, 40, 6));
-        for (int columns : new int[] {4, 6}) {
-            int shift = 0;
-            for (int position = columns * 2; position < columns * 10; position += columns) {
-                int row = position / columns;
-                shift = DockGridTransition.scrollRows(shift, row, 2);
-                assertEquals(2, row - shift);
-                assertEquals(shift, DockGridTransition.scrollRows(shift, row, 2));
+    @Test public void thirdSixColumnRowScrollsOnlyAsFarAsTheReferenceFocusLine() {
+        assertEquals(826, DockGridTransition.focusBottom(1080));
+        assertEquals(0, DockGridTransition.scrollOffset(0, 435, 1080));
+        assertEquals(0, DockGridTransition.scrollOffset(0, 696, 1080));
+        int offset = DockGridTransition.scrollOffset(0, 957, 1080);
+        assertEquals(131, offset); // A partial row, rather than the old full 261px jump.
+        assertEquals(826, 957 - offset);
+        assertEquals(131, DockGridTransition.scrollOffset(offset, 957, 1080));
+    }
+
+    @Test public void bothColumnCountsKeepFocusInsideTheBandInBothDirections() {
+        for (int[] geometry : new int[][] {{339, 329, 124}, {271, 261, 90}}) {
+            int dock = geometry[0], rowHeight = geometry[1], cardCenter = geometry[2];
+            int offset = 0;
+            for (int row = 1; row <= 10; row++) {
+                int center = 74 + dock + (row - 1) * rowHeight + cardCenter;
+                offset = DockGridTransition.scrollOffset(offset, center, 1080);
+                assertTrue(center - offset >= 254);
+                assertTrue(center - offset <= 826);
+                assertEquals(offset, DockGridTransition.scrollOffset(offset, center, 1080));
             }
-            // Reverse direction without consulting an in-flight pixel position; Home resets it.
-            assertEquals(7, DockGridTransition.scrollRows(8, 8, 2));
-            assertEquals(0, DockGridTransition.scrollRows(8, 0, 2));
+            for (int row = 9; row >= 1; row--) {
+                int center = 74 + dock + (row - 1) * rowHeight + cardCenter;
+                offset = DockGridTransition.scrollOffset(offset, center, 1080);
+                assertTrue(center - offset >= 254);
+                assertTrue(center - offset <= 826);
+                assertEquals(offset, DockGridTransition.scrollOffset(offset, center, 1080));
+            }
         }
     }
 
-    @Test public void partialLastRowsUseTheSameBottomSlotAsFullRows() {
-        for (int columns : new int[] {4, 6}) {
-            for (int count = columns * 3 + 1; count <= columns * 5; count++) {
-                assertEquals(213, DockGridTransition.bottomPadding(1080, 74, 271, 261, count, columns));
+    @Test public void reversingDirectionDoesNotMoveUntilFocusCrossesTheOppositeEdge() {
+        int offset = DockGridTransition.scrollOffset(0, 1479, 1080);
+        assertEquals(653, offset);
+        assertEquals(offset, DockGridTransition.scrollOffset(offset, 1218, 1080));
+        assertEquals(offset, DockGridTransition.scrollOffset(offset, 957, 1080));
+        assertEquals(442, DockGridTransition.scrollOffset(offset, 696, 1080));
+        // Reverse again while an animation may still be running: use its target, not view pixels.
+        assertEquals(442, DockGridTransition.scrollOffset(442, 957, 1080));
+        assertEquals(442, DockGridTransition.scrollOffset(442, 1218, 1080));
+        assertEquals(653, DockGridTransition.scrollOffset(442, 1479, 1080));
+    }
+
+    @Test public void shortListCanExpandAndLongListsReachTheSameLastFocusLine() {
+        assertEquals(0, DockGridTransition.bottomPadding(1080, 74, 271, 261, 90, 6, 6));
+        assertEquals(474, DockGridTransition.bottomPadding(1080, 74, 271, 261, 90, 7, 6));
+        assertEquals(83, DockGridTransition.bottomPadding(1080, 74, 271, 261, 90, 40, 6));
+        for (int[] geometry : new int[][] {{4, 339, 329, 124}, {6, 271, 261, 90}}) {
+            int columns = geometry[0], dock = geometry[1], rowHeight = geometry[2], cardCenter = geometry[3];
+            for (int count = columns + 1; count <= columns * 10; count++) {
+                int rows = (count + columns - 1) / columns;
+                int content = dock + (rows - 1) * rowHeight;
+                int lastCenter = 74 + content - rowHeight + cardCenter;
+                int travel = DockGridTransition.scrollOffset(0, lastCenter, 1080);
+                int padding = DockGridTransition.bottomPadding(1080, 74, dock, rowHeight, cardCenter, count, columns);
+                assertTrue(74 + content + padding - travel >= 1080);
             }
         }
     }
 
-    @Test public void partialRowsAndHigherDensityKeepEnoughScrollRange() {
-        for (int count = 7; count <= 24; count++) {
-            int rows = (count + 5) / 6;
-            int bottom = DockGridTransition.bottomPadding(2160, 148, 482, 474, count, 6);
-            assertTrue(148 + 482 + (rows - 1) * 474 + bottom >= 2160);
-        }
+    @Test public void geometryScalesWithResolution() {
+        assertEquals(262, DockGridTransition.scrollOffset(0, 1914, 2160));
+        assertEquals(166, DockGridTransition.bottomPadding(2160, 148, 542, 522, 180, 40, 6));
     }
 }

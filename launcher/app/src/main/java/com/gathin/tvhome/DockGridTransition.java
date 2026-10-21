@@ -18,7 +18,8 @@ final class DockGridTransition {
     private int rowHeight;
     private int dockHeight;
     private boolean expanded;
-    private int scrolledRows;
+    private int scrollOffset;
+    private int cardCenter;
     private final int dockGap;
     private final int rowGap;
     private float rowOffset;
@@ -57,33 +58,38 @@ final class DockGridTransition {
 
     int bottomPadding(int height, int itemHeight, int appCount) {
         rowHeight = itemHeight + rowGap;
+        int cardHeight = itemHeight - Math.round(AppAdapter.ITEM_EXTRA_DP * density);
+        cardCenter = Math.round(8 * density + cardHeight / 2f);
         dockHeight = itemHeight - Math.round(16 * density)
                 + Math.round(AppAdapter.DOCK_EXTRA_DP * density) + dockGap;
         // Reordering or reloading can reuse an attached view on the other side of the dock boundary.
         setRowOffset(rowOffset);
-        return bottomPadding(height, expandedTop(), dockHeight, rowHeight,
+        return bottomPadding(height, expandedTop(), dockHeight, rowHeight, cardCenter,
                 appCount, columns);
     }
 
-    // Keep the last row in the same slot as preceding rows, including a partial last row.
-    // Padding is scroll range, not an extra inset for positioning the focused card.
+    // Give the last card the same travel as every preceding card, even in a partial row.
     static int bottomPadding(int height, int top, int dockHeight, int rowHeight,
-                             int count, int columns) {
+                             int cardCenter, int count, int columns) {
         int rows = (count + columns - 1) / columns;
-        int visible = Math.min(Math.max(0, rows - 1), visibleAppRows(height, top, dockHeight, rowHeight));
-        int content = rows == 0 ? 0 : dockHeight + visible * rowHeight;
-        return Math.max(0, height - top - content);
+        if (rows <= 1) return 0;
+        int content = dockHeight + (rows - 1) * rowHeight;
+        int lastCenter = top + content - rowHeight + cardCenter;
+        int travel = Math.max(0, lastCenter - focusBottom(height));
+        return Math.max(0, height - top - content + travel);
     }
 
-    static int visibleAppRows(int height, int top, int dockHeight, int rowHeight) {
-        return Math.max(1, (height - top - dockHeight) / rowHeight);
+    static int focusBottom(int height) {
+        // The reference leaves a glimpse of the next row below the selected card and its name.
+        return Math.round(height * 0.765f);
     }
 
-    // Move the viewport only when focus crosses its row slots. Horizontal moves and rapid reversals
-    // resolve to the same target even while the previous scroll animation is still running.
-    static int scrollRows(int previous, int focusedRow, int visibleRows) {
-        int minimum = Math.max(0, focusedRow - visibleRows);
-        int maximum = Math.max(0, focusedRow - 1);
+    // Only scroll the distance needed to keep the card inside the focus band. Use the previous
+    // target, not an in-flight view position, so horizontal moves and reversals remain stable.
+    static int scrollOffset(int previous, int center, int height) {
+        int bottom = focusBottom(height);
+        int minimum = Math.max(0, center - bottom);
+        int maximum = Math.max(0, center - (height - bottom));
         return Math.max(minimum, Math.min(previous, maximum));
     }
 
@@ -95,11 +101,11 @@ final class DockGridTransition {
     void onFocused(int position, View item) {
         int row = position / columns;
         setExpanded(row > 0);
-        scrolledRows = scrollRows(scrolledRows, row,
-                visibleAppRows(grid.getHeight(), expandedTop(), dockHeight, rowHeight));
+        int center = expandedTop() + dockHeight + (row - 1) * rowHeight + cardCenter;
+        scrollOffset = expanded ? scrollOffset(scrollOffset, center, grid.getHeight()) : 0;
         RecyclerView.LayoutManager layout = grid.getLayoutManager();
         int top = dockTop(layout.getDecoratedTop(item), row, dockHeight, rowHeight);
-        int target = expanded ? expandedTop() - scrolledRows * rowHeight : grid.getPaddingTop();
+        int target = expanded ? expandedTop() - scrollOffset : grid.getPaddingTop();
         int dy = top - target;
         if (Math.abs(dy) <= 1) return;
         grid.stopScroll();
