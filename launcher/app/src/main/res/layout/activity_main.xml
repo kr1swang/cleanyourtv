@@ -164,7 +164,7 @@
             android:singleLine="true"
             android:textColor="#CCFFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/inter_display_medium"
+            android:fontFamily="@font/outfit_medium"
             android:textFontWeight="500"
             android:includeFontPadding="false"
             android:visibility="gone" />
@@ -178,7 +178,7 @@
             android:format24Hour="@string/lockscreen_date_format"
             android:textColor="#CCFFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/inter_display_medium"
+            android:fontFamily="@font/outfit_medium"
             android:textFontWeight="500"
             android:includeFontPadding="false" />
 
@@ -193,7 +193,7 @@
             android:format24Hour="HH:mm"
             android:textColor="#CCFFFFFF"
             android:textSize="73sp"
-            android:fontFamily="@font/inter_display_semibold"
+            android:fontFamily="@font/outfit_semibold"
             android:textFontWeight="600"
             android:fontFeatureSettings="tnum"
             android:letterSpacing="0"
@@ -209,7 +209,7 @@
             android:ellipsize="end"
             android:textColor="#D9FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/inter_display_medium"
+            android:fontFamily="@font/outfit_medium"
             android:focusable="false"
             android:visibility="gone" />
     </LinearLayout>
