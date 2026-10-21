@@ -391,20 +391,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             /**
-             * Every "bring this tile on screen" scroll lands here, both RecyclerView's own on focus and
-             * onTileFocused's. The stock version treats the grid's top padding as the visible top, but that
-             * padding only pushes the dock down the screen: grid rows scroll up into it. With the stock rule,
-             * Up into a row above the padding dragged that row down to the padding line, cut it off at the
-             * bottom of the screen and could scroll the focused tile out entirely, dropping focus into the
-             * top bar. Grid tiles now scroll just enough to show the rect between the grid's top edge and its
-             * bottom; dock tiles are left to onTileFocused, which parks the dock row on the padding line.
+             * The tvOS transition positions app rows. Other layouts and the App library footer
+             * use visibility-based scrolling, without treating the dock's top padding as a boundary.
              */
             @Override
             public boolean requestChildRectangleOnScreen(@NonNull RecyclerView parent, @NonNull View child,
                                                          @NonNull Rect rect, boolean immediate,
                                                          boolean focusedChildVisible) {
                 if (dockRow && getPosition(child) < COLUMNS) return false;
-                if (dockTransition != null && getPosition(child) < COLUMNS * 2) return false;
+                if (dockTransition != null && child.findViewById(R.id.card) != null) return false;
                 int top = child.getTop() + rect.top;
                 int bottom = top + rect.height();
                 // A row already fully on screen stays put, even inside the bottom padding (the last row
@@ -1110,12 +1105,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onTileFocused(int position, View card) {
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
-        // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
-        // would be sized to 2*pad. Run again once the tile is laid out.
-        if (card.getWidth() == 0) {
-            card.post(() -> {
+        // RecyclerView restores focus inside its layout, before the layout-change callback computes
+        // row heights and padding. Position focus only after that geometry is ready.
+        if (card.getWidth() == 0 || grid.isComputingLayout() || grid.isLayoutRequested()
+                || (dockTransition != null && !dockTransition.hasRowGeometry())) {
+            card.postOnAnimation(() -> {
                 if (card.isFocused() && card.getWidth() > 0) onTileFocused(position, card);
             });
+            return;
+        }
+        if (dockTransition != null) {
+            dockTransition.onFocused(position, (View) card.getParent());
+            hideHero();
             return;
         }
         // Tile rect in root coordinates, using layout positions (ignores the scale animation).
@@ -1125,10 +1126,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Focus is rendered by the card's scale and cached shadow.
         float pad = 12f * density;
         View item = (View) card.getParent();
-        if (dockTransition != null && dockTransition.onFocused(position, item)) {
-            hideHero();
-            return;
-        }
         if (dockRow && position < COLUMNS) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app.
             int decoratedTop = item.getTop() - (int) (6 * density);
