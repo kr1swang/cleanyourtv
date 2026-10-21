@@ -27,21 +27,32 @@ External config keys, wallpaper files and on-TV choices can still override those
 The video files remain outside the APK:
 
 - `wallpaper_3840x2160.mov`: original deployment copy, 3840×2160 HEVC at 60 fps.
-- `wallpaper_1920x1080.mov`: 1920×1080 HEVC rendition at 60 fps. Both videos use Git LFS.
+- `wallpaper_1920x1080.mov`: 1920×1080 HEVC rendition at 60 fps.
 - `wallpaper.png`: the exact first frame of the deployment video, stored losslessly at 3840×2160,
   shown during preparation or if playback fails. Bundled at full resolution without conversion.
   The launcher uses ARGB_8888 to preserve gradients.
 
-Install Git LFS before cloning, or run `git lfs install --local` and `git lfs pull`
-in an existing checkout to download the video. A Git LFS pointer is not a playable
-video; the 4K file is about 262 MiB before deployment.
+Videos are [Release attachments](https://github.com/kr1swang/cleanyourtv/releases/tag/wallpapers-2026-10-21),
+not Git or Git LFS files. `wallpapers.json` pins their URLs, byte sizes and SHA-256 checksums.
+The 4K file is about 262 MiB; the 1080p file is about 117 MiB. From the repository root:
+
+```sh
+python3 tools/fetch-wallpapers.py --size 1080p
+python3 tools/fetch-wallpapers.py --size 4k
+# Use this instead when both resolutions are needed:
+python3 tools/fetch-wallpapers.py --size both
+```
+
+The tool downloads only the selected files, verifies them before replacing local copies, and skips
+existing files whose size and checksum match. Downloads stay ignored by Git. Building the APK does
+not require either video; `config.json` and `wallpaper.png` remain in the repository.
 
 Choose the deployment size using the [video deployment instructions](../../PROMPT.md):
 for a fixed, known output, copy only the corresponding video; for a player that moves between
 1080p and 4K displays, copy both. Ask about intended use if it is unknown. Do not use Android's
 UI size alone to make this choice. Both filenames may remain listed when only one video is present.
 
-Copy the selected video files to `/sdcard/Android/data/com.gathin.tvhome/files/` with ADB,
+After downloading, copy the selected video files to `/sdcard/Android/data/com.gathin.tvhome/files/` with ADB,
 then apply this folder with `tools/theme.sh`. Keep `wallpaper.png` in this
 folder when using that script, because theme deployment removes the
 device's static wallpaper when the selected folder does not contain one.

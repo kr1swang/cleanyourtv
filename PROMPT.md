@@ -135,7 +135,10 @@ Video wallpaper deployment (when requested)
   permanent 1080p use just because a Chromecast is currently attached to a 1080p monitor.
 - Preserve the original 4K file and 60 fps. Use a separately prepared 1080p/60fps rendition;
   do not transcode on the TV. Check each selected file's actual dimensions, frame rate and colour
-  metadata, and ensure it is a real video rather than a Git LFS pointer.
+  metadata. For this custom theme, fetch the selected files with
+  `python3 tools/fetch-wallpapers.py --size 1080p|4k|both` (choose one value).
+  This uses the pinned Release URLs and SHA-256 checksums in `themes/custom-version/wallpapers.json`;
+  it skips verified local files. Videos are ignored by Git and are not Git LFS objects.
 - In this custom theme, use `"video_wallpaper": ["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]`.
   Rendition filenames must end in `_WIDTHxHEIGHT.ext`, matching their actual video dimensions.
   Array order does not set priority: the player uses the smallest available rendition covering the
