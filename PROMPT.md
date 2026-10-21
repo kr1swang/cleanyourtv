@@ -28,6 +28,9 @@ Connect
   macOS Local Network privacy blocking adb. Don't debug it: use the Python `adb-shell` package in a venv
   as the ADB client instead. If its file push hangs on larger files, transfer files as base64 chunks
   through the shell and verify the md5.
+- If your own commands can't reach the TV at all while it answers from an ordinary terminal (a sandbox that
+  blocks the local network), ask me to run `tools/relay.py <tv ip>` in a terminal and leave it running, then
+  use `TV_HOST=127.0.0.1 TV_PORT=15555` (`tools/relay.md`).
 - If port 5555 stays closed, the TV may only offer Wireless debugging (Google TV sets often do): look for
   `_adb-tls-connect._tcp` with `dns-sd -B` or `adb mdns services`, ask me for the code and port under
   Developer options > Wireless debugging > Pair device with pairing code, then `adb pair`, `adb connect`
@@ -62,6 +65,12 @@ Debloat
   Keep Cast, voice search and system updates enabled by default; an unanswered checklist is not
   permission to disable them. Check dependencies before disabling any related package.
 - Run `pm` commands one per shell call, chained commands may silently stop after the first.
+- If `pm disable-user` is refused for every package, stop and tell me: some firmware (Fire OS 5 on a
+  Fire TV Box, for one) refuses `pm disable-user` with a `SecurityException`, `pm uninstall --user 0`
+  with `DELETE_FAILED_INTERNAL_ERROR`, and `pm hide` reports success while changing nothing. Check
+  with `pm list packages -d` instead of the exit code, and don't burn the session retrying - there is
+  nothing to debloat on such a set, so we fall back to its own privacy toggles and DNS blocking
+  (`docs/TROUBLESHOOTING.md`).
 - Don't launch a package whose name says factory, production, AT or fac menu (`com.cvte.tv.hkcfac`,
   `com.at.factory.*`, `mediatek.factorymenu.ui` and the like) to see what it does, even read-only:
   on Haier/CVTE boards opening one flips a factory-mode flag that kills the Input key and CEC, and
@@ -85,6 +94,11 @@ Launcher
   declares `android.intent.category.HOME` unless it carries the manufacturer's signature. If you
   hit either, do the debloat half, say plainly that the launcher half is impossible here, and stop
   retrying installs. The matching `examples/` header says which case your TV is.
+- Check the TV's SDK level before promising the launcher, too: `tools/tv.py 'getprop
+  ro.build.version.sdk'` against `grep minSdk launcher/app/build.gradle` (26 = Android 8.0). A set
+  below it answers `INSTALL_FAILED_OLDER_SDK`; lowering `minSdk` is a source change you would then
+  maintain yourself, and an APK rebuilt elsewhere is nothing this repo can verify. On those sets offer
+  the debloat half and say the launcher cannot be installed.
 - Don't install a third-party launcher that charges for basics like wallpapers. Build a small native
   Android TV launcher instead. Reuse this branch, which requires Android 8 / API 26 or newer; do not
   lower minSdk just to bypass installation checks. Install and test it before changing the default
@@ -236,10 +250,18 @@ Verify
   timing against static under the same conditions, with unrelated playback stopped when authorized.
   A screenshot alone cannot verify a hardware video layer. Report results only for the tested device
   and output mode; do not claim 4K-output validation from a 1080p monitor.
-- After each change, inject remote key presses over ADB, take a screenshot from the TV and look at it.
+- After each change, inject remote key presses over ADB, take a screenshot from the TV and look at it:
+  `tools/tv.py --screenshot shots/01-after.png` captures on the TV and pulls the PNG.
   Fix what you see before moving on.
-- Live TV and HDMI screenshots come back empty (0 bytes); that is the TV, not a broken debloat. Check
+- Live TV and HDMI screenshots come back empty (0 bytes); that is the TV, not a broken debloat, and
+  `--screenshot` exits 1 with that message. Check
   `dumpsys activity activities | grep topResumedActivity` instead (see `docs/TROUBLESHOOTING.md`).
+- If the screen looks enlarged and clipped after an install or a reboot, check the display overrides
+  before editing the launcher grid: `wm size` and `wm density` show a physical value next to an
+  override, and an override left over from an old resolution experiment, or a density that comes back
+  wrong on some MediaTek Sony firmware, is not a launcher bug. An empty
+  `settings get secure display_density_forced` is a normal default, not damage - read all three
+  values first and put them back if you undo (`docs/TROUBLESHOOTING.md`).
 - If a remote button relies on an accessibility helper, check that the service is enabled and bound
   for the current user, then ask me to press the real button; an injected key is not proof (see
   `docs/TROUBLESHOOTING.md`).

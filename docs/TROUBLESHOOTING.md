@@ -53,6 +53,18 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
 - **Chained `pm` commands** (`pm disable a; pm disable b`) may silently stop after the first. Run
   one per shell call; `--batch` does exactly that.
 - **Large pushes hang** through the Python client. Use `tools/b64push.py` for APKs.
+- **Every way of disabling a package is refused**, not just one. On a Fire TV Box 2015 (`sloane`,
+  Fire OS 5 / Android 5.1) `pm disable-user --user 0` returns `SecurityException`,
+  `pm uninstall --user 0` returns `DELETE_FAILED_INTERNAL_ERROR`, and `pm hide` reports success
+  while `pm list packages -d` stays empty ([#577](https://github.com/Gathin23/cleanyourtv/issues/577)).
+  Read `pm list packages -d` after each attempt instead of the exit code - `pm hide` is the one that
+  lies. When all three refuse, this firmware does not take a debloat list at all: there is no shell
+  route around it, sponsored rows stay on the home screen, and the only useful work left is the
+  TV's own privacy toggles plus DNS blocking (Pi-hole with a smart-TV ad list; the report used
+  Perflyst's `AmazonFireTV` list). Fire OS 6 is the opposite case: `pm disable-user` works and about
+  ten Amazon packages are protected, which
+  [`examples/amazon-fire-tv-stick-4k-2018/debloat.txt`](../examples/amazon-fire-tv-stick-4k-2018/debloat.txt)
+  lists, with the same DNS fallback for their endpoints.
 - **The Input key and CEC die after the hidden factory menu is opened**, seen on a Haier/CVTE set
   (Durabrand `DURAT32ISDB`, `dupont`, Android TV 11 build `RTM6.230109.232`,
   [#470](https://github.com/Gathin23/cleanyourtv/issues/470)). `com.cvte.tv.hkcfac` is the
@@ -77,14 +89,53 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
 - **`adb exec-out screencap -p` gives a broken PNG** on some MediaTek sets (Xiaomi, and Amazon's
   own Fire TV smart TVs): the binary prints `Init wrapper sys mutex successful` on stdout first.
   Save on the TV and pull the file instead: `screencap -p /data/local/tmp/s.png`, or cut
-  everything before the `\x89PNG` header.
+  everything before the `\x89PNG` header. `tools/tv.py --screenshot shots/home.png` does the save,
+  the pull and the cleanup in one command, and says so when the capture is 0 bytes.
 - **Play Protect blocked the launcher** ("unsafe app blocked, built for an older version of Android")
   and `pm install` hung, then failed with `INSTALL_FAILED_VERIFICATION_FAILURE`, while it targeted
   SDK 29. It targets 34 now; if you built an old checkout, rebuild.
+- **`pm install` fails with `INSTALL_FAILED_OLDER_SDK`** on a set older than the launcher: the APK's
+  `minSdk` is a compile-time floor, so a TV on Android 7.0/7.1 (SDK 24/25) cannot take the published
+  build at all ([#576](https://github.com/Gathin23/cleanyourtv/issues/576)). Read both numbers before
+  changing anything: `tools/tv.py 'getprop ro.build.version.sdk'` and
+  `grep minSdk launcher/app/build.gradle` (26, i.e. Android 8.0, at the time of writing).
+  `launcher/build-and-install.sh` now asks the TV first and stops with both numbers, so nothing is
+  built or pushed for a set that will refuse it; `build-and-install.ps1` only reports it after
+  `pm install`, which fails safely with the stock launcher untouched. Lowering `minSdk` is a source
+  change, not a setting, and it means maintaining your own copy: the launcher uses AndroidX and
+  framework calls newer than API 25, so expect compile errors or a launcher that starts and then
+  crashes. An APK produced by rebuilding the project elsewhere (an assistant, an online builder, a
+  "rebuilt for API 25" zip from a forum) is not something this repository can check, and the install
+  scripts only push the APK they compiled themselves: a build signed with another key does not
+  install over this one (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), so uninstall the old one first if you
+  go that way, and keep the stock launcher enabled until the new one really starts. On a set below
+  `minSdk` the debloat and privacy half still applies, from the TV's own home screen: it is the
+  launcher that cannot be installed, not the lists. If the `Failure [...]` line names
+  `INSTALL_FAILED_VERIFICATION_FAILURE` instead, that is the bullet above - the firmware's installer
+  verifier, not the API level.
 - **Screenshots come out empty** while Live TV, an HDMI input or Netflix is on screen, seen on TCL
   and a [Sony KDL-49W800G](https://github.com/Gathin23/cleanyourtv/issues/92). Press Home before
   `screencap`. An empty capture means nothing about the ADB connection or playback; check those
   separately.
+- **The whole UI is huge and clipped, and it is not the launcher**, seen on a Sony K-85XR70
+  (`BRAVIA 4K AE2`, Android 14, China firmware,
+  [#590](https://github.com/Gathin23/cleanyourtv/issues/590)). Its UI runs at 1920×1080 on a 4K panel
+  by design ([#29](https://github.com/Gathin23/cleanyourtv/issues/29)), and two confirmed boots came
+  up with an override density of 640 where 320 worked: everything doubles in size, tiles clip, and it
+  looks like a grid bug. Read the overrides before touching the layout:
+  ```sh
+  tools/tv.py 'wm size'          # Physical size vs Override size
+  tools/tv.py 'wm density'       # Physical density vs Override density
+  tools/tv.py 'settings --user 0 get secure display_density_forced'
+  ```
+  An `Override size` left behind by an old resolution experiment is the first thing to explain, and an
+  empty saved density is a normal Android default rather than damage. `wm density reset` fixes the
+  session; on this firmware it came back as 640 at the next boot, and `wm density 320` alone did not
+  stick because it left the saved setting empty. Put `settings --user 0 put secure
+  display_density_forced 320` after it, reboot, and read all three lines back before believing it.
+  Don't copy the number to another TV: record the three values first, and undo with `wm density reset`
+  plus `settings delete secure display_density_forced`. Device note:
+  [Sony K-85XR70](devices/sony-k85xr70-ae2.md).
 - **Disable the stock launcher only after the new one is installed**, or the Home button lands on
   a factory test app. Launch the replacement by hand first. `set-home-activity` can report
   `Success` while HOME still resolves to the stock launcher (priority 2) until that one is disabled.
@@ -204,6 +255,27 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
   package that also claims HOME (PatchWall on Xiaomi) makes Android drop the default. The install
   script now picks the known stock launcher among the candidates by itself; otherwise choose one on
   the TV or pass `STOCK_LAUNCHER=<package>`.
+- **Stremio fails every stream with `ConnectException: Failed to connect to /127.0.0.1:11470`**,
+  and only Force stop brings it back until the next reboot. This is not the debloat. It is a Stremio
+  regression in 1.11 ([stremio-bugs#2866](https://github.com/Stremio/stremio-bugs/issues/2866)):
+  `startServer()` only runs once the lifecycle is at least STARTED, so a process Android woke in the
+  background never starts the local server, and opening the app reuses that process. On a TV the
+  waker is Stremio's own `BootReceiver` refreshing the home-screen channels, so it happens on every
+  boot. Leaving the app and reopening does not help (same pid); any fresh process does, `am kill`
+  included. Keeping the boot-woken process from sticking around fixes it for good:
+  `tools/tv.py 'cmd appops set com.stremio.one RUN_ANY_IN_BACKGROUND ignore; cmd appops write-settings'`.
+  The second command is not optional: app-ops are written to disk lazily, and on a Vestel shandao set
+  the op was back to `allow` after the next reboot without it, which looks exactly like the
+  workaround not working. An app started in the foreground is unaffected, and the side effect, that
+  the home-screen channels only refresh while Stremio is open, costs nothing once the recommendation
+  rows are disabled anyway.
+- **A firmware update quietly undoes the cleanup.** The update installs over the cleaned-up system, so
+  every listed package is enabled again, Home goes back to the stock launcher and new preloads
+  appear that no list mentions. `tools/venv/bin/python -I tools/check.py <list>` reports the first
+  two and exits 1; `--fix` disables them again and puts the launcher back on Home. New preloads it
+  cannot know about, so after a big update compare `tools/tv.py 'pm list packages'` with the list
+  once by hand. On a TV whose list disables the updater, this only happens when you install an
+  update on purpose: enable the updater, update, `check.py --fix`, disable it again.
 
 ## Accessibility helper enabled but the remote button does nothing
 

@@ -75,12 +75,16 @@ public class GlassView extends View {
         float inset = 6f * density;   // room for the glow
         rect.set(inset, inset, getWidth() - inset, getHeight() - inset);
 
-        // Outer glow: three widening, fading strokes. The hardware layer caches the result, so
-        // they cost one draw, not one per frame of the spring.
-        for (int i = 1; i <= 3; i++) {
-            glow.setStrokeWidth(i * 2f * density);
-            glow.setColor((glowAlpha / i) << 24 | glowRgb);
-            float o = i * density;
+        // Outer glow: thin rings across the inset, each a little fainter, so it fades out smoothly. Three wide
+        // strokes left visible bands once the glow took an app's colour at a stronger alpha. The hardware layer
+        // caches the result, so the rings cost one draw, not one per frame of the spring.
+        int rings = 12;
+        float step = inset / rings;
+        glow.setStrokeWidth(step + 0.5f);
+        for (int i = 0; i < rings; i++) {
+            float o = step * (i + 0.5f);
+            float t = 1f - (float) i / rings;
+            glow.setColor(Math.round(glowAlpha * t) << 24 | glowRgb);
             canvas.drawRoundRect(rect.left - o, rect.top - o, rect.right + o, rect.bottom + o, radius + o, radius + o, glow);
         }
 

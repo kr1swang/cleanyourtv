@@ -11,5 +11,10 @@
   ],
   "live_tv_package": "com.tcl.tv",
   "columns": 4,
-  "rows_below_dock": 0
+  "rows_below_dock": 0,
+  "app_keys": [
+    "4062:com.netflix.ninja",
+    "4099:com.amazon.amazonvideo.livingroom",
+    "4065:com.google.android.youtube.tv"
+  ]
 }

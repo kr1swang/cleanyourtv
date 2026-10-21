@@ -1,6 +1,9 @@
 {
   "columns": 6,
-  "video_wallpaper": ["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"],
+  "video_wallpaper": [
+    "wallpaper_3840x2160.mov",
+    "wallpaper_1920x1080.mov"
+  ],
   "dock_apps": [
     "com.google.android.youtube.tv",
     "com.netflix.ninja",
@@ -8,5 +11,7 @@
     "com.spotify.tv.android",
     "com.limelight",
     "com.android.vending"
-  ]
+  ],
+  "wallpaper_true_color": true,
+  "ambient_glow": false
 }

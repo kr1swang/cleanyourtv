@@ -75,6 +75,14 @@ class TvInputGuardTest(unittest.TestCase):
         self.assertIn("TV_INPUT_HARDWARE", stderr)
         self.assertIn("TVINPUT_ALLOW=1", stderr)
 
+    def test_the_skip_message_says_how_to_spot_a_false_positive(self):
+        # The permission alone is a loose test: a preloaded app can ask for it and drive no input
+        # (a MediaTek USB media player on a Vestel shandao set). The owner is the one who has to
+        # judge that, so the message has to name the check that settles it.
+        _, stderr = self.run_disable([MEDIATEK])
+        self.assertIn("pm query-services --components -a android.media.tv.TvInputService", stderr)
+        self.assertIn("false positive", stderr)
+
     def test_crlf_from_adb_still_matches(self):
         # adb can end a line with CRLF; a stray CR would leave the name unmatched and the port broken.
         commands, stderr = self.run_disable([MEDIATEK], eol="\r\n")

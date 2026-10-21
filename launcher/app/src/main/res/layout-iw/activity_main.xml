@@ -283,10 +283,9 @@
                  row; gone, it takes no space. -->
             <TextView
                 android:id="@+id/stats"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_below="@id/leftBlock"
                 android:layout_alignStart="@id/leftBlock"
-                android:layout_alignEnd="@id/leftBlock"
                 android:gravity="right"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -315,6 +314,14 @@
                     style="@style/TopButton"
                     android:text="@string/settings"
                     android:drawableStart="@drawable/ic_settings"
+                    android:nextFocusDown="@+id/grid" />
+
+                <TextView
+                    android:id="@+id/btnLibraryTop"
+                    style="@style/TopButtonIcon"
+                    android:visibility="gone"
+                    android:contentDescription="@string/app_library"
+                    android:drawableStart="@drawable/ic_apps"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

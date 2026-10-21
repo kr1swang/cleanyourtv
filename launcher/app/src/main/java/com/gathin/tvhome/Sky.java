@@ -54,7 +54,10 @@ final class Sky {
     private static final int NIGHT_BOTTOM = 0xFF0B1326;
 
     // Anchors were picked around a temperate evening: full night until half past five, dawn before
-    // seven, the warmest glow between seven in the evening and a quarter to eight.
+    // seven, the warmest glow between seven in the evening and a quarter to eight. With a location
+    // set, at(minute, sunrise, sunset) stretches this reference day onto the real one.
+    static final int REF_SUNRISE = 450;
+    static final int REF_SUNSET = 1140;
     private static final Stop[] STOPS = {
             new Stop(0, NIGHT_TOP, NIGHT_MID, NIGHT_BOTTOM, 0, 0.30f),
             new Stop(320, NIGHT_TOP, NIGHT_MID, NIGHT_BOTTOM, 0, 0.30f),
@@ -71,6 +74,21 @@ final class Sky {
     };
 
     private Sky() {
+    }
+
+    /**
+     * The palette at {@code minuteOfDay} on a day whose sun rises at {@code sunrise} and sets at
+     * {@code sunset} (minutes of the day): night, day and evening are each stretched piecewise so
+     * the reference sunrise and sunset glows land on the real ones.
+     */
+    static Palette at(int minuteOfDay, int sunrise, int sunset) {
+        if (sunrise <= 0 || sunset >= 1440 || sunrise >= sunset) return at(minuteOfDay);
+        int m = Math.max(0, Math.min(1440, minuteOfDay));
+        float ref;
+        if (m < sunrise) ref = m * REF_SUNRISE / (float) sunrise;
+        else if (m < sunset) ref = REF_SUNRISE + (m - sunrise) * (REF_SUNSET - REF_SUNRISE) / (float) (sunset - sunrise);
+        else ref = REF_SUNSET + (m - sunset) * (1440 - REF_SUNSET) / (float) (1440 - sunset);
+        return at(Math.round(ref));
     }
 
     /** The palette at {@code minuteOfDay}, clamped to a day. */

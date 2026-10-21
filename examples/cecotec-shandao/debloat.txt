@@ -17,7 +17,17 @@
 # - com.google.android.tungsten.setupwraith: may own the saved Wi-Fi network; disabling it deletes
 #   the network and takes the TV off Wi-Fi and ADB.
 # - com.mediatek.tv.service, com.mediatek.tvinput, com.mediatek.wwtv.tvcenter (Live TV and the
-#   source menu), com.mediatek.wwtv.mediaplayer, com.mediatek.autopair (Bluetooth remote pairing).
+#   source menu), com.mediatek.autopair (Bluetooth remote pairing).
+#   com.mediatek.wwtv.mediaplayer was in this KEEP list and has moved to the disable list below:
+#   it is the USB media player, not an input driver. tools/disable.sh still skips it, because it
+#   asks for TV_INPUT_HARDWARE and the guard reads that as the HDMI/AV/tuner layer. On this set
+#   that is a false positive: the permission is requested, nothing implements a TvInputService.
+#   What settles it is which packages actually serve that service:
+#     pm query-services --components -a android.media.tv.TvInputService
+#   Here that lists only com.mediatek.tvinput (tuner, HDMI, VGA, composite, component, SCART) and
+#   com.mediatek.tv.service, both kept. Disabled by hand and reboot-tested: all seven inputs and
+#   the source panel still work. Use TVINPUT_ALLOW=1 to disable it, and check your own inputs
+#   after a reboot before trusting this on another model.
 # - com.vestel.tv.service, com.vestel.tv.keycontroller (remote keys), com.vestel.tv.backlight,
 #   com.vestel.tv.eib (the E-User Manual app).
 # - com.android.devicelockcontroller is a PROTECTED package on this firmware: pm refuses it with
@@ -71,6 +81,13 @@ com.google.android.tvrecommendations             # launcher recommendation rows.
                                                  # once com.gathin.tvhome owns Home and
                                                  # com.google.android.tvlauncher is disabled.
 
+# MediaTek extras
+com.mediatek.wwtv.mediaplayer                    # MediaTek's USB media player. Skipped by the
+                                                 # TV_INPUT_HARDWARE guard; see the header, and
+                                                 # run with TVINPUT_ALLOW=1 to actually disable it.
+                                                 # What you lose: playing files off a USB stick with
+                                                 # the stock app. Nothing else moved after a reboot.
+
 # Dead weight on a TV
 com.android.healthconnect.controller             # Health Connect
 com.android.health.connect.backuprestore         # Health Connect backup
@@ -79,3 +96,10 @@ com.android.dynsystem                            # Dynamic System Updates
 com.android.cts.ctsshim                          # Android test shim
 com.android.cts.priv.ctsshim                     # Android test shim
 com.google.android.syncadapters.calendar         # calendar sync
+com.google.android.tts                           # Google text-to-speech. Only accessibility reads
+                                                 # anything aloud on this set, and the remote has no
+                                                 # microphone, so it idles. Keep it if you use Talkback.
+com.android.settings.intelligence                # the search box inside Settings. The menus keep
+                                                 # working; only searching them goes away.
+com.android.se                                   # Secure Element (eSIM, NFC payments). This TV has
+                                                 # neither radio.

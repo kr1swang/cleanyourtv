@@ -113,6 +113,14 @@
                 android:resource="@xml/youtube_key_service" />
         </service>
 
+        <!-- The same clock, started by Home itself after home_idle_clock_minutes without input. -->
+        <activity
+            android:name=".ClockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
         <!-- Screensaver: pick it in Settings, or `settings put secure screensaver_components
              com.gathin.tvhome/.ClockDream` over adb. -->
         <service

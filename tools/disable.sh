@@ -87,11 +87,17 @@ fi
 
 # Only the package's own "requested permissions" block counts: a vendor app in a shared UID would otherwise
 # match through its shared user's permissions and be skipped by mistake.
-# A package that asks for android.permission.TV_INPUT_HARDWARE is the software layer under the HDMI, AV
-# and tuner inputs: routing, the HDCP handshake and scaling live in it. Disable one and the port still
-# notices the cable but shows "No Signal" for good; re-enabling the pieces in batches does not bring the
-# picture back, a full restore and a cold boot do (#321, OnePlus TV on Android 11). Keep those packages;
-# TVINPUT_ALLOW=1 disables them anyway.
+# A package that asks for android.permission.TV_INPUT_HARDWARE is usually the software layer under the
+# HDMI, AV and tuner inputs: routing, the HDCP handshake and scaling live in it. Disable one and the port
+# still notices the cable but shows "No Signal" for good; re-enabling the pieces in batches does not bring
+# the picture back, a full restore and a cold boot do (#321, OnePlus TV on Android 11). Keep those
+# packages; TVINPUT_ALLOW=1 disables them anyway.
+# The permission alone is a loose test and does produce false positives: on a Vestel shandao set the
+# MediaTek USB media player asks for it and implements no input at all. The decisive check is which
+# packages serve the service, `pm query-services --components -a android.media.tv.TvInputService`, but it
+# stays out of this guard on purpose: the command is missing on the older firmware this repo also covers,
+# and a guard that fails open costs someone their HDMI ports. So the skip still goes by the permission,
+# and the message tells the owner how to tell a false positive from the real thing.
 if [ -n "$PKGS" ] && [ -z "${TVINPUT_ALLOW:-}" ]; then
   # One round trip: the loop runs on the TV, where `dumpsys package` prints the permissions a package
   # asks for. Every name was checked as a bare package name above, so none of them can add shell syntax
@@ -110,7 +116,13 @@ if [ -n "$PKGS" ] && [ -z "${TVINPUT_ALLOW:-}" ]; then
       echo "Skipping $p: it asks for android.permission.TV_INPUT_HARDWARE, so it is the software layer" >&2
       echo "under the HDMI/AV/tuner inputs. With it disabled those inputs still notice the cable but stay" >&2
       echo "black (\"No Signal\"), and re-enabling the pieces in batches does not restore the picture: a" >&2
-      echo "full restore plus a cold boot does (#321). Set TVINPUT_ALLOW=1 to disable it." >&2
+      echo "full restore plus a cold boot does (#321)." >&2
+      echo "Asking for the permission is not proof, though: a preloaded app can request it and drive no" >&2
+      echo "input at all. What settles it is which packages actually serve the input service:" >&2
+      echo "  pm query-services --components -a android.media.tv.TvInputService" >&2
+      echo "If $p is absent from that list it is a false positive on your set, as a MediaTek USB media" >&2
+      echo "player turned out to be (examples/cecotec-shandao). Check every input after a reboot before" >&2
+      echo "trusting it, then set TVINPUT_ALLOW=1 to disable it." >&2
       PKGS="$(printf '%s\n' "$PKGS" | grep -vxF "$p" || true)"
     done
   else
