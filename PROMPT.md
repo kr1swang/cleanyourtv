@@ -4,7 +4,8 @@ Paste this into Claude Code (or another coding assistant with shell access) on a
 on the same Wi-Fi as the TV. Works on Android TV / Google TV sets (Xiaomi, TCL, Hisense, Sony,
 OnePlus, Realme, Nvidia Shield and most others). It will not work on Samsung Tizen, LG webOS or
 Fire TV. If you cloned this repo, mention that: the assistant can reuse `tools/` and `launcher/`
-instead of writing them from scratch, and only needs to edit `launcher/.../values/config.xml`.
+instead of writing them from scratch. Reuse the current branch's launcher and theme configuration;
+custom theme defaults are in `themes/custom-version/`.
 
 Before you start, on the TV: Settings → Device Preferences → About → press OK on "Build" 7 times,
 then go back → Developer options → turn on USB debugging (and Network/ADB debugging if your TV
@@ -117,7 +118,40 @@ Launcher
   listing the HDMI ports, AV and Live TV, switching via the TV input framework.
 - Make D-pad navigation deterministic: Up/Down move exactly one row, Up from the dock goes to the top
   bar, the ends of the top bar don't fall through to tiles. Remember the last focused tile.
-- Keep it light: the TV has about 1 GB of RAM. No blur, no video, no network polling.
+- Keep it light: the TV may have about 1 GB of RAM. No blur or network polling. Use a static
+  wallpaper unless I have requested video; for video, follow the deployment rules below.
+
+Video wallpaper deployment (when requested)
+- Reuse my stated device usage and wallpaper preferences. Inspect the device model, active physical
+  display mode and supported output modes (for example, `dumpsys display`) before choosing files.
+  Distinguish the panel's native resolution, the current HDMI output mode and Android's UI render
+  size: a 1080p UI does not prove that a 4K TV can only display 1080p video. Supported modes describe
+  the connected display, not every TV a portable player might later use.
+- If the device is a fixed TV or a player permanently connected to one display, and its intended
+  output resolution is already known, deploy only the corresponding video without asking again:
+  `wallpaper_1920x1080.mov` for output up to 1080p, or `wallpaper_3840x2160.mov` for 4K output.
+  If it will move between 1080p and 4K displays, deploy both. If the usage or resolution is unclear,
+  ask one short question offering 1080p only, 4K only, or both for changing displays. Do not infer
+  permanent 1080p use just because a Chromecast is currently attached to a 1080p monitor.
+- Preserve the original 4K file and 60 fps. Use a separately prepared 1080p/60fps rendition;
+  do not transcode on the TV. Check each selected file's actual dimensions, frame rate and colour
+  metadata, and ensure it is a real video rather than a Git LFS pointer.
+- In this custom theme, use `"video_wallpaper": ["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]`.
+  Rendition filenames must end in `_WIDTHxHEIGHT.ext`, matching their actual video dimensions.
+  Array order does not set priority: the player uses the smallest available rendition covering the
+  active physical output mode, or the largest available if none is large enough or the mode is unknown.
+  Both names may remain listed when only one file is deployed. Missing or empty files are skipped;
+  no available file, or an empty array, leaves the static poster. A single string is still supported.
+- The APK bundles `config.json` and the full-resolution `wallpaper.png`; videos stay external.
+  Push only the selected videos to `/sdcard/Android/data/<installed-package>/files/`, using a
+  temporary filename and verifying its checksum before renaming. Reuse an existing matching
+  file instead of transferring it again. Preserve existing user settings and media.
+  `tools/theme.sh` does not transfer videos. Clearing app storage removes the external videos,
+  so restoring motion requires redeploying the selected files.
+- Verify the actual decoder resolution, playback and dropped-frame counters, and confirm that
+  leaving Home releases the decoder and returning selects the correct file again. A screenshot
+  alone cannot verify a hardware video layer. Report what was tested on the connected display;
+  do not claim 4K-output validation from a 1080p monitor. Explain which files were deployed and why.
 
 Verify
 - After each change, inject remote key presses over ADB, take a screenshot from the TV and look at it.

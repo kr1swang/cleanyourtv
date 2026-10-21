@@ -12,6 +12,9 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /** Optional, silent theme video. A SurfaceView lets the decoder compose behind the launcher UI. */
@@ -31,10 +34,18 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
         try {
             JSONObject json = Config.readTheme(context);
             if (json == null) return null;
-            String name = json.optString("video_wallpaper", "");
-            if (name.isEmpty()) return null;
-            VideoWallpaperSources sources = new VideoWallpaperSources(dir, name,
-                    json.optString("video_wallpaper_1080p", ""));
+            Object configured = json.opt("video_wallpaper");
+            List<String> names = new ArrayList<>();
+            if (configured instanceof String) {
+                names.add((String) configured);
+            } else if (configured instanceof JSONArray) {
+                JSONArray array = (JSONArray) configured;
+                for (int i = 0; i < array.length(); i++) {
+                    Object name = array.opt(i);
+                    if (name instanceof String) names.add((String) name);
+                }
+            }
+            VideoWallpaperSources sources = new VideoWallpaperSources(dir, names);
             if (sources.select(0, 0) == null) return null;
             VideoWallpaper view = new VideoWallpaper(context, sources, poster, animateTransition);
             root.addView(view, 0, new FrameLayout.LayoutParams(
