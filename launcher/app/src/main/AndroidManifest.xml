@@ -99,7 +99,7 @@
                 android:resource="@xml/home_key_service" />
         </service>
 
-        <!-- Chromecast YouTube key after replacing the stock Home; enabled explicitly in accessibility. -->
+        <!-- Chromecast Home/app keys; keep Google TV and its Cast dependencies enabled. -->
         <service
             android:name=".YouTubeKeyService"
             android:label="@string/youtube_key_name"

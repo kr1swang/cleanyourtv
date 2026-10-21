@@ -97,7 +97,12 @@ Launcher
   takeover worked.
 - Before disabling the stock launcher, check which other apps claim HOME: on Google TV the setup wizard
   (`com.google.android.tungsten.setupwraith`) takes over even after the stock launcher is disabled, and
-  the matching `examples/` header says what to do. Before disabling setupwraith, run
+  the matching `examples/` header says what to do. On Chromecast with Google TV, keep setupwraith enabled:
+  it owns CastInfoProvider, which Cast uses to load device authentication credentials. On this device,
+  disabling it caused empty authentication signatures and the sender's "untrusted device" error;
+  restoring it and the stock launcher, then rebooting, restored casting. Use remote-key interception
+  for custom Home instead, and verify physical Home and phone-to-TV casting after a reboot.
+  On other devices, also check the saved Wi-Fi owner before considering disabling setupwraith: run
   `dumpsys wifi | grep -o 'cname=[^ ]*'`: a Wi-Fi network saved during first setup belongs to it, and
   Android deletes that network the moment it is disabled, which takes the TV off Wi-Fi and ADB. If it
   does, ask me to forget the network and re-join it in Settings first.
@@ -192,10 +197,15 @@ Other-device compatibility
   signatures before replacing an installation. Do not uninstall or clear data to bypass a mismatch;
   preserve the original key or agree on a separate package identity. Never commit private signing keys.
 - Inspect HOME handlers and OEM restrictions on this device before takeover. Do not blindly disable
-  `com.google.android.apps.tv.launcherx` or `com.google.android.tungsten.setupwraith` because that worked
-  on the Chromecast. Preserve the stock launcher until the new launcher and a recovery route work.
-- The custom `YouTubeKeyService` consumes `BUTTON_3` and opens `com.google.android.youtube.tv` globally
-  when enabled. It is specific to the tested Chromecast remote; do not automatically enable it elsewhere.
+  `com.google.android.apps.tv.launcherx` or `com.google.android.tungsten.setupwraith`. Preserve Cast's
+  dependencies as described above, and keep a working route to the stock launcher.
+- The custom `YouTubeKeyService` handles `HOME`, `BUTTON_3` and `BUTTON_4` in one accessibility service,
+  opening the custom Home screen, YouTube and Netflix. Keep the existing service component name
+  so upgrades preserve its accessibility setting. Do not automatically enable it on other devices.
+  Chromecast firmware can consume the first Home press while waking from sleep. The service also
+  redirects the exact stock `launcherx.home.HomeActivity` window while the screen is interactive;
+  it does not redirect the whole package or poll the foreground app. This fallback may briefly show
+  stock Home. Test physical Home from sleep and Cast while asleep as well as normal awake navigation.
   Test the real remote, identify the key, and prefer the existing configurable key service when suitable.
   Preserve unrelated accessibility services and verify any enabled helper is bound after installation.
 - Check which requested Dock packages are installed. Missing apps can be replaced by other grid apps

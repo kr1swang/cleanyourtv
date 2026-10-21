@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="youtube_key_name">YouTube 遙控器按鍵</string>
-    <string name="youtube_key_description">使用自訂首頁時，讓 Chromecast 遙控器的 YouTube 按鍵開啟 YouTube。</string>
+    <string name="youtube_key_name">Chromecast 遙控器按鍵</string>
+    <string name="youtube_key_description">讓 Chromecast 遙控器開啟自訂首頁、YouTube 與 Netflix，同時保留 Google TV 與 Cast 服務。</string>
 </resources>

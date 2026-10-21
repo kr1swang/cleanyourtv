@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="youtube_key_name">YouTube remote button</string>
-    <string name="youtube_key_description">Open YouTube with the Chromecast remote’s YouTube button when using a custom Home screen.</string>
+    <string name="youtube_key_name">Chromecast remote buttons</string>
+    <string name="youtube_key_description">Open the custom Home screen, YouTube and Netflix with the Chromecast remote while keeping Google TV and Cast services enabled.</string>
 </resources>
