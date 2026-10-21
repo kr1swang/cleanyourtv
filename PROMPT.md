@@ -206,6 +206,10 @@ Other-device compatibility
   redirects the exact stock `launcherx.home.HomeActivity` window while the screen is interactive;
   it does not redirect the whole package or poll the foreground app. This fallback may briefly show
   stock Home. Test physical Home from sleep and Cast while asleep as well as normal awake navigation.
+  On the tested Chromecast, disabling only launcherx while leaving setupwraith enabled makes the
+  system HOME resolve to `setupwraith/.RecoveryActivity`, which tries to open launcherx and logs
+  `Launcherx Activity is not found`. This configuration was rolled back; keep both packages enabled
+  with the key service. Cast was not tested in that configuration because the system Home path failed.
   Test the real remote, identify the key, and prefer the existing configurable key service when suitable.
   Preserve unrelated accessibility services and verify any enabled helper is bound after installation.
 - Check which requested Dock packages are installed. Missing apps can be replaced by other grid apps
