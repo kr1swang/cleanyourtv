@@ -21,8 +21,8 @@ launcher/hs_err_pid*.log
 launcher/replay_pid*.log
 
 # Wallpaper videos are checksum-verified downloads from GitHub Releases.
-themes/custom-version/*.mov
-themes/custom-version/*.part
+themes/apple-style/*.mov
+themes/apple-style/*.part
 
 # Background assets are release downloads; previews are no longer packaged.
-themes/custom-version/wallpaper_*.png
+themes/apple-style/wallpaper_*.png

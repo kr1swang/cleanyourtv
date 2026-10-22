@@ -8,7 +8,7 @@ import tempfile
 from urllib.request import urlopen
 
 
-THEME = Path(__file__).resolve().parents[1] / "themes" / "custom-version"
+THEME = Path(__file__).resolve().parents[1] / "themes" / "apple-style"
 
 
 def matches(path, asset):

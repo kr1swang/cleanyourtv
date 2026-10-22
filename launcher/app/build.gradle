@@ -5,11 +5,11 @@ plugins {
 // Keep the custom defaults in one place; the large video remains an external file.
 def bundledThemeAssets = layout.buildDirectory.dir('generated/bundledThemeAssets')
 def bundleTheme = tasks.register('bundleTheme', Sync) {
-    from(rootProject.file('../themes/custom-version')) {
+    from(rootProject.file('../themes/apple-style')) {
         include 'config.json'
         into 'default-theme'
     }
-    from(rootProject.file('../themes/custom-version/wallpaper-catalog.properties'))
+    from(rootProject.file('../themes/apple-style/wallpaper-catalog.properties'))
     into bundledThemeAssets
 }
 
