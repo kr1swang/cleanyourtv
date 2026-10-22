@@ -1,81 +1,64 @@
-# Custom theme
+# Custom background library
 
-Six columns with YouTube, Netflix, Twitch, Spotify, Moonlight and Google Play Store.
+The APK bundles the six-column Dock defaults in `config.json` and the pinned asset catalog in
+`wallpaper-catalog.properties`. Images and movies are downloaded from
+[wallpapers-2026-10-22](https://github.com/kr1swang/cleanyourtv/releases/tag/wallpapers-2026-10-22).
+The previous Release remains available for older installations.
 
-`video_wallpaper` lists local video renditions in the launcher's external files directory:
+Open **Launcher settings → Background downloads**. Golden Gate offers static 1080p, static 4K,
+1080p/30 fps, 1080p/60 fps, 4K/30 fps and 4K/60 fps. The picker shows download size, progress and
+cached versions. A video profile also downloads its resolution's preview. The two frame rates share
+that preview. All six files were uploaded to the new Release, including the original 60 fps files.
 
-```json
-"video_wallpaper": ["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]
+Downloads use HTTPS, stream on one background worker, check exact length and SHA-256, and atomically
+publish a file only after verification. The current selection changes only after the entire profile
+is available. Leaving the picker or pressing Cancel stops the job; verified assets remain reusable.
+The next download removes abandoned partial files. Errors preserve the current background.
+
+Files live under the app's private `files/wallpaper-library/` directory and survive normal updates.
+**Clear unused downloads** preserves the active profile's files, including a shared preview. External
+manually deployed files are never removed. Clearing app data removes downloads and selections.
+On first use, Home downloads a static preview matching the physical display. Offline it uses the
+plain background and retries on a later foreground visit, at most once every two minutes. An explicit
+local image, None, or a supplied external wallpaper takes priority. No periodic update checker runs.
+
+The selected profile uses the upstream wallpaper preference; external config, Dock order and other
+preferences remain intact. A static profile disables legacy external video. A video profile plays its
+fixed resolution/FPS; it never silently switches to another rendition. It starts from the beginning,
+releases the decoder when Home stops, and keeps the verified preview as a fallback. The Home/YouTube/
+Netflix service and Google Cast packages are not changed by this feature.
+
+The catalog is versioned with the APK, not fetched from an unpinned latest Release. To add a background,
+add its title, six profile entries and immutable asset URLs/sizes/hashes. The picker groups entries by
+background. Upload assets before shipping the catalog. For another publisher, update the catalog's
+allowed repository in `WallpaperCatalog.Asset` as well. The app now requests INTERNET permission for
+these downloads; upstream descriptions of a network-free launcher do not apply to this fork.
+
+## Manual or offline deployment
+
+```bash
+python3 tools/fetch-wallpapers.py --profile static-1080p
+python3 tools/fetch-wallpapers.py --profile static-4k
+python3 tools/fetch-wallpapers.py --profile 1080p-30
+python3 tools/fetch-wallpapers.py --profile 1080p-60
+python3 tools/fetch-wallpapers.py --profile 4k-30
+python3 tools/fetch-wallpapers.py --profile 4k-60
 ```
 
-Filename suffixes `_WIDTHxHEIGHT.ext` declare the resolution and must match the actual video.
-Array order does not set priority. The player chooses the smallest available rendition covering
-the physical output mode; if none is large enough or the mode is unknown, it uses the largest.
-It uses physical dimensions, not Android's possibly scaled UI size. Selection is checked when
-playback starts and when the display mode changes. An unchanged selection keeps playing.
-Missing or empty files are skipped; if none are available, the static wallpaper remains.
-A single string is also supported. A filename without dimensions is used as a fallback when
-no sized rendition is available; if several such files exist, the first in the list is used.
-This custom extension plays it silently in a loop while Home is visible and resumed.
-Leaving Home releases the player and decoder. App-colour glow and the sky layer are
-suppressed while a video background is configured and its file exists.
-Set `video_wallpaper` to `[]` (or an empty string) to disable video playback.
+The tool reads the same catalog as Android, verifies existing files and downloads only missing or
+invalid assets. `--size 1080p`, `--size 4k` and `--size both` retain the legacy 60 fps filenames while
+also fetching the matching previews. Downloaded media is ignored by Git.
 
-The build packages `config.json` and `wallpaper.png` directly from this folder as defaults.
-Clearing app storage restores six columns, the Dock order and the static wallpaper on next launch.
-External config keys, wallpaper files and on-TV choices can still override those defaults.
-The video files remain outside the APK:
+Copy the chosen image to `/sdcard/Android/data/<package>/files/wallpaper.png` and, for video, copy the
+movie alongside it. Merge only `video_wallpaper` in the existing external JSON: `[]` for static or a
+one-element filename list for a fixed video profile. Keep unknown keys. Select Follow theme to leave
+a downloaded on-TV selection; this resets other on-TV overrides too, so preserve them first.
+Do not invoke `tools/theme.sh` just to switch a profile: it replaces the theme and resets choices.
 
-- `wallpaper_3840x2160.mov`: original deployment copy, 3840×2160 HEVC 10-bit at 60 fps.
-- `wallpaper_1920x1080.mov`: 1920×1080 HEVC 10-bit rendition at 60 fps.
-- `wallpaper.png`: the exact first frame of the deployment video, stored losslessly at 3840×2160,
-  shown during preparation or if playback fails. Bundled at full resolution without conversion.
-  The launcher uses ARGB_8888 to preserve gradients.
+## Verification
 
-Videos are [Release attachments](https://github.com/kr1swang/cleanyourtv/releases/tag/wallpapers-2026-10-21),
-not Git or Git LFS files. `wallpapers.json` pins their URLs, byte sizes and SHA-256 checksums.
-The 4K file is about 262 MiB; the 1080p file is about 117 MiB. From the repository root:
-
-```sh
-python3 tools/fetch-wallpapers.py --size 1080p
-python3 tools/fetch-wallpapers.py --size 4k
-# Use this instead when both resolutions are needed:
-python3 tools/fetch-wallpapers.py --size both
-```
-
-The tool downloads only the selected files, verifies them before replacing local copies, and skips
-existing files whose size and checksum match. Downloads stay ignored by Git. Building the APK does
-not require either video; `config.json` and `wallpaper.png` remain in the repository.
-
-Choose a deployment profile using the [deployment instructions](../../PROMPT.md). All profiles use
-one APK; only the external config and deployed media differ.
-
-| Profile | Download option | External `video_wallpaper` |
-| --- | --- | --- |
-| `4k` | `--size 4k` | `["wallpaper_3840x2160.mov"]` |
-| `full-hd` | `--size 1080p` | `["wallpaper_1920x1080.mov"]` |
-| `static` | No download | `[]` |
-| Both, for changing displays | `--size both` | `["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]` |
-
-For a fixed TV, use the intended physical output and verified decoder capability to choose the video
-profile. Do not use Android's UI size alone. Both files require HEVC 10-bit decoding at 60 fps; the
-player does not check codec capabilities or try a different rendition after a decoding error. Such
-an error falls back to the static poster. Test smooth playback on each target device.
-
-Back up the external config and merge only the profile's video setting, preserving unrelated keys.
-A single-entry array prevents an old higher-resolution file from being selected. `static` explicitly
-disables playback even when MOV files remain on disk; keep the static wallpaper enabled. Record the
-profile per device. Clearing app data removes the external override and videos and restores the
-shared APK defaults, so reapply the profile after a reset.
-
-After downloading, copy the selected video files to `/sdcard/Android/data/<installed-package>/files/`
-with ADB and verify their checksums. The default package is `com.gathin.tvhome`. Some firmware blocks
-writes there; the current ThemeProvider has no MOV transfer fallback.
-For a full theme deployment, `tools/theme.sh` uses the default package and replaces external config,
-clears wallpaper collections and resets on-TV choices. Back those up first; do not use a full theme
-replacement just to change the profile. Keep `wallpaper.png` in the staged theme folder when using
-that script, because it removes the external static wallpaper when the folder does not contain one.
-The theme script does not copy video files. After clearing app storage, reapply the saved profile and
-copy its selected videos back to restore motion. Removing the external theme returns to the bundled
-defaults, which list both video renditions. Set `wallpaper: false` to disable all backgrounds, or
-`video_wallpaper: []` to use only the static image.
+The JVM tests cover catalog validation, display-sized default selection, shared-preview cache reuse,
+offline cache reads, cancellation, truncated/oversized responses, checksum failures and partial cleanup.
+The Python tests check the shared six-profile catalog and command-line downloader. Hardware validation
+of decoder performance, color transitions, remote navigation and Cast is still required before
+claiming those results. The settings UI can be built without a connected TV.

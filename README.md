@@ -430,7 +430,9 @@ apps), which is why the report names that loss per package instead of calling it
 ## The launcher
 
 A small native home screen for Android TV: **about 445 KB**, plain Java, built for TVs with 1 GB of RAM.
-No blur, no video, no network permission, no background services.
+Upstream has no blur, video, network permission or background services. This fork adds optional
+video wallpapers, verified background downloads and a remote-key service; see the
+[custom version guide](themes/custom-version/README.md) for its behavior and six background profiles.
 
 The **TV** needs Android 8.0 (API 26) or newer: `minSdk` is a compile-time floor in
 [`launcher/app/build.gradle`](launcher/app/build.gradle), and the install script asks the TV for

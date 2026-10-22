@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Download selected custom wallpaper videos from a pinned Release and verify their contents."""
+"""Download a background profile and its preview from the same pinned catalog as the TV."""
 
 import argparse
 import hashlib
-import json
 from pathlib import Path
 import tempfile
 from urllib.request import urlopen
@@ -49,17 +48,59 @@ def fetch(asset, directory):
             temporary.unlink(missing_ok=True)
 
 
+def catalog():
+    """Use the same pinned catalog as the on-TV background picker."""
+    properties = {}
+    for line in (THEME / "wallpaper-catalog.properties").read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            key, value = line.split("=", 1)
+            properties[key] = value
+    variants = {}
+    for key in properties["variants"].split(","):
+        assets = []
+        for kind in ("image", "video"):
+            asset_id = properties.get(f"{key}.{kind}")
+            if asset_id:
+                assets.append({
+                    "filename": properties[f"{asset_id}.name"],
+                    "url": properties[f"{asset_id}.url"],
+                    "size": int(properties[f"{asset_id}.size"]),
+                    "sha256": properties[f"{asset_id}.sha256"],
+                })
+        variants[key] = assets
+    return variants
+
+
+PROFILES = {
+    "static-1080p": "gg-1080-static", "static-4k": "gg-4k-static",
+    "1080p-30": "gg-1080-30", "1080p-60": "gg-1080-60",
+    "4k-30": "gg-4k-30", "4k-60": "gg-4k-60",
+}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--size", required=True, choices=("1080p", "4k", "both"),
-                        help="Download only the resolution(s) needed by the target device")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--profile", choices=PROFILES, help="Image or video profile, with its matching poster")
+    selection.add_argument("--size", choices=("1080p", "4k", "both"),
+                           help="Legacy 60 fps deployment; retains the old video filenames")
     parser.add_argument("--directory", type=Path, default=THEME, help="Destination folder")
     args = parser.parse_args()
-    manifest = json.loads((THEME / "wallpapers.json").read_text(encoding="utf-8"))
-    sizes = ("1080p", "4k") if args.size == "both" else (args.size,)
-    try:
+    variants = catalog()
+    if args.profile:
+        wanted = variants[PROFILES[args.profile]]
+    else:
+        sizes = ("1080p", "4k") if args.size == "both" else (args.size,)
+        wanted = []
         for size in sizes:
-            fetch(manifest[size], args.directory)
+            for asset in variants[PROFILES[size + "-60"]]:
+                asset = dict(asset)
+                if asset["filename"].endswith("_60fps.mov"):
+                    asset["filename"] = asset["filename"].replace("_60fps.mov", ".mov")
+                wanted.append(asset)
+    try:
+        for asset in wanted:
+            fetch(asset, args.directory)
     except (OSError, ValueError) as error:
         parser.exit(1, f"Wallpaper download failed: {error}\n")
 

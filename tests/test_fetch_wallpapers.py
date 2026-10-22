@@ -1,6 +1,5 @@
 import hashlib
 import importlib.util
-import json
 from pathlib import Path
 import sys
 import tempfile
@@ -65,12 +64,16 @@ class FetchWallpapersTests(unittest.TestCase):
         self.assertFalse((self.root / "outside.mov").exists())
 
     def test_cli_downloads_only_selected_resolution(self):
-        (self.root / "wallpapers.json").write_text(json.dumps({"1080p": self.asset, "4k": {}}))
-        with patch.object(fetcher, "THEME", self.root), patch.object(
+        poster = dict(self.asset, filename="wallpaper_1920x1080.png")
+        movie = dict(self.asset, filename="wallpaper_1920x1080_60fps.mov")
+        variants = {"gg-1080-60": [poster, movie], "gg-4k-60": [{"url": "unused"}]}
+        with patch.object(fetcher, "catalog", return_value=variants), patch.object(
             sys, "argv", ["fetch-wallpapers.py", "--size", "1080p", "--directory", str(self.destination)]
         ):
             fetcher.main()
         self.assertEqual((self.destination / self.asset["filename"]).read_bytes(), self.source.read_bytes())
+        self.assertEqual((self.destination / poster["filename"]).read_bytes(), self.source.read_bytes())
+        self.assertEqual(len(list(self.destination.iterdir())), 2)
 
 
 if __name__ == "__main__":

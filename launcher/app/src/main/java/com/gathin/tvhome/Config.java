@@ -389,7 +389,7 @@ final class Config {
             wallpaper = dir != null ? new File(dir, WALLPAPER_NAME) : null;
         }
         if (wallpaper != null && !(wallpaper.isFile() && wallpaper.length() > 0)) wallpaper = null;
-        if (wallpaper == null) wallpaper = BundledTheme.file(ctx, "wallpaper.png");
+        if (wallpaper == null) wallpaper = WallpaperLibrary.poster(ctx);
         // A theme can also switch the wallpaper off while the file is still there.
         boolean wallpaperEnabled = json == null || bool(json, "wallpaper", true);
         if (!wallpaperEnabled) wallpaper = null;
@@ -423,6 +423,13 @@ final class Config {
                 wallpaper = picked;
                 wallpaperEnabled = true;
             }
+        }
+        // A downloaded selection uses its own poster without replacing the external theme.
+        if (WallpaperLibrary.isSelected(ctx)) {
+            wallpaper = WallpaperLibrary.poster(ctx);
+            wallpapers.clear();
+            if (wallpaper != null) wallpapers.add(wallpaper);
+            wallpaperEnabled = true;
         }
         // A festive skin comes only from a theme; config.xml has no festival.
         Festival festival = json == null ? Festival.NONE : Festival.parse(string(json, "festival", ""),

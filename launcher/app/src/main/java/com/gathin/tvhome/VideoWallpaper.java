@@ -30,8 +30,17 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
 
     static VideoWallpaper attach(Context context, FrameLayout root, View poster, boolean animateTransition) {
         File dir = Config.dir(context);
-        if (dir == null) return null;
         try {
+            File downloaded = WallpaperLibrary.video(context);
+            if (WallpaperLibrary.isSelected(context)) {
+                if (downloaded == null) return null; // A static choice disables legacy theme video.
+                VideoWallpaperSources selected = new VideoWallpaperSources(downloaded.getParentFile(),
+                        java.util.Collections.singletonList(downloaded.getName()));
+                VideoWallpaper view = new VideoWallpaper(context, selected, poster, animateTransition);
+                root.addView(view, 0, new FrameLayout.LayoutParams(-1, -1));
+                return view;
+            }
+            if (dir == null) return null;
             JSONObject json = Config.readTheme(context);
             if (json == null) return null;
             Object configured = json.opt("video_wallpaper");

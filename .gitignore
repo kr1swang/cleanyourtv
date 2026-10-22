@@ -21,3 +21,6 @@ launcher/replay_pid*.log
 # Wallpaper videos are checksum-verified downloads from GitHub Releases.
 themes/custom-version/*.mov
 themes/custom-version/*.part
+
+# Background assets are release downloads; previews are no longer packaged.
+themes/custom-version/wallpaper_*.png

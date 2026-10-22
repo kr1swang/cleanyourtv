@@ -130,6 +130,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private GlassView glass;
     private View ambient;
     private VideoWallpaper videoWallpaper;
+    private java.util.concurrent.Future<?> wallpaperDownload;
+    private boolean missingDefaultWallpaper, downloadedWallpaperReady;
+    private String wallpaperSelection;
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
     private View hero;
@@ -372,9 +375,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // the theme's background, so launch looks the same.
         getWindow().setBackgroundDrawable(null);
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
+        wallpaperSelection = WallpaperLibrary.choice(this);
+        missingDefaultWallpaper = cfg.wallpaperEnabled && cfg.wallpapers.isEmpty();
         // An explicit on-TV wallpaper choice takes precedence over the theme's video.
-        if (cfg.wallpaperEnabled && getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
-                .getString(Config.WALLPAPER_CHOICE_KEY, null) == null) {
+        if (cfg.wallpaperEnabled && (getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
+                .getString(Config.WALLPAPER_CHOICE_KEY, null) == null || WallpaperLibrary.isSelected(this))) {
             videoWallpaper = VideoWallpaper.attach(this, root, wallpaperPlayer.poster(),
                     cfg.animations && !cfg.reducedMotion);
         }
@@ -760,11 +765,21 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         updateClockVisibility();
         tileRefresh.onStart();
+        wallpaperDownload = WallpaperLibrary.prefetch(this, missingDefaultWallpaper, () -> {
+            if (isFinishing() || isDestroyed()) return;
+            downloadedWallpaperReady = true;
+            if (hasWindowFocus()) recreate();
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // A physical Home press can return without finishing the settings activity.
+        if (downloadedWallpaperReady || !java.util.Objects.equals(wallpaperSelection, WallpaperLibrary.choice(this))) {
+            recreate();
+            return;
+        }
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -969,6 +984,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onStop() {
         super.onStop();
         started = false;
+        if (wallpaperDownload != null) { wallpaperDownload.cancel(true); wallpaperDownload = null; }
         // singleTask Home intents may pause/resume without hiding the video.
         if (videoWallpaper != null) videoWallpaper.pausePlayback();
         unregisterReceiver(timeReceiver);

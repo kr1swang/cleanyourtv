@@ -6,9 +6,10 @@ plugins {
 def bundledThemeAssets = layout.buildDirectory.dir('generated/bundledThemeAssets')
 def bundleTheme = tasks.register('bundleTheme', Sync) {
     from(rootProject.file('../themes/custom-version')) {
-        include 'config.json', 'wallpaper.png'
+        include 'config.json'
         into 'default-theme'
     }
+    from(rootProject.file('../themes/custom-version/wallpaper-catalog.properties'))
     into bundledThemeAssets
 }
 

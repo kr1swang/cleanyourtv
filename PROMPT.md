@@ -169,61 +169,32 @@ Launcher
   wallpaper unless I have requested video; for video, follow the deployment rules below.
 
 Custom deployment profiles
-- Use one APK with a device-specific external config and selected media files. These are deployment
-  profiles, not separate Gradle build flavors. Offer `4k`, `full-hd`, or `static` when I have not already
-  chosen. Reuse my stated preference instead of asking again. For a device that moves between displays,
-  offer both video renditions as an optional automatic-selection profile.
-
-  | Profile | Files to download and deploy | External `video_wallpaper` value |
-  | --- | --- | --- |
-  | `4k` | `wallpaper_3840x2160.mov` | `["wallpaper_3840x2160.mov"]` |
-  | `full-hd` | `wallpaper_1920x1080.mov` | `["wallpaper_1920x1080.mov"]` |
-  | `static` | No video download or transfer; use bundled `wallpaper.png` | `[]` |
-  | Both, for changing displays | Both MOV files | `["wallpaper_3840x2160.mov", "wallpaper_1920x1080.mov"]` |
-
-- Inspect the device model, Android version, RAM, free storage, active physical display mode and
-  supported output modes, for example with `dumpsys display`. Distinguish the panel's native resolution,
-  HDMI output and Android's UI render size. A 1080p UI does not prove that a 4K TV can only display
-  1080p video. Do not infer permanent 1080p use from a Chromecast temporarily attached to a monitor.
-  For a fixed TV with known output and an existing request for video, recommend the matching profile
-  without asking for the resolution again. Explain any capability problem before changing that choice.
-- Both current MOV assets are HEVC 10-bit at 60 fps. Check the target's decoder support for the actual
-  codec, profile, dimensions and frame rate, then test playback on the device. Resolution alone is not
-  a compatibility check, and a codec listing alone is not proof of smooth hardware decoding. The current
-  player selects by filename dimensions and output mode; it does not check decoder capabilities.
-  If decoding fails, it returns to the static poster, not another rendition. If playback is unsupported
-  or sluggish, report the result and recommend Full HD or static as appropriate; do not silently reduce
-  resolution or frame rate. Full HD uses the same codec/profile and may also be unsupported.
-- Preserve the original 4K file and 60 fps. Use the separately prepared 1080p/60fps rendition; do not
-  transcode on the TV. Check the selected files' actual dimensions, frame rate and colour metadata.
-  Download with `python3 tools/fetch-wallpapers.py --size 4k`, `--size 1080p` for `full-hd`, or `--size both`.
-  Do not invoke the downloader for `static`. The tool verifies the pinned Release URLs, sizes and SHA-256
-  checksums in `themes/custom-version/wallpapers.json` and reuses valid local copies. Videos are ignored
-  by Git and are not Git LFS objects.
-- Back up the device's external config and on-TV choices before applying a profile. Merge only the
-  selected `video_wallpaper` value into the existing JSON; retain unrelated keys, including unknown
-  keys, columns, Dock order and app mappings. Keep the static wallpaper enabled and verify it is the
-  intended image; an existing on-TV wallpaper choice can override the theme. Do not use a whole-theme
-  reset to change one setting. `tools/theme.sh` replaces external config, clears wallpaper collections
-  and resets on-TV choices through a revision marker; use it only for an intended full theme deployment
-  after preserving the existing settings and media.
-- Use a single filename in the array for a fixed profile. Merely copying the 1080p file is insufficient
-  if an old 4K file remains listed and present. For `static`, explicitly set `video_wallpaper: []` even
-  if videos remain on disk. Leave unselected files intact unless I request cleanup.
-  For the optional two-file profile, suffixes `_WIDTHxHEIGHT.ext` must match actual dimensions. The player
-  selects the smallest available rendition covering the physical output, or the largest if none covers
-  it or the mode is unknown. Missing or empty files are skipped. A single string is also supported.
-- The APK bundles `config.json` and full-resolution `wallpaper.png`; videos stay external. Push selected
-  videos to `/sdcard/Android/data/<installed-package>/files/` using a temporary filename, verify the
-  checksum, then rename. Reuse matching files and check storage for staging copies. `tools/theme.sh`
-  does not transfer videos and hardcodes `com.gathin.tvhome`; check the actual installed package before
-  using tools, especially with an alternate application ID. Some firmware blocks ADB writes to
-  `Android/data`; the current ThemeProvider accepts config/images but not MOV. If no supported transfer
-  route works, report the blocker and offer static instead of claiming video deployment succeeded.
-- Record the selected profile in the device's deployment notes. Clearing app storage removes the
-  external profile and movies; the APK restores its bundled six-column config and static poster.
-  Reapply the saved profile and selected media to restore the device's configuration. The per-device
-  profile does not change the defaults embedded in the shared APK.
+- The preferred route is Launcher settings → Background downloads. Offer six profiles: static 1080p,
+  static 4K, 1080p/30fps, 1080p/60fps, 4K/30fps and 4K/60fps. Reuse a supplied preference.
+  Detect the physical output resolution when suggesting a profile; do not silently lower resolution or FPS.
+- This fork has INTERNET permission solely for background assets. Its APK bundles config.json and the
+  pinned wallpaper-catalog.properties, not images or movies. The catalog specifies release URLs, sizes
+  and SHA-256 hashes. Do not follow "latest" or replace published assets in place.
+- A clean install first tries a static preview matching the output. A failed attempt keeps a plain
+  background; later foreground visits can retry after a two-minute cooldown. Existing external images
+  and explicit local/None choices take priority. UI selection downloads only the selected profile and
+  its matching preview. Downloads run off the UI thread and apply only after all assets are verified.
+- Downloaded media stays in app-private persistent storage across normal APK upgrades. Leaving the
+  background picker cancels its download. Interrupted temporary files are removed before the next job.
+  Clear unused downloads preserves the active image/video pair. Clearing app data removes downloads
+  and selections, but retains the APK's six-column and Dock defaults; the default preview needs network again.
+- Preserve Cast, voice search, update packages, the Home/app-key service and existing device settings.
+  A background selection must not replace external config or alter unrelated keys.
+- For offline/manual deployment, use tools/fetch-wallpapers.py --profile static-1080p, static-4k,
+  1080p-30, 1080p-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
+  Legacy --size 1080p/4k/both remains supported and keeps the old 60fps video filenames.
+  Push the chosen image as wallpaper.png; merge only video_wallpaper into the device's config.
+  Use an empty list for static, or the one selected movie's filename for a fixed video profile.
+  An existing downloaded on-TV choice overrides the theme: choose Follow theme when intentionally
+  returning to a manual deployment. Back up all other on-TV choices before resetting them.
+- Verify file checksums, available storage, Home launch, the selected decoder dimensions/FPS, returning
+  from apps, repeated Home, and phone Cast when a physical device is available. Without hardware, report
+  build and automated test results separately; do not claim actual FPS, memory savings or Cast compatibility.
 
 Other-device compatibility
 - Keep a stable signing key for future updates and record the package ID and certificate fingerprint.
