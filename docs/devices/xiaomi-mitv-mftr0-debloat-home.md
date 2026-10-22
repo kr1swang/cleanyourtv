@@ -25,8 +25,8 @@ resolves to the trampoline and lands on the installed third-party launcher
 (`com.oversea.aslauncher`, Emotn UI), across reboots — the set boots straight into
 it. `cmd package set-home-activity` on an ordinary app is equally cosmetic here
 (reports `Success`, changes nothing). So on CN Xiaomi sets the pattern so far:
-OS2/Android 11 and OS3/Android 14 both honor the package-name allowlist; the one
-negative report remains MiTV-MFFU0 (OS3.0.115). As on ASTRP0-style lists: install
+OS2/Android 11 and OS3/Android 14 both honor the package-name allowlist, MiTV-MFFU0
+(OS3.0.115) included. As on ASTRP0-style lists: install
 the trampoline first, disable PatchWall second; `pm enable com.mitv.tvhome` plus a
 reboot undoes it.
 

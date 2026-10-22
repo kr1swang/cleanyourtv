@@ -37,7 +37,7 @@ $A shell mkdir -p "$DIR"
 $A push ../examples/tcl-43c645/config.json "$DIR/config.json" >/dev/null
 $A shell "printf '%s' $(date +%s) > $DIR/theme_revision"
 
-START=$($A shell am start -W -n com.gathin.tvhome/.MainActivity | tr -d '\r')
+START=$($A shell am start -W -a android.intent.action.MAIN -c android.intent.category.HOME -n com.gathin.tvhome/.MainActivity | tr -d '\r')
 echo "$START" | grep -q 'Status: ok' || { echo "launcher did not start, Home left as it was" >&2; exit 1; }
 
 $A shell pm grant com.gathin.tvhome android.permission.ACCESS_FINE_LOCATION

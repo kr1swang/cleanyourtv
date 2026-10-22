@@ -17,13 +17,30 @@ export MSYS_NO_PATHCONV=1
 [ -x "$PY" ] || { echo "run: python3 -m venv tools/venv && tools/venv/bin/pip install -r tools/requirements.txt"; exit 1; }
 # Lists come from contributors, and the package name is pasted into a shell command on the TV.
 # Refuse the whole list unless every entry is a bare package name (#165).
+# A list read from a directory that is not there dies in the `cd` above; one whose file is not
+# readable only made awk complain, so say it in the script's own words, next to the empty-list
+# message below rather than as a stray awk line.
+[ -r "$LIST" ] || { echo "cannot read the list: $LIST" >&2; exit 1; }
 # Normalise first: Notepad on Windows saves a BOM and CRLF, and without this the first "# TV" line
 # arrives as a package name and every entry keeps a trailing \r (#208).
+# `|| true`: an empty result is not a failure of this pipeline. Under pipefail the grep exits 1 when
+# the list holds no package line at all, and `set -e` then ended the run with no output and status 1,
+# so a list whose entries are all commented out (what CONTRIBUTING asks for while one is untested)
+# read exactly like a run that died halfway.
 PKGS=$(LC_ALL=C awk 'NR==1{sub(/^\357\273\277/,"")} {sub(/\r$/,""); print}' "$LIST" \
-  | grep -vE '^\s*(#|$)' | sed -E 's/\s+#.*$//' | awk '{print $1}')
+  | grep -vE '^\s*(#|$)' | sed -E 's/\s+#.*$//' | awk '{print $1}' || true)
 BAD=$(printf '%s\n' "$PKGS" | grep -vE '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$' || true)
 if [ -n "$BAD" ]; then
   { echo "refusing $LIST: not a package name:"; printf '%s\n' "$BAD" | sed 's/^/  /'; } >&2
+  exit 1
+fi
+# Nothing to do, and nothing to lose by saying so before the TV is asked anything: no record is
+# written and no query is sent, so this cannot be mistaken for a list that ran. It is the first
+# refusal after the shape check because it is the one a contributor is most likely to hit: a list
+# whose entries are all commented out is what CONTRIBUTING asks for while an entry is untested.
+if [ -z "$PKGS" ]; then
+  echo "refusing $LIST: no package names in it (every line is a comment or blank), so nothing was" >&2
+  echo "sent to the TV and no recovery record was written." >&2
   exit 1
 fi
 # Core Android packages: with one of these disabled, Android itself can stop booting. An original Mi TV

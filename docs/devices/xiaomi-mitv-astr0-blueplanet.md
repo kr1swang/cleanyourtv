@@ -27,7 +27,7 @@ plus `logcat -d | grep -iE 'screensaver'` for the cache paths. Then
 The classic MiTV ad packages `com.mitv.screensaver` and `com.xiaomi.mitv.advertise` do
 not exist on this firmware; boot ad is already off here (`boot_ad=0`).
 
-## Home: the allowlist still works on this HyperOS 3 build (unlike MiTV-MFFU0)
+## Home: the allowlist still works on this HyperOS 3 build
 
 - Ordinary (non-system) apps' HOME activities are dropped from resolution, same as
   documented for MiTV-MFFU0: with PatchWall disabled, an installed third-party launcher
@@ -45,9 +45,11 @@ not exist on this firmware; boot ad is already off here (`boot_ad=0`).
 - Procedure: install the allowlist-identity home first, press Home once to confirm it
   answers, only then `pm disable-user --user 0 com.mitv.tvhome`. Recovery is
   `pm enable com.mitv.tvhome` plus a reboot. Keep PatchWall enabled if you skip this.
-- MiTV-MFFU0 (OS3.0.115) reported that no sideloaded launcher could own Home on
-  HyperOS 3; on ASTR0 (OS3.0.106) the allowlisted package name does pass. Same
-  generation, different outcome — test instead of assuming.
+- MiTV-MFFU0 (OS3.0.115) first reported that no sideloaded launcher could own Home on
+  HyperOS 3, but that was the standard package name. Its launcher built as
+  `com.thunderstone.idun.dev`, an allowlisted name there, has been its Home since 2026-10-20, also
+  after a full reboot (`examples/xiaomi-mitv-mffu0/debloat.txt`), so both HyperOS 3 builds honor the allowlist.
+  The allowlist itself can differ between sets: check the package name on yours.
 
 ## Screensaver replacement is not possible on this set (no root)
 

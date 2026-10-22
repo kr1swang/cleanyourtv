@@ -13,7 +13,7 @@
 # Firmware updates come through Play Services (gms SystemUpdatePanoActivity); there is no TCL OTA package.
 
 # TCL telemetry and analytics
-com.tcl.ttvs                           # TCL BI/awareness/identifier services
+com.tcl.ttvs                           # TCL BI/awareness/identifier services; see the README on TvSettings without it
 com.tcl.logkit                         # log capture and upload
 com.tcl.interactive                    # TCL TIAS background service
 com.google.android.feedback

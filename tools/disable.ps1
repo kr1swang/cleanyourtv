@@ -23,6 +23,12 @@ $bad = @($pkgs | Where-Object { $_ -notmatch '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0
 if ($bad.Count -gt 0) {
     throw "refusing $List, not a package name: $($bad -join ', ')"
 }
+# Nothing to do: a list whose entries are all commented out is what CONTRIBUTING asks for while one
+# is untested. Say it here, before a query goes to the TV, rather than letting recovery.py stop the run
+# after them with a message about the record.
+if (-not $pkgs -or $pkgs.Count -eq 0) {
+    throw "refusing ${List}: no package names in it (every line is a comment or blank), so nothing was sent to the TV and no recovery record was written."
+}
 # Core Android packages, the same block as disable.sh: with one of these disabled Android itself can stop
 # booting (#884, an original Mi TV Stick). No switch overrides it. Keep both patterns in step with
 # disable.sh and recovery.py (tests/test_core_packages.py).

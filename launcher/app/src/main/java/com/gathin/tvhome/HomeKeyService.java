@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -107,6 +108,12 @@ public class HomeKeyService extends AccessibilityService {
             for (ResolveInfo ri : getPackageManager().queryIntentActivities(home, PackageManager.MATCH_DISABLED_COMPONENTS)) {
                 stockHome.add(ri.activityInfo.name);
             }
+        }
+        // home_key_service.xml subscribes to no events, so the redirect asks for window changes only when it is on.
+        AccessibilityServiceInfo info = getServiceInfo();
+        if (info != null && !stockHome.isEmpty()) {
+            info.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+            setServiceInfo(info);
         }
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
