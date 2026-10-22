@@ -758,9 +758,15 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                         banner.animate().scaleX(focused ? 1.035f : 1f).scaleY(focused ? 1.035f : 1f)
                                 .setDuration(280).start();
                     }
-                    name.animate().alpha(focused ? 1f : restNameAlpha)
-                            .translationY(focused ? density * 4f : -density * 6f)
-                            .setDuration(220).start();
+                    if (name.getVisibility() == View.VISIBLE) {
+                        name.animate().alpha(focused ? 1f : restNameAlpha)
+                                .translationY(focused ? density * 4f : -density * 6f)
+                                .setDuration(220).start();
+                    } else {
+                        // Reordering can reveal a dock name; keep its final state without an invisible animation.
+                        name.setAlpha(focused ? 1f : restNameAlpha);
+                        name.setTranslationY(focused ? density * 4f : -density * 6f);
+                    }
                 }
                 int pos = getBindingAdapterPosition();
                 if (focused && listener != null && pos != RecyclerView.NO_POSITION) {
