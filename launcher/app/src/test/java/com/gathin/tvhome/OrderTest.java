@@ -67,6 +67,13 @@ public class OrderTest {
     }
 
     @Test
+    public void resettingOrderRestoresThemeDockAndDefaultRanks() {
+        Order reset = Order.decode(Order.encode(new Order(Order.dockKey(DOCK), Collections.emptyList())));
+        assertTrue(Order.ranks(reset, DOCK).isEmpty());
+        assertEquals(-1, Order.docked(reset, DOCK));
+    }
+
+    @Test
     public void rejectsWhatIsNotAnOrder() {
         assertNull(Order.decode(null));
         assertNull(Order.decode(""));

@@ -11,5 +11,6 @@
   "wallpaper_true_color": true,
   "ambient_glow": false,
   "dock_opacity": 30,
-  "dock_even_padding": true
+  "dock_even_padding": true,
+  "tile_menu": true
 }

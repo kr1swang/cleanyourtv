@@ -1159,7 +1159,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * Reorder mode (top-bar button). While it is on, every key comes here first:
      * - nothing carried: arrows move focus as usual; OK on a tile picks it up instead of opening the app;
      *   Back ends the mode and saves the order.
-     * - a tile carried: arrows move it; Back (or OK) puts it down and the mode stays on for the next one.
+     * - a tile carried: arrows move it; Back (or OK) saves its position and ends the mode.
      * Other keys (volume, Home) pass through; leaving the launcher ends the mode and saves.
      */
     @Override
@@ -1193,7 +1193,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 default:
                     if (ok || back) {
-                        if (!down) drop();
+                        if (!down) endReorder();
                         return true;
                     }
                     return super.dispatchKeyEvent(event);
@@ -1228,7 +1228,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (!beginReorder()) return;
         focusTile(Math.max(0, Math.min(lastFocused, adapter.movableCount() - 1)));
-        Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
     }
 
     /** The start shared by reorder and edit-dock mode. False when there is nothing to move. */
@@ -1418,7 +1417,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int from = adapter.positionOf(movingKey);
         int n = adapter.movableCount();
         if (from < 0 || from >= n) {
-            drop();
+            endReorder();
             return;
         }
         int to;
@@ -2922,43 +2921,61 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (key == null || pkg == null || pkg.equals(getPackageName())) return;
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        PopupWindow popup = glassPopup(panel, (int) (200 * density));
-        if (dockRow && position < adapter.movableCount()) {
-            boolean inDock = position < COLUMNS;
-            addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
-                    () -> startDockEditFor(key, inDock));
-        }
+        PopupWindow popup = glassPopup(panel, ViewGroup.LayoutParams.WRAP_CONTENT);
+        addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(new Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))));
         if (position < adapter.movableCount()) addSettingsMenuRow(rows, popup, R.string.tile_move, () -> {
             if (!beginReorder()) return;
             int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
-            if (at < 0) return;
+            if (at < 0) {
+                endReorder();
+                return;
+            }
             focusTile(at);
             pickUp(at);
-            Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
+        });
+        addSettingsMenuRow(rows, popup, R.string.tile_reset_order, () -> {
+            // An empty order restores both the theme's dock and the default grid sorting.
+            Order defaults = new Order(Order.dockKey(dockApps), Collections.emptyList());
+            if (!Order.save(Order.file(this), defaults)) {
+                Toast.makeText(this, R.string.reorder_not_saved, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            adapter.setSavedOrder(Order.ranks(defaults, dockApps), Order.docked(defaults, dockApps));
+            reloadApps(false);
         });
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
         });
-        addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(new Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))));
+        // These rows have no icons or status: size to the text with just the row's own padding.
+        for (int i = 0; i < rows.getChildCount(); i++) {
+            TextView title = rows.getChildAt(i).findViewById(R.id.title);
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) title.getLayoutParams();
+            params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            params.weight = 0;
+            params.setMarginStart(0);
+            params.setMarginEnd(0);
+            title.setLayoutParams(params);
+        }
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+        int cardWidth = Math.round(card.getWidth() * card.getScaleX());
+        int width = Math.min(root.getWidth(), Math.max(cardWidth, panel.getMeasuredWidth()));
+        popup.setWidth(width);
         // Dock tiles sit near the bottom of the screen: open the menu above the tile when it would not fit below.
         int[] at = new int[2];
         card.getLocationInWindow(at);
         int gap = (int) (10 * density), height = panel.getMeasuredHeight();
-        if (at[1] + card.getHeight() + gap + height <= root.getHeight()) {
-            dropIn(popup, panel, card, Gravity.START);
-        } else {
-            panel.setAlpha(0f);
-            panel.setPivotY(height);
-            panel.setScaleY(0.92f);
-            panel.setTranslationY(8 * density);
-            popup.showAtLocation(root, Gravity.NO_GRAVITY, at[0], Math.max(0, at[1] - gap - height));
-            panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(220)
-                    .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
-        }
+        int below = at[1] + Math.round(card.getHeight() * card.getScaleY()) + gap;
+        boolean above = below + height > root.getHeight();
+        int left = Math.max(0, Math.min(root.getWidth() - width, at[0] + (cardWidth - width) / 2));
+        panel.setAlpha(0f);
+        panel.setPivotY(above ? height : 0);
+        panel.setScaleY(0.92f);
+        panel.setTranslationY((above ? 8 : -8) * density);
+        popup.showAtLocation(root, Gravity.NO_GRAVITY, left, above ? Math.max(0, at[1] - gap - height) : below);
+        panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(reducedMotion ? Motion.REDUCED_MS : 220)
+                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         rows.getChildAt(0).requestFocus();
     }
 
