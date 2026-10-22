@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +38,22 @@ final class WallpaperRotation {
     static File find(List<File> images, String name) {
         for (File image : images) if (image.getName().equals(name)) return image;
         return null;
+    }
+
+    /** The on-TV choice (Launcher settings, Wallpaper) that turns the wallpaper off. */
+    static final String CHOICE_NONE = "none";
+
+    /**
+     * What an on-TV wallpaper choice puts on Home in place of the theme's rotation: null when the theme decides
+     * (no choice, or a picture that is no longer there), an empty list for {@link #CHOICE_NONE}, or the one picture
+     * chosen from the theme's collection or its single {@code single} wallpaper.
+     */
+    static List<File> chosen(List<File> collection, File single, String choice) {
+        if (choice == null) return null;
+        if (CHOICE_NONE.equals(choice)) return Collections.emptyList();
+        File picked = find(collection, choice);
+        if (picked == null && single != null && choice.equals(single.getName())) picked = single;
+        return picked == null ? null : Collections.singletonList(picked);
     }
 
     static File pick(List<File> images, String previous, Random random) {

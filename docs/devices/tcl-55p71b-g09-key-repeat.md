@@ -78,6 +78,30 @@ home, and the [G09 example list](../../examples/tcl-g09-google-tv/debloat.txt) d
 after the cleanup only a helper can answer them. That is where the trade comes from: on this firmware
 the buttons and the volume ramp cannot both be had, because both need the same filter capability.
 
+## The same trade on a Xiaomi MediaTek set
+
+A second owner reported it on [#944](https://github.com/Gathin23/cleanyourtv/issues/944): Xiaomi
+MiTV-MOSR4 (`irobot`, MediaTek), Google TV / Android 11 (SDK 30), firmware `RTM5.220609.003.1265`.
+Holding volume up with `InputKeyService` and `HomeKeyService` bound moves it one step, and
+`InputKeyService` alone is still one step; `dumpsys accessibility` lists the bound service with
+`capabilities=8`. Same symptom, same capability, second vendor and second Android version.
+
+Two things differ from the bisect above, and both are worth keeping. The empty-list control was not run:
+on this set clearing the list unhooks the buttons the helpers were installed for - with launcherx
+disabled, its Input, Settings, YouTube and Netflix buttons reach only
+`com.xiaomi.android.tvsetup.partnercustomizer/.GlobalKeyReceiver`, which starts launcherx activities and
+crashes (the [MOSR4 note](xiaomi-mitv-mosr4.md) has that part, and its install line passes both helpers).
+So "the ramp returns with no service bound" is still measured on the G09 alone. And the build string in
+the issue is not the one that note carries (`RTM5.220609.003/1585`, written on another unit of the same
+model), so treat the two as separate units until both fingerprints are read: the model, the firmware
+family and the behaviour are what they agree on.
+
+That is still enough to unhook the mechanism from "this firmware": the volume keys take the early
+question from the window policy on Android 11 and 12, on two vendors, whenever a bound service holds
+`CAPABILITY_CAN_FILTER_KEY_EVENTS`. The trade and the choices below are the same on both sets. The
+reporter's own suggestion - a helper that synthesizes the repeat with `adjustSuggestedStreamVolume` while
+a volume key is held - is launcher code, and an off-by-default switch at best; it is not in this note.
+
 ## Choices
 
 - **Keep the repeat and skip the helpers.** Do not pass `INPUT_KEY_SERVICE=1` or `HOME_KEY_SERVICE=1`

@@ -11,6 +11,7 @@ Run from the repository root: python3 -m unittest discover -s tests -v
 import contextlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import sqlite3
@@ -58,7 +59,9 @@ def fake_trace(cold=False, frames=(), draws=(), missed=1, gpu=()):
     for i, dur in enumerate(frames):
         jank = "App Deadline Missed" if i < missed else "Buffer Stuffing"
         db.execute("insert into actual_frame_timeline_slice values (?, ?, 2, ?)", ((1060 + 20 * i) * MS, dur * MS, jank))
-    return lambda sql: [dict(r) for r in db.execute(sql)]
+    q = lambda sql: [dict(r) for r in db.execute(sql)]
+    q.close = db.close
+    return q
 
 
 class StartMetricsTest(unittest.TestCase):
@@ -80,6 +83,21 @@ class StartMetricsTest(unittest.TestCase):
         m = report.start_metrics(fake_trace(draws=[(1500, 8), (2600, 8)]), PKG)
         self.assertEqual(m["frames"], 2)
 
+    def test_without_frame_timeline_keeps_start_metrics_but_not_missed_deadlines(self):
+        for other_app_frames in (False, True):
+            with self.subTest(other_app_frames=other_app_frames):
+                q = fake_trace(draws=[(1100, 8)])
+                if other_app_frames:
+                    q("insert into actual_frame_timeline_slice values (1060000000, 16000000, 3, 'None')")
+                m = report.start_metrics(q, PKG)
+                self.assertEqual(m["first frame"], 65)
+                self.assertEqual(m["frames"], 2)
+                self.assertNotIn("missed", m)
+
+    def test_frame_timeline_can_measure_zero_missed_deadlines(self):
+        m = report.start_metrics(fake_trace(frames=[16, 16], missed=0), PKG)
+        self.assertEqual(m["missed"], 0)
+
     def test_newest_launcher_process_is_used(self):
         self.assertEqual(report.threads(fake_trace(), PKG), (2, 1, 2))
 
@@ -97,6 +115,26 @@ class NavMetricsTest(unittest.TestCase):
         self.assertEqual(m["draw median"], 8)
         self.assertEqual(m["gpu median"], 3)
         self.assertEqual(m["missed"], 2)
+
+    def test_without_frame_timeline_counts_draws_but_not_full_frame_times_or_deadlines(self):
+        for other_app_frames in (False, True):
+            with self.subTest(other_app_frames=other_app_frames):
+                q = fake_trace(draws=[(1100, 6), (1120, 8)], gpu=[(1101, 2), (1121, 4)])
+                if other_app_frames:
+                    q("insert into actual_frame_timeline_slice values (1060000000, 16000000, 3, 'None')")
+                m = report.nav_metrics(q, PKG)
+                self.assertEqual(m["frames"], 3)
+                self.assertEqual(m["draw median"], 8)
+                self.assertEqual(m["gpu median"], 3)
+                self.assertNotIn("frame median", m)
+                self.assertNotIn("frame p90", m)
+                self.assertNotIn("missed", m)
+
+    def test_frame_timeline_can_measure_zero_missed_deadlines(self):
+        m = report.nav_metrics(fake_trace(frames=[16, 16], missed=0), PKG)
+        self.assertEqual(m["frames"], 2)
+        self.assertEqual(m["frame median"], 16)
+        self.assertEqual(m["missed"], 0)
 
 
 class ReportTest(unittest.TestCase):
@@ -121,6 +159,16 @@ class ReportTest(unittest.TestCase):
         text = report.report(self.RUNS, None, False, nav=False)
         self.assertNotIn("bindApplication", text)
 
+    def test_unavailable_missed_deadlines_are_distinct_from_measured_zero(self):
+        for nav in (False, True):
+            with self.subTest(nav=nav):
+                measure = report.nav_metrics if nav else report.start_metrics
+                runs = [("without-timeline", measure(fake_trace(), PKG)),
+                        ("with-timeline", measure(fake_trace(frames=[16], missed=0), PKG))]
+                text = report.report(runs, None, True, nav=nav)
+                missed = next(row for row in text.splitlines() if row.startswith("| frames that missed"))
+                self.assertEqual(missed.split(" | ")[1:], ["–", "0", "0", "0–0 |"])
+
 
 class FilesTest(unittest.TestCase):
     def test_folders_expand_in_run_order(self):
@@ -142,6 +190,78 @@ class FilesTest(unittest.TestCase):
                 contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as caught:
             report.opener()
         self.assertIn("requirements-perf.txt", str(caught.exception.code))
+
+
+class MainTest(unittest.TestCase):
+    def open_trace(self, path):
+        q = fake_trace(frames=[16])
+        return q, q.close
+
+    def trace(self, folder, name, scenario=None):
+        path = Path(folder, name + ".pftrace")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"")
+        if scenario is not None:
+            path.with_suffix(".json").write_text(json.dumps({"scenario": scenario}))
+        return str(path)
+
+    def assert_rejected_before_opening_engine(self, argv):
+        with mock.patch.object(report, "opener", return_value=self.open_trace) as opener, \
+                contextlib.redirect_stdout(io.StringIO()):
+            with self.assertRaisesRegex(SystemExit, "nav.*start.*separately"):
+                report.main(argv)
+            opener.assert_not_called()
+
+    def test_mixed_folder_is_rejected_in_either_input_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mixed, starts = Path(tmp, "mixed"), Path(tmp, "starts")
+            self.trace(mixed, "cold-1")
+            self.trace(mixed, "nav-1")
+            self.trace(starts, "home-1")
+            for argv in ([str(mixed)], [str(starts), "--vs", str(mixed)]):
+                with self.subTest(argv=argv):
+                    self.assert_rejected_before_opening_engine(argv)
+
+    def test_vs_rejects_nav_against_start_in_both_directions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            nav = self.trace(tmp, "nav-1")
+            start = self.trace(tmp, "cold-1")
+            for before, after in ((nav, start), (start, nav)):
+                with self.subTest(before=before):
+                    self.assert_rejected_before_opening_engine([before, "--vs", after])
+
+    def test_sidecar_can_make_matching_file_names_incompatible(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cold = self.trace(tmp, "cold-1")
+            renamed_nav = self.trace(tmp, "cold-2", scenario="nav")
+            self.assert_rejected_before_opening_engine([cold, renamed_nav])
+
+    def test_sidecar_can_make_different_file_names_a_valid_nav_set(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            nav = self.trace(tmp, "nav-1")
+            renamed_nav = self.trace(tmp, "cold-2", scenario="nav")
+            with mock.patch.object(report, "opener", return_value=self.open_trace), \
+                    contextlib.redirect_stdout(io.StringIO()) as out:
+                report.main([nav, renamed_nav, "--markdown"])
+            self.assertIn("| frame time, median (ms) |", out.getvalue())
+            self.assertNotIn("| frames drawn in 1.5 s |", out.getvalue())
+
+    def test_matching_nav_and_start_sets_still_report_and_compare(self):
+        for scenarios, label in ((["nav"], "| frame time, median (ms) |"),
+                                 (["cold", "home", "coldsys", "custom"], "| frames drawn in 1.5 s |")):
+            with self.subTest(scenarios=scenarios), tempfile.TemporaryDirectory() as tmp:
+                before, after = Path(tmp, "before"), Path(tmp, "after")
+                for folder in (before, after):
+                    for name in scenarios:
+                        self.trace(folder, name + "-1")
+                open_trace = mock.Mock(side_effect=self.open_trace)
+                with mock.patch.object(report, "opener", return_value=open_trace) as opener, \
+                        contextlib.redirect_stdout(io.StringIO()) as out:
+                    report.main([str(before), "--vs", str(after), "--markdown"])
+                opener.assert_called_once_with(None)
+                self.assertEqual(open_trace.call_count, 2 * len(scenarios))
+                self.assertIn(label, out.getvalue())
+                self.assertIn("Change in the median:", out.getvalue())
 
 
 @unittest.skipUnless(os.environ.get("CLEANYOURTV_TRACE") and importlib.util.find_spec("perfetto"),

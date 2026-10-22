@@ -10,11 +10,13 @@ The TV is faked, so these run without one and without adb_shell.
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
+import base64
 import contextlib
 import importlib.util
 import io
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -28,6 +30,29 @@ spec.loader.exec_module(trace)
 LAUNCHER = "com.gathin.tvhome/.MainActivity"
 OTHER = "com.android.tv.settings/.MainSettings"
 
+# Encoded by protoc 3.13.0 from the original text config, using the official
+# android-9.0.0_r1 schema (protos/perfetto/config/trace_config.proto). These independent
+# fixtures cover every buffer/data source, plus multi-byte lengths and duration varints.
+CONFIG_9000 = base64.b64decode(
+    "CgYIgIAEIAEKBQiAICABEocCCoQCCgxsaW51eC5mdHJhY2UQAKIG8AEKEnNjaGVkL3NjaGVkX3N3aXRj"
+    "aAoSc2NoZWQvc2NoZWRfd2FrZXVwChJzY2hlZC9zY2hlZF93YWtpbmcKE3Bvd2VyL2NwdV9mcmVxdWVu"
+    "Y3kKDnBvd2VyL2NwdV9pZGxlChF0YXNrL3Rhc2tfbmV3dGFzawoQdGFzay90YXNrX3JlbmFtZQoYc2No"
+    "ZWQvc2NoZWRfcHJvY2Vzc19leGl0EgJhbRICd20SBHZpZXcSA2dmeBIFaW5wdXQSBmRhbHZpaxIDcmVzEg1i"
+    "aW5kZXJfZHJpdmVyGhFjb20uZ2F0aGluLnR2aG9tZVCAgAFY+gESHgocChNsaW51eC5wcm9jZXNzX3N0"
+    "YXRzEAG6BgIQARIoCiYKJGFuZHJvaWQuc3VyZmFjZWZsaW5nZXIuZnJhbWV0aW1lbGluZRIZChcKFWFu"
+    "ZHJvaWQucGFja2FnZXNfbGlzdBioRg==")
+LONG_PACKAGE = "com.example." + "launcher" * 20
+CONFIG_LONG = base64.b64decode(
+    "CgYIgIAEIAEKBQiAICABEqMDCqADCgxsaW51eC5mdHJhY2UQAKIGjAMKEnNjaGVkL3NjaGVkX3N3aXRj"
+    "aAoSc2NoZWQvc2NoZWRfd2FrZXVwChJzY2hlZC9zY2hlZF93YWtpbmcKE3Bvd2VyL2NwdV9mcmVxdWVu"
+    "Y3kKDnBvd2VyL2NwdV9pZGxlChF0YXNrL3Rhc2tfbmV3dGFzawoQdGFzay90YXNrX3JlbmFtZQoYc2No"
+    "ZWQvc2NoZWRfcHJvY2Vzc19leGl0EgJhbRICd20SBHZpZXcSA2dmeBIFaW5wdXQSBmRhbHZpaxIDcmVzEg1i"
+    "aW5kZXJfZHJpdmVyGqwBY29tLmV4YW1wbGUubGF1bmNoZXJsYXVuY2hlcmxhdW5jaGVybGF1bmNoZXJs"
+    "YXVuY2hlcmxhdW5jaGVybGF1bmNoZXJsYXVuY2hlcmxhdW5jaGVybGF1bmNoZXJsYXVuY2hlcmxhdW5j"
+    "aGVybGF1bmNoZXJsYXVuY2hlcmxhdW5jaGVybGF1bmNoZXJsYXVuY2hlcmxhdW5jaGVybGF1bmNoZXJs"
+    "YXVuY2hlclCAgAFY+gESHgocChNsaW51eC5wcm9jZXNzX3N0YXRzEAG6BgIQARIoCiYKJGFuZHJvaWQu"
+    "c3VyZmFjZWZsaW5nZXIuZnJhbWV0aW1lbGluZRIZChcKFWFuZHJvaWQucGFja2FnZXNfbGlzdBiAgAE=")
+
 
 class FakeDevice:
     """Answers the shell commands trace.py sends and records them; pull writes a stand-in trace."""
@@ -38,7 +63,7 @@ class FakeDevice:
 
     def shell(self, command, read_timeout_s=None):
         self.calls.append(("shell", command))
-        if "perfetto --txt" in command:
+        if "| perfetto " in command:
             return self.perfetto_says
         return ""
 
@@ -75,10 +100,10 @@ class ScenarioTest(unittest.TestCase):
                          (trace.START_MARGIN_S + 4 + trace.END_MARGIN_S) * 1000)
 
     def test_config_traces_the_launcher_for_that_long(self):
-        config = trace.perfetto_config("com.gathin.tvhome", 9000)
-        self.assertIn('atrace_apps: "com.gathin.tvhome"', config)
-        self.assertIn("duration_ms: 9000", config)
-        self.assertIn("android.surfaceflinger.frametimeline", config)
+        self.assertEqual(trace.perfetto_config("com.gathin.tvhome", 9000), CONFIG_9000)
+
+    def test_config_supports_a_different_package_and_multibyte_lengths(self):
+        self.assertEqual(trace.perfetto_config(LONG_PACKAGE, 16384), CONFIG_LONG)
 
 
 class ArgumentTest(unittest.TestCase):
@@ -112,12 +137,37 @@ class RecordTest(unittest.TestCase):
         device = FakeDevice()
         size, _ = self.record(device, ["input keyevent KEYCODE_HOME"], ["input keyevent KEYCODE_DPAD_RIGHT"])
         commands = [c[1] for c in device.calls]
-        start = next(i for i, c in enumerate(commands) if "perfetto --txt" in c)
+        start = next(i for i, c in enumerate(commands) if "| perfetto " in c)
         self.assertEqual(commands[0], "input keyevent KEYCODE_HOME")
         self.assertGreater(commands.index("input keyevent KEYCODE_DPAD_RIGHT"), start)
         self.assertEqual(device.calls[-2][0], "pull")
         self.assertEqual(commands[-1], f"rm -f {trace.REMOTE}")
         self.assertEqual(size, len(b"trace"))
+
+    def test_android_9_accepts_the_binary_config_without_txt(self):
+        class AndroidPDevice(FakeDevice):
+            started = False
+
+            def shell(self, command, read_timeout_s=None):
+                self.calls.append(("shell", command))
+                if "| perfetto " in command:
+                    if "--txt" in command:
+                        return "perfetto: unrecognized option '--txt'\nUsage: perfetto\n"
+                    match = re.search(r"echo (\S+) \| base64 -d \| perfetto -c - -o ", command)
+                    if match and base64.b64decode(match.group(1), validate=True) == CONFIG_9000:
+                        self.started = True
+                    # Android P's --background does not print a PID.
+                return ""
+
+            def pull(self, *args, **kwargs):
+                if not self.started:
+                    raise RuntimeError("Android P never started recording")
+                super().pull(*args, **kwargs)
+
+        device = AndroidPDevice()
+        size, _ = self.record(device, [], ["sleep 4"])
+        self.assertEqual(size, len(b"trace"))
+        self.assertIn(("shell", "pidof perfetto >/dev/null && echo running"), device.calls)
 
     def test_sleeps_wait_here_not_on_the_tv(self):
         device = FakeDevice()

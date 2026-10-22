@@ -3,6 +3,9 @@
 # ro.product.model=2020/2021 UHD Android TV  ro.product.device=PH0M_EA_T32  ro.product.name=PH0M_LT_T32
 # Fingerprint: Philips/PH0M_LT_T32/PH0M_EA_T32:11/RTM2.210929.098/200321:user/release-keys
 # persist.odm.tpv.region=lt (Latin America). About 1.38 GB RAM, ro.config.low_ram=true.
+# Second unit: Europe (Denmark), retail model unknown. Same ro.product.device=PH0M_EA_T32 and build
+# RTM2.210929.098, but ro.product.name=PH0M_EA_T32, incremental 200715, persist.odm.tpv.region=eu.
+# Same RAM. On Wi-Fi. See "Second unit" below.
 #
 # Same board and firmware as docs/devices/philips-65pug7406-78.md, which is launcher notes only;
 # this is the first debloat list for PH0M_EA_T32. It is NOT the TP Vision org.droidtv platform of
@@ -44,6 +47,26 @@
 #    thrashing"); this is a 1.38 GB low_ram set, so every background service removed helps.
 # 4. Do not open com.mediatek.tv.factory or mediatek.factorymenu.ui to see what they do (see
 #    PROMPT.md); they are left alone.
+# 5. Boot to Live TV (EU unit). After a full reboot, Home comes up and about 0.2 s later system_server
+#    sends android.mtk.intent.action.ACTION_REQUEST_TOP_RESUME to
+#    com.mediatek.wwtv.tvcenter/.nav.TurnkeyUiMainActivity, so the TV lands in Live TV. Neither
+#    settings list has a switch for it. A normal power-on from standby lands on Home.
+#
+# SECOND UNIT (EU, Denmark, Danish UI). Tested the same day only, not over several days. The whole
+# list below applied cleanly, except that the owner kept com.google.android.apps.mediashell
+# (Chromecast, on a home network), Netflix and Spotify. org.droidtv.android.fitness is not installed
+# on this unit. The owner also disabled com.google.android.katniss (Assistant). Home handed over to
+# launcher/ on the first try. A reboot re-enabled nothing. Real-remote checks after the reboot: Home,
+# Source/Input and Settings keys, the Netflix key, Back, and held volume all work. Netflix, Spotify,
+# YouTube and live channels play (Live TV or TiviMate; the owner did not report them separately).
+# Private DNS (dns.adguard-dns.com) works.
+# HDMI picture is still untested: nothing is plugged in. org.droidtv.eum and nettvregistration
+# stayed enabled on this unit too, so the Source key result does not cover disabling them.
+# The owner also disabled com.mediatek.wwtv.mediaplayer (MMP, the USB photo/video player).
+# tools/disable.sh skips it because it requests TV_INPUT_HARDWARE, but on this unit it serves no
+# TvInputService: `pm query-services --components -a android.media.tv.TvInputService` lists only
+# com.mediatek.tvinput (tuner, HDMI, composite, ...) and com.mediatek.tv.service. It is left
+# commented out below until someone checks an HDMI picture with it disabled.
 
 # TPV / Philips telemetry
 org.droidtv.candeebug                       # "DAC" analytics uploader, as on the 50PUS8517
@@ -59,6 +82,7 @@ org.droidtv.android.fitness                 # Fitness Buddy
 fusion.android.tv.demo                      # retail demo
 com.mstar.android.tv.disclaimercustomization # vendor disclaimer screen
 com.mediatek.android.leanbacklauncher.partnercustomizer # partner rows for the stock launcher
+# com.mediatek.wwtv.mediaplayer               # MMP USB media player; disabled on the EU unit, HDMI unchecked (see Second unit); needs TVINPUT_ALLOW=1
 
 # Google recommendations, ambient mode and casting
 com.google.android.tvrecommendations        # recommendation rows and notification panel
@@ -78,7 +102,7 @@ com.spotify.tv.android
 # Stock launcher, replaced by launcher/ -- build-and-install disables it after Home has moved
 # com.google.android.tvlauncher
 
-# Kept on purpose: com.google.android.katniss (Assistant/voice), com.android.tv.ota (updates),
+# Kept on purpose: com.google.android.katniss (Assistant/voice; the EU unit's owner disabled it), com.android.tv.ota (updates),
 # com.mediatek.wwtv.tvcenter, com.mediatek.tvinput, com.mediatek.tv.service, org.droidtv,
 # org.droidtv.icp, com.google.android.tv.remote.service, com.google.android.tungsten.setupwraith
 # (not a HOME claimant on this build; Home went to the new launcher without touching it),

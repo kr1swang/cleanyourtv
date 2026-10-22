@@ -247,6 +247,13 @@ def main():
     # read_list validates every name before anything is sent to the TV: its entries end up in the
     # TV's shell, and a list edited by hand since then is not to be trusted.
     listed = recovery.read_list(list_path)
+    core = recovery.core_packages(listed)
+    if core:
+        # The same refusal as disable.sh: --fix would disable these again (#884).
+        sys.stderr.write(f"refusing {list_path}: it disables core Android packages, and without them "
+                         f"the TV may not boot again (#884): {', '.join(core)}. Take these lines out "
+                         f"of the list and run it again. Nothing was checked or changed.\n")
+        return 2
 
     try:
         dev = recovery.connect()

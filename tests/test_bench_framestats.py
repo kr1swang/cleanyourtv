@@ -64,7 +64,7 @@ class FrameStatsTest(unittest.TestCase):
                     "dumpsys gfxinfo com.gathin.tvhome reset": "Uptime: 1000 Realtime: 1000\n",
                     "input keyevent 22": "",
                     "dumpsys gfxinfo com.gathin.tvhome framestats": stats,
-                    "logcat -d -b main":
+                    "logcat -d -b main -t 2000 | grep injectKeyEvent":
                         "injectKeyEvent action=ACTION_DOWN KEYCODE_DPAD_RIGHT eventTime=1000",
                 }
                 tv = mock.Mock()

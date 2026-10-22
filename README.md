@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="227 TV models · 64 brands · 25 languages · 470 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 69 more: 85 articles from 23 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
+  <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="232 TV models · 66 brands · 25 languages · 471 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 69 more: 85 articles from 23 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher." width="800"></a>
 </p>
 
 **The viral tweet:** [x.com/gathint/status/2111379569030939102](https://x.com/gathint/status/2111379569030939102)
@@ -102,13 +102,13 @@ Anything running **Android TV** or **Google TV**.
 
 Tested lists from contributors, one folder per model in [`examples/`](examples/):
 
-**TCL** 55 · **Xiaomi** 27 · **Sony** 26 · **Philips** 12 · **Hisense** 9 · **Skyworth** 9 · **Amazon Fire TV** 7 ·
+**TCL** 55 · **Sony** 28 · **Xiaomi** 27 · **Philips** 12 · **Hisense** 9 · **Skyworth** 9 · **Amazon Fire TV** 7 ·
 **Thomson** 4 · **BenQ** 3 · **Google** 3 · **Panasonic** 3 · **CHiQ** 2 · **FFalcon** 2 · **Haier** 2 · **Hitachi** 2 ·
 **Kalley** 2 · **Nokia** 2 · **NVIDIA Shield** 2 · **OnePlus** 2 · **onn** 2 · **Redmi** 2 · **Toshiba** 2 · **Vu** 2 ·
-AiPro2K · AIWA · Artel · Caxium · Cecotec · Challenger · Compac · Dialog · EKO · Freebox · Insignia Fire TV · JVC ·
-Karbonn · Kogan · Motorola · MTC · Noblex · OK. · PEAQ · Polytron · PRISM+ · RCA · Sankey · SANYO · SHARP ·
+AiPro2K · AIWA · Artel · Caxium · Cecotec · Challenger · Compac · Dialog · EKO · Freebox · Grundig · Insignia Fire TV ·
+JVC · Karbonn · Kogan · Motorola · MTC · Noblex · OK. · PEAQ · Polytron · PRISM+ · RCA · Sankey · SANYO · SHARP ·
 Super General · Tele System · Tornado · Turkcell · Verizon · Vidda · Vision ·
-Anker Nebula, BYINTEK, Epson, Gadnic, JMGO, Portronics, Stellamore, Wanbo and XGIMI projectors
+Anker Nebula, BYINTEK, Epson, Formovie, Gadnic, JMGO, Portronics, Stellamore, Wanbo and XGIMI projectors
 
 <details>
 <summary><strong>The full list</strong></summary>
@@ -145,9 +145,12 @@ Anker Nebula, BYINTEK, Epson, Gadnic, JMGO, Portronics, Stellamore, Wanbo and XG
 | Epson LS800 laser projector (Askey HA90 module, sti6202d101, Amlogic) | Android TV 14 |
 | FFalcon (雷鸟) 鹤6 PRO 65S585C Pro (China, tcl_mt5879_cn, MediaTek MT9653) | Android TV 11 |
 | FFalcon (雷鸟) r34a0, China (V8-A920T01-LF1V147, Amlogic T920), 1 GB | Android 5.1.1 |
+| Formovie Laser 4K projector (hanlla, MediaTek T31 / m7632, 1.8 GB) | Android TV 14 |
 | Freebox Player POP (Free, fbx8am, Amlogic), IPTV/DVB-T box | Android TV 10 |
+| Formovie / Fengmi projector MiProjM05 (eva, Amlogic) | Android TV 9 |
 | Gadnic PROJ100W projector (built-in Google TV stick: SkyworthDigital YYT, Amlogic HP46B), Argentina | Google TV 14 |
 | Google TV Streamer 4K (kirkwood, GZRNL) | Google TV 14 |
+| Grundig Android UHD TV (Arçelik, GxGrNM, kunyang, MediaTek), Turkey | Android TV 14 |
 | Haier Android TV DVB2K (broadway, HaierATVT56DVB) | Android TV 11 |
 | Haier H32S80EFX (MatrixTV CE, HRT56EU, deto, MediaTek), Thailand | Google TV 14 |
 | Hisense E5Q Pro (VIDAA_TV, MediaTek MT9653), China | Android TV 11 |
@@ -226,7 +229,9 @@ Anker Nebula, BYINTEK, Epson, Gadnic, JMGO, Portronics, Stellamore, Wanbo and XG
 | Sony BRAVIA KD-49X8307C (2015, "BRAVIA 4K 2015", SVP-DTV15, MediaTek), EU firmware | Android TV 7.0 |
 | Sony BRAVIA KD-55X8509C (2015, "BRAVIA 4K 2015", SVP-DTV15, MediaTek), EU firmware | Android TV 7.0 |
 | Sony BRAVIA KD-55X85J (2021, BRAVIA_VH2, MediaTek MT5895), South America | Google TV 12 |
+| Sony BRAVIA KD-55XF8096 (2018, "BRAVIA 4K GB ATV3", BRAVIA_ATV3_4K_EU, MediaTek MT5891), Spain | Android TV 9 |
 | Sony BRAVIA KD-55XE8596 (2017, "BRAVIA 4K GB", BRAVIA_ATV2_EU, MediaTek MT5891), UK | Android TV 9 |
+| Sony BRAVIA KD-55XF7596 (2018, "BRAVIA 4K GB ATV3", BRAVIA_ATV3_4K_EU, MediaTek MT5891), EU | Android TV 9 |
 | Sony BRAVIA KD-65X80J (2021, BRAVIA_VH2, MediaTek), India | Google TV 10 |
 | Sony BRAVIA KD-43X80L (2023, BRAVIA_VH22, MediaTek MT5895), EU | Google TV 12 |
 | Sony BRAVIA KD-65X82L (2023, BRAVIA_VH22, MediaTek), India | Google TV 12 |
@@ -373,11 +378,15 @@ tools/theme.sh themes/aurora                                 # push a theme; --r
 | [`tools/disable.sh`](tools/disable.sh), [`restore.sh`](tools/restore.sh) | Apply or undo a debloat list, the undo from the state recorded before the change. |
 | [`tools/recovery.py`](tools/recovery.py) | Writes the record `disable.sh` needs to undo itself, and prints the restore batch. |
 | [`tools/check.py`](tools/check.py) | Compares the TV with the list that was applied, for what a firmware update undid; `--fix` puts it back. |
+| [`tools/adb-closed.py`](tools/adb-closed.py) | Checks that the TV's network ADB port is closed once debugging is off: exits 0 when nothing answers, 1 while it is still open, 2 when the check itself could not run. No `nc` needed. |
 | [`tools/privacy.py`](tools/privacy.py) | Audits the TV for voice, ACR and telemetry candidates and prints the evidence for each; `--write` turns the findings into a list `disable.sh` and `restore.sh` already understand. |
 | [`tools/theme.sh`](tools/theme.sh) | Push a folder from [`themes/`](themes/) to the launcher and restart Home. |
+| [`tools/fetch-wallpapers.py`](tools/fetch-wallpapers.py) | Download and verify an Apple-style background profile and its preview for manual deployment. [Guide](themes/apple-style/README.md). |
+| [`tools/bench.py`](tools/bench.py) | Measures the launcher that answers HOME: key latency, how far the focus moved, janky frames, cold start, return to Home, and the idle CPU and PSS it costs. Changes nothing on the TV and writes the raw per-key numbers to JSON; no extra install. |
 | [`tools/trace.py`](tools/trace.py), [`trace_report.py`](tools/trace_report.py) | Records Perfetto traces of the launcher (return to Home, cold start, D-pad) and reports where its time goes, per run and before against after. Optional: needs [`requirements-perf.txt`](tools/requirements-perf.txt). [Guide](tools/trace.md). |
+| [`tools/flamechart.py`](tools/flamechart.py) | Draws a before/after flame chart from those traces, for a pull request: one lane per thread on a shared time scale, the work a change targets in magenta with its total. Optional, like the trace tools. [Guide](tools/flamechart.md). |
 | [`tools/race_calendar.py`](tools/race_calendar.py) | Writes this season's F1 calendar into a theme for race-weekend mode, from the free Jolpica API. |
-| [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | Builds a shrunk release (about 470 KB), installs it, switches Home, and rolls back if Home does not land on it. |
+| [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | Builds a shrunk release (about 471 KB), installs it, switches Home, and rolls back if Home does not land on it. |
 
 The scripts never leave the TV without a Home app: they only disable a stock launcher they recognise,
 and skip the Home app in a list until another launcher answers HOME. Details below.
@@ -448,7 +457,7 @@ apps), which is why the report names that loss per package instead of calling it
 
 ## The launcher
 
-A small native home screen for Android TV: **about 470 KB**, plain Java, built for TVs with 1 GB of RAM.
+A small native home screen for Android TV: **about 471 KB**, plain Java, built for TVs with 1 GB of RAM.
 Upstream has no blur, video, network permission or background services. This fork adds optional
 video wallpapers, verified background downloads and a remote-key service; see the
 [Apple-style theme guide](themes/apple-style/README.md) for its behavior and six background profiles.
@@ -758,7 +767,7 @@ Contributing through a coding agent? [AGENTS.md](AGENTS.md) gives it the same ru
 |---|---|
 | **Your TV's debloat list** | The most useful one: the next person with that model skips the discovery. |
 | **Launcher and prompt** | Launcher improvements and sharper prompt wording are welcome too. |
-| **Built something on top?** | A launcher, a port, a theme: add it to [SHOWCASE.md](SHOWCASE.md), where fifty-three projects already live, sorted into home screens, forks, add-ons, tools and other platforms, with an index by TV brand. |
+| **Built something on top?** | A launcher, a port, a theme: add it to [SHOWCASE.md](SHOWCASE.md), where sixty-three projects already live, sorted into home screens, forks, add-ons, tools and other platforms, with an index by TV brand. |
 
 The people whose work is in this repo:
 

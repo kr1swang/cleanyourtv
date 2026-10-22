@@ -72,6 +72,15 @@
 #     pm grant io.github.sds100.keymapper android.permission.WRITE_SECURE_SETTINGS
 #     settings put secure enabled_accessibility_services io.github.sds100.keymapper/io.github.sds100.keymapper.system.accessibility.MyAccessibilityService
 #   Map trigger "Button 3" (short press) to action "Launch app > YouTube".
+# - The other two app buttons go silent with launcherx too. The remote's layout file
+#   (/system/usr/keylayout/Vendor_18d1_Product_9451.kl, named by `dumpsys input`) maps them by HID usage:
+#     usage 0x000c0077 -> BUTTON_3 (190)  YouTube
+#     usage 0x000c0078 -> BUTTON_4 (191)  Netflix
+#     usage 0x000c0186 -> MACRO_1  (313)  Star (launcherx opens the Google Home panel with it)
+#   so app_keys "191:com.netflix.ninja" and "313:<package>" bring them back, with InputKeyService on.
+#   `getevent -lt` prints the Star button as KEY_SPREADSHEET and the other two as KEY_UNKNOWN, which is
+#   why the layout file is the place to read them. All three checked with the real remote on
+#   UTTK.260317.003.
 # - com.google.android.tvrecommendations and com.google.android.apps.education.cast2class ship
 #   disabled at the factory; `pm disable-user` on them fails with "Shell cannot change component
 #   state". Don't add them to a restore list either.

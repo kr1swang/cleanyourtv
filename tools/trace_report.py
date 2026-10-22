@@ -60,14 +60,25 @@ def slices(utid, where, columns="s.ts, s.dur"):
 
 def start_metrics(q, package):
     """The numbers for a launcher start: cold, coldsys, home or a custom trace that brings Home up."""
+    return _start(q, package)[0]
+
+
+def start_window(q, package):
+    """(start, first frame drawn) in ns for a launcher start; either is None when the trace lacks it."""
+    return _start(q, package)[1:]
+
+
+def _start(q, package):
+    """(metrics, start ns, first frame drawn ns) for a launcher start."""
     upid, main, render = threads(q, package)
     if main is None:
-        return {}
+        return {}, None, None
     bind = q(slices(main, "s.name = 'bindApplication'"))
     start = q(slices(main, "s.name like 'performStart%'"))
     anchor = bind[0]["ts"] if bind else (start[0]["ts"] if start else None)
     if anchor is None:
-        return {}
+        return {}, None, None
+    end = None
     resume = q(slices(main, f"s.name = 'activityResume' and s.ts >= {anchor}"))
     out = {}
     if bind:
@@ -95,10 +106,11 @@ def start_metrics(q, package):
         out["frames"] = one(q, f"select count(*) from slice s join thread_track tt on s.track_id = tt.id "
                                f"where tt.utid = {render} and s.name like 'DrawFrame%' "
                                f"and s.ts >= {anchor} and s.ts < {anchor + WINDOW_NS}", 0)
-    out["missed"] = one(q, f"select count(*) from actual_frame_timeline_slice where upid = {upid} "
-                           f"and jank_type like '%App Deadline Missed%' "
-                           f"and ts >= {anchor} and ts < {anchor + WINDOW_NS}", 0)
-    return out
+    if one(q, f"select 1 from actual_frame_timeline_slice where upid = {upid} limit 1"):
+        out["missed"] = one(q, f"select count(*) from actual_frame_timeline_slice where upid = {upid} "
+                               f"and jank_type like '%App Deadline Missed%' "
+                               f"and ts >= {anchor} and ts < {anchor + WINDOW_NS}", 0)
+    return out, anchor, end
 
 
 def nav_metrics(q, package):
@@ -107,12 +119,15 @@ def nav_metrics(q, package):
     if upid is None:
         return {}
     frames = sorted(r["dur"] / MS for r in q(f"select dur from actual_frame_timeline_slice where upid = {upid}"))
-    out = {"frames": len(frames)}
+    out = {}
     if frames:
+        out["frames"] = len(frames)
         out["frame median"] = statistics.median(frames)
         out["frame p90"] = frames[min(len(frames) - 1, int(0.9 * len(frames)))]
     if render is not None:
         draws = [r["dur"] / MS for r in q(slices(render, "s.name like 'DrawFrame%'", "s.dur"))]
+        if not frames:
+            out["frames"] = len(draws)
         if draws:
             out["draw median"] = statistics.median(draws)
         waits = [r["dur"] / MS for r in q(f"select s.dur from slice s join thread_track tt on s.track_id = tt.id "
@@ -120,8 +135,9 @@ def nav_metrics(q, package):
                                            f"and s.name like 'waiting for GPU completion%'")]
         if waits:
             out["gpu median"] = statistics.median(waits)
-    out["missed"] = one(q, f"select count(*) from actual_frame_timeline_slice where upid = {upid} "
-                           f"and jank_type like '%App Deadline Missed%'", 0)
+    if frames:
+        out["missed"] = one(q, f"select count(*) from actual_frame_timeline_slice where upid = {upid} "
+                               f"and jank_type like '%App Deadline Missed%'", 0)
     return out
 
 
@@ -271,9 +287,14 @@ def main(argv=None):
         missing = [p for p in paths if not os.path.isfile(p)]
         if missing:
             sys.exit("not a file: " + ", ".join(missing))
+    families = [{"nav" if scenario_of(p) == "nav" else "start" for p in paths} for paths in sets]
+    if any(len(family) > 1 for family in families):
+        sys.exit("cannot mix nav and start traces in one set; report them separately")
+    if len(families) > 1 and families[0] != families[1]:
+        sys.exit("cannot compare nav and start traces with --vs; report them separately")
     open_trace = opener(args.engine)
     measured = [measure(paths, args.package, open_trace) for paths in sets]
-    nav = all(scenario_of(p) == "nav" for p in sets[0])
+    nav = families[0] == {"nav"}
     print(report(measured[0], measured[1] if len(measured) > 1 else None, args.markdown, nav))
 
 

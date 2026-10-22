@@ -188,6 +188,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private int docked, emptySlots;
     /** Never shown as tiles (res/values/config.xml, hidden_apps). */
     private final Set<String> hidden;
+    /** Apps pre-seeded into the App library's "added" set (config.xml library_apps); empty by default. */
+    private final Set<String> libraryPreload;
     private final boolean animations;
     private final boolean advancedEffects;
     private final boolean showLibrary;
@@ -213,6 +215,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.favourites = cfg.dockApps;
         this.fillDock = cfg.fillDock;
         this.hidden = new HashSet<>(cfg.hiddenApps);
+        this.libraryPreload = new HashSet<>(cfg.libraryApps);
         this.animations = cfg.animations;
         this.advancedEffects = cfg.animations && cfg.advancedEffects;
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
@@ -245,7 +248,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         Set<String> tvPackages = new HashSet<>();
         for (ResolveInfo ri : found) if (ri.activityInfo != null) tvPackages.add(ri.activityInfo.packageName);
         leanbackPackages = tvPackages;
-        Set<String> added = LibraryApps.load(ctx);
+        // Copy before merging: LibraryApps.load() may return an immutable empty set (#419).
+        Set<String> added = new HashSet<>(LibraryApps.load(ctx));
+        added.addAll(libraryPreload);
         Set<String> removed = LibraryApps.loadRemoved(ctx);
         if (!added.isEmpty()) {
             Set<String> seen = new HashSet<>(tvPackages);

@@ -198,12 +198,18 @@
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->
     <bool name="dock_glass">false</bool>
+    <!-- The dock band's padding equals the gap between its tiles on all four sides (as far as the grid's edges leave room),
+         so its corners are concentric with the tiles' and the spacing reads even. false (the default) keeps the fixed
+         14dp above and below, up to 22dp at the sides and 26dp corners. Can also be set with "dock_even_padding": true in a theme's config.json. -->
+    <bool name="dock_even_padding">false</bool>
     <!-- A reorder button (two arrows) in the top bar. Off by default: reordering is also in the Settings
          button's long-press menu, so it needs no extra button on screen. -->
     <bool name="reorder_button">false</bool>
     <!-- Wi-Fi and Settings as round icon-only buttons (the network name moves to the talkback description);
          Inputs keeps its label. -->
     <bool name="icon_only_buttons">false</bool>
+    <!-- The Inputs pill as a round icon button too (the label moves to the talkback description). -->
+    <bool name="icon_only_inputs">false</bool>
     <!-- The app library as a round button in the top bar, beside Settings (app_library must be on too). -->
     <bool name="library_button">false</bool>
     <!-- With icon_only_buttons: keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis.
@@ -253,6 +259,14 @@
 
     <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
     <bool name="app_library">false</bool>
+
+    <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
+         config.json). They show on Home as if the owner had added them in the App library UI, and stay
+         removable there (a removed one stays hidden). For sets where almost no app declares a leanback entry
+         (many China-market TVs, e.g. Coocaa 8R145), a fresh Home with app_library on would otherwise be
+         nearly empty. Empty (off) by default, so existing setups change nothing. -->
+    <string-array name="library_apps" translatable="false">
+    </string-array>
 
     <!-- Module cards: an app that declares a card (docs/specs/card.md) can stand in for its tile with its own
          label, caption and glow colour, once you answer Show on the prompt. false: never look for cards or ask. -->

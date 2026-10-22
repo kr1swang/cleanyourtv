@@ -23,6 +23,15 @@ $bad = @($pkgs | Where-Object { $_ -notmatch '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0
 if ($bad.Count -gt 0) {
     throw "refusing $List, not a package name: $($bad -join ', ')"
 }
+# Core Android packages, the same block as disable.sh: with one of these disabled Android itself can stop
+# booting (#884, an original Mi TV Stick). No switch overrides it. Keep both patterns in step with
+# disable.sh and recovery.py (tests/test_core_packages.py).
+$coreRe = '^(android|com\.android\.systemui|com\.android\.shell|com\.android\.phone|com\.android\.settings|com\.android\.tv\.settings|com\.(google\.)?android\.(permissioncontroller|packageinstaller|ext\.services|ext\.shared|modulemetadata)|com\.google\.android\.overlay\.modules.*|com\.android\.providers\..*)$'
+$coreOk = '^com\.android\.providers\.(calendar|contacts|userdictionary|blockednumber)$'
+$core = @($pkgs | Where-Object { $_ -cmatch $coreRe -and $_ -cnotmatch $coreOk })
+if ($core.Count -gt 0) {
+    throw "refusing ${List}: it disables core Android packages, and without them the TV may not boot again (#884): $($core -join ', '). Take these lines out of the list (or comment them) and run it again. Nothing was changed on the TV."
+}
 # A Wi-Fi network saved during the first-run wizard belongs to setupwraith, and Android deletes it when
 # setupwraith is disabled. Skip it while it owns the saved network; `$env:FORCE_SETUPWRAITH=1` overrides.
 $setup = 'com.google.android.tungsten.setupwraith'

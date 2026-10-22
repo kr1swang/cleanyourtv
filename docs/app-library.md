@@ -23,6 +23,9 @@ subtle tint. Updating an existing app does not mark it as new.
   Hebrew mirrors the horizontal direction, so Left from the final app reaches it.
 
 With `tile_menu` on, holding OK on a Home tile offers Remove from Home as well, next to Move and App info.
+The remote's Menu key opens that same menu on the focused tile. With `tile_menu` off,
+Menu keeps its normal behavior. Settings-key mappings take priority; Menu is left alone
+on header buttons, while another popup is open, and during reordering.
 Every checked app can be removed from Home, including the theme’s default apps.
 It stays installed and remains in the library, where one press adds it back.
 There is no hidden-app section and no uninstall action.

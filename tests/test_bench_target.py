@@ -1,4 +1,4 @@
-"""bench.py passes its selected host and port to the tv.py subprocess.
+"""bench.py passes its selected host and port to tools/tv.py's client.
 
 A local tv.py records its environment and returns no Home component, so the CLI stops
 before measuring anything. No TV, network connection or ADB key is needed.
@@ -26,12 +26,21 @@ class BenchTargetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             shutil.copyfile(ROOT / "tools" / "bench.py", folder / "bench.py")
+            # bench.py imports tv.py and calls connect(); this one records the target and answers nothing.
             (folder / "tv.py").write_text(
                 "import json, os\n"
                 "from pathlib import Path\n"
-                "target = {key: os.environ.get(key) for key in "
+                "HOST = PORT = None\n"
+                "class Device:\n"
+                "    def shell(self, command, read_timeout_s=None, decode=True):\n"
+                "        return b''\n"
+                "    def close(self):\n"
+                "        pass\n"
+                "def connect():\n"
+                "    target = {key: os.environ.get(key) for key in "
                 "('TV_HOST', 'TV_PORT', 'BENCH_TARGET_TEST')}\n"
-                "Path(__file__).with_name('target.json').write_text(json.dumps(target))\n",
+                "    Path(__file__).with_name('target.json').write_text(json.dumps(target))\n"
+                "    return Device()\n",
                 encoding="utf-8")
             result = subprocess.run([sys.executable, str(folder / "bench.py"), *args],
                                     cwd=tmp, env=env, capture_output=True, text=True, timeout=10)

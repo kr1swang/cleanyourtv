@@ -1,7 +1,7 @@
 # RCA AI PONT SA (Changhong, device redwood, product ISDB92RC)
 # Android 14, firmware UKNV.260504.001, security patch 2026-05-01
 # Also sold as the realme 100 cm (40-inch) Full HD Smart Android TV: same redwood board, firmware UKNV.260514.001
-# (pranabsarma18, PR #38).
+# (pranabsarma18, PR #38; confirmed by Sahil Shefeek).
 # 1 GB RAM (MemTotal about 935 MB). Stock launcher: com.google.android.tvlauncher
 # Live TV / tuner: com.mediatek.wwtv.tvcenter (leave it; the Inputs menu uses it)
 #
@@ -14,16 +14,20 @@
 # that starts at boot and talks to the factory. The physical remote and HDMI path
 # go through com.mediatek.tv.service and com.mediatek.tvinput, not through this list.
 #
-# Tested the same day on one set: Home opens, Netflix / Flow / Max / YouTube still
+# KEEP com.google.android.leanbacklauncher.partnercustomizer: provides the tvlauncher.widget
+# content provider. Disabling it causes com.mediatek.tv.service to crash-loop after the next
+# reboot ("Failed to find provider tvlauncher.widget") and remote hotkeys stop working.
+#
+# Tested on both sets: Home opens, Netflix / Flow / Max / YouTube still
 # resolve, Chromecast (mediashell) comes back after re-enable, HDMI stays in Inputs.
-# Not a multi-day soak.
 #
 # Known quirks on this firmware:
-# - USB debugging alone opens network ADB on port 5555. There is no separate
-#   wireless-debugging toggle.
+# - USB debugging alone opens network ADB on port 5555. On realme firmware UKNV.260514.001,
+#   Developer options also offers Wireless debugging with pairing.
 # - After a reboot the TV may take a new DHCP address.
-# - com.homwee.chtvmanager ("TV Manager") is a visible Homwee app. It was removed
-#   on the test set with uninstall --user 0, so it is intentionally not listed here.
+# - com.cltv.fast is automatically re-enabled by the Changhong vendor firmware at every boot.
+# - com.homwee.chtvmanager ("TV Manager") can be safely disabled with pm disable-user --user 0
+#   without uninstallation.
 # - The default IME is already Gboard. No Baidu-keyboard quirk.
 # - Disabling com.google.android.tvrecommendations does not clear the stock
 #   launcher's poster rows. Those go away only after launcher/ replaces Home.
@@ -35,6 +39,7 @@ com.homwee.aipont                       # brand portal
 com.homwee.store
 com.homwee.help                         # e-manual
 com.homwee.chinstallapk                 # silent installer
+com.homwee.chtvmanager                  # TV Manager cleaner / memory optimizer
 com.homwee.upgrade                      # re-enable to check for RCA firmware
 com.homwee.dmt.upgrade                  # second factory updater
 android.autoinstalls.config.homwee

@@ -71,6 +71,13 @@ Debloat
   keyboard, Google Play Store and Play Services. Manufacturer package names often don't say what a
   package does: check its activities and services with `dumpsys package` first, and ask me if it's
   still unclear.
+- Never disable Android's own core packages, or the TV may not boot again: the permission controller,
+  the package installer, ext services and ext shared, module metadata (each as `com.android.*` or
+  `com.google.android.*`), `com.google.android.overlay.modules*`, `com.android.providers.*` (calendar,
+  contacts, user dictionary and blocked numbers aside), `com.android.systemui`, `com.android.shell`,
+  `com.android.phone`, `com.android.settings`, `com.android.tv.settings` and `android`. An original Mi TV
+  Stick never booted again after a list took the first six
+  ([#884](https://github.com/Gathin23/cleanyourtv/issues/884)); `tools/disable.sh` refuses such a list.
 - Ask which optional streaming apps or sharing services I want to remove if I have not already said.
   Keep Cast, voice search and system updates enabled by default; an unanswered checklist is not
   permission to disable them. Check dependencies before disabling any related package.

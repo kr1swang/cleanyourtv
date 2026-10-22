@@ -5,7 +5,7 @@ and rebuild the card with tools/readme_card.py. Fredoka is the variable TTF from
 import sys
 from PIL import Image, ImageDraw, ImageFont
 FONT, OUT = sys.argv[1], sys.argv[2]
-STATS = [("227", "TV MODELS"), ("64", "BRANDS"), ("25", "LANGUAGES"), ("470 KB", "LAUNCHER")]
+STATS = [("232", "TV MODELS"), ("66", "BRANDS"), ("25", "LANGUAGES"), ("471 KB", "LAUNCHER")]
 W, H = 1600, 240
 img = Image.new("RGB", (W, H), "#15181e"); d = ImageDraw.Draw(img)
 def f(size, wt):

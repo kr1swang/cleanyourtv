@@ -55,6 +55,14 @@ the real remote (no `GLOBAL_BUTTON` lines, no crashes), using an equivalent key 
 stand-alone launcher; not yet with `com.gathin.tvhome`. The Netflix button went to this receiver,
 not to overseaservice. The mic button keeps working.
 
+Both helpers cost the remote's live key repeat on this set: holding volume up or down moves one step
+per press, with `InputKeyService` alone as well as with both, and `dumpsys accessibility` shows the bound
+service at `capabilities=8` (`CAPABILITY_CAN_FILTER_KEY_EVENTS`) - [#944](https://github.com/Gathin23/cleanyourtv/issues/944).
+The bisect, the ways back to either behaviour and the way the repeat is lost are in
+[the G09 note](tcl-55p71b-g09-key-repeat.md). The empty-list control was not tried here: clearing the
+list unhooks the buttons this section installs the helpers for, so "the ramp returns with nothing bound"
+is that note's measurement, not this set's.
+
 ## Other
 
 - `com.mitv.tvhome.mitvplus` is re-enabled at every boot.

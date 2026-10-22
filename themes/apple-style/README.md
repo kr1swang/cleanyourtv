@@ -36,6 +36,9 @@ background. Upload assets before shipping the catalog. For another publisher, up
 allowed repository in `WallpaperCatalog.Asset` as well. The app now requests INTERNET permission for
 these downloads; upstream descriptions of a network-free launcher do not apply to this fork.
 
+The Dock uses upstream `dock_even_padding` for its spacing and concentric corners instead of custom
+fixed band dimensions. Its six columns, app order and 30% opacity stay in this theme.
+
 ## Manual or offline deployment
 
 ```bash

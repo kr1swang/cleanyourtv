@@ -12,6 +12,7 @@ the core bigger or change how it behaves. You install an add-on only if you want
 | [Frigate Glance](frigate-glance/) | Frigate camera pop-ups over whatever is playing | NickLD | TCL 65Q650G | overlay, accessibility (card keys), network, foreground service |
 | [Capacity Stats](capacity-stats/) | Available/total and used/total RAM; available/total storage | [lionlev21](https://github.com/lionlev21) | Android TV 12 (model private) | None |
 | [Weather](weather/) | The weather for one city: now, US air quality and the next three days, from Open-Meteo (no key) | [@Sumyabazar1](https://github.com/Sumyabazar1) | Hisense SmartTV 4K FFM (lushan), Google TV 12 | `INTERNET` |
+| [Photo Prints](photo-prints/) | Your own photos as a screensaver: dated prints dealt in on a time-of-day sky, and a card that starts the slideshow | [@shivamsingh262](https://github.com/shivamsingh262) | Sony BRAVIA KD-65X82L (Google TV 12) | None |
 
 A widget, an info tile, a storage or smart-home card: if it can live as its own small app, it can live
 here. See the rules below.
