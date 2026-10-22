@@ -29,6 +29,12 @@
 # - The remote's shortcut buttons (Netflix, YouTube, Prime Video, Xiaomi TV+, Apps) all do nothing once
 #   launcherx is disabled. Prime Video and Xiaomi TV+ are disabled anyway; Netflix, YouTube and Apps were
 #   handled by launcherx, as on the Chromecast with Google TV (see that list for a Key Mapper remap).
+#   The launcher brings them back: the Bluetooth remote ("Xiaomi RC", Vendor_2717_Product_32b9.kl) sends
+#   Netflix as KEY_VIDEOPHONE -> 193 (BUTTON_6), YouTube as KEY_PRESENTATION -> 190 (BUTTON_3) and Prime
+#   Video as KEY_PLAY -> 194 (BUTTON_7). app_keys 193:com.netflix.ninja, 190:<youtube app>,
+#   194:<any app> with INPUT_KEY_SERVICE=1 launcher/build-and-install.sh; checked on 737 with the real
+#   remote (190 sent to SmartTube, 194 to Nuvio). The remote sleeps after a few seconds and drops the
+#   first press that wakes it, so press OK before each button while reading them with getevent -lt.
 #
 # Kept on purpose: Google Assistant (katniss), Chromecast (mediashell), phone remote (tv.remote.service),
 # YouTube Music, Xiaomi USB media apps (mimusic2, mitv.gallery, mediaexplorer, mitv.videoplayer),

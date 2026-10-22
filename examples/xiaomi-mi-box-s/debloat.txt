@@ -25,6 +25,14 @@
 # - Survives a reboot: nothing is re-enabled at boot, the launcher stays Home. Free RAM after boot went from
 #   about 770 MB to 1.15 GB.
 # - A process of the disabled stock launcher can linger until the next reboot; `am force-stop` clears it.
+#
+# Second unit (same PI.3933 build), 2026-10-21. Details: docs/devices/xiaomi-mi-box-s.md
+#   - Every package below was present and disabled cleanly; nothing was re-enabled after a reboot.
+#   - Nothing was disabled beforehand: the "already disabled" apps at the bottom were all enabled there.
+#     Google Play Music (com.google.android.music, closed in 2020) was installed too.
+#   - The saved Wi-Fi belonged to android.uid.system, not setupwraith; setupwraith was not needed.
+#   - The Apps button (scancode 580, ALL_APPS) opens Home with the launcher's HomeKeyService
+#     (build-and-install -HomeKeyService). Home, Back, voice and Netflix work without it.
 
 # Xiaomi + Google telemetry and ad tracking
 com.miui.tv.analytics                  # Mi analytics: reads logs and app usage
@@ -68,6 +76,7 @@ com.google.android.backdrop
 # com.google.android.videos            # Play Movies & TV
 # com.google.android.play.games
 # com.android.camera2
+# com.google.android.music             # Google Play Music, service closed in 2020 (second unit only)
 
 # Stock Google TV launcher, replaced by launcher/
 com.google.android.tvlauncher

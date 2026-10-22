@@ -66,9 +66,10 @@ class DebloatPathsTest(unittest.TestCase):
         # tests exercise. HOME is isolated so a record from a real run cannot answer instead.
         env = {k: v for k, v in os.environ.items() if k != "TV_HOST"}
         env.update(CAPTURE=str(capture), HOME=str(home))
+        # The fake tv.py reads its stdin, so an inherited terminal would leave it waiting.
         result = subprocess.run(
             ["bash", str(script_path), argument], cwd=cwd, env=env,
-            capture_output=True, text=True,
+            capture_output=True, text=True, stdin=subprocess.DEVNULL,
         )
         return result, capture
 

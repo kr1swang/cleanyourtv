@@ -40,8 +40,15 @@ com.xm.webcontent
 android.autoinstalls.config.soc.amlogic
 
 # Personal choice: voice assistant, phone remote, Mi cast/share (the mic button stops working)
-com.google.android.katniss
-com.google.android.tv.remote.service
+# KEPT ON here, measured on firmware V816.0.7.0.UZFAABX on two units: the mic button does NOT come
+# back by re-enabling katniss alone. com.google.android.tv.remote.service, listed below, is the
+# Google TV bridge for the physical remote: with it off, the remote's Bluetooth microphone never
+# reaches the assistant, so the button opens the Assistant and it records silence. Re-enable both
+# (`pm enable com.google.android.katniss`, then `pm enable com.google.android.tv.remote.service`;
+# one package per command) and the mic works.
+# Left commented so check.py does not report drift and re-applying the list does not break it again.
+# com.google.android.katniss
+# com.google.android.tv.remote.service
 com.xiaomi.mitv.smartshare
 com.xiaomi.wfdsinkhelperservice
 com.xiaomi.mi_connect_service

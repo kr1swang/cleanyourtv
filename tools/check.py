@@ -38,6 +38,9 @@ NOT_LAUNCHERS = {"com.google.android.tungsten.setupwraith", "com.android.tv.sett
 # com.android.tv.settings/.system.FallbackHome). disable.sh already refuses to count one as a
 # launcher (#435); --fix must not move Home onto one either, or the next boot lands in the placeholder.
 FALLBACK_HOME_RE = re.compile(r"/\S*FallbackHome$")
+# A factory-test app is not one either: com.duokan.factorytest/.FactoryLauncher answers HOME on a
+# Xiaomi Mi TV 4A, and Home on it is the factory test screen (disable.sh skips these too).
+FACTORY_HOME_RE = re.compile(r"factorytest|factory_test|factorymode", re.I)
 # The first-run wizard's app. Android deletes a Wi-Fi network saved by it the moment it is disabled.
 SETUPWRAITH = "com.google.android.tungsten.setupwraith"
 INPUT_PERMISSION = "android.permission.TV_INPUT_HARDWARE"
@@ -82,7 +85,7 @@ def launcher_to_use(dev, listed, preferred=None):
         return match[0]
     candidates = [c for c in home_activities(dev)
                   if home_of(c) not in listed and home_of(c) not in NOT_LAUNCHERS
-                  and not FALLBACK_HOME_RE.search(c)]
+                  and not FALLBACK_HOME_RE.search(c) and not FACTORY_HOME_RE.search(home_of(c))]
     if not candidates:
         return None
     own = [c for c in candidates if home_of(c) == recovery.CUSTOM_LAUNCHER]

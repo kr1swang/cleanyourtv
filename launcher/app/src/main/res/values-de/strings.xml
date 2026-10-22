@@ -22,7 +22,7 @@
     <!-- Two lines next to the clock: the long German weekday and month names do not fit on one. -->
     <string name="date_format_home">EEEE\nd. MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Speicher %1$d MB frei</string>
+    <string name="stats_memory">Speicher %1$d / %2$d MB</string>
     <string name="stats_storage">Speicherplatz %1$s frei</string>
     <string name="dream_name">Uhr</string>
     <string name="input_key_service_description">Öffnet die Quellenauswahl, wenn die Input-Taste der Fernbedienung gedrückt wird.</string>

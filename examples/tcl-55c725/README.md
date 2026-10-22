@@ -98,6 +98,45 @@ The theme used on this unit (`config.json`, with `themes/aurora/wallpaper.jpg` a
 }
 ```
 
+### Brazilian unit: the RC902V_M2 remote
+
+A second 55C725 on the same firmware (`V8-R51MT05-LF1V620`, fingerprint
+`TCL/G03_4K_GB/BeyondTV4:11/RP1A.200622.001/AR09:user/release-keys`), Brazil, on Wi-Fi, set up on 2026-10-21 with
+the same `debloat.txt` and checked after a reboot. Its Bluetooth remote reports as `TCL_RC902V_M2` and has six app
+buttons: Netflix, Prime Video, **Globoplay**, **Disney+**, YouTube and **TCL**. With `launcherx` disabled none of them
+did anything. Scancodes from `tools/tv.py 'getevent -lt'` (names from `Generic.kl`):
+
+| Button | Scancode | TCL name |
+|---|---|---|
+| Netflix | 242 | `TCL_NETFLIX` (also arrives over IR as 758 on `mtkinp`) |
+| YouTube | 245 | `TCL_YOUTUBE` |
+| Prime Video | 752 | `TCL_PRIMEVIDEO` |
+| Globoplay | 586 | `TCL_GLOBO_PLAY` |
+| Disney+ | 762 | `TCL_DISNEY` |
+| TCL | 227 | `TCL_QUICK_MENU` |
+
+The keycodes Android gives Globoplay and Disney+ are TCL's own and show up in no log here, so they are mapped by
+scancode. A button can open any installed app, not only its own; on this unit Prime and Globoplay went to apps the
+owner uses, and the TCL button to an HDMI port with an `input:` entry (needs the launcher change from
+[#766](https://github.com/Gathin23/cleanyourtv/pull/766)). HDMI 1 to 4 are `…/HW1413744128`, `…/HW1413744384`,
+`…/HW1413744640` and `…/HW1413745664` (`hdmi_port=N` in `dumpsys tv_input`); `…/HW1413743104` is AV. All six
+were confirmed with the real remote.
+
+```json
+"app_keys": ["scan:242:com.netflix.ninja", "scan:245:com.google.android.youtube.tv",
+             "scan:762:com.disney.disneyplus", "scan:752:com.amazon.amazonvideo.livingroom",
+             "scan:586:com.globo.globotv",
+             "scan:227:input:com.tcl.tvinput/.passthroughinput.TvPassThroughService/HW1413744640",
+             "4062:com.netflix.ninja", "4065:com.google.android.youtube.tv",
+             "4001:com.tcl.tv", "4020:com.tcl.tv", "4056:com.tcl.suspension"]
+```
+
+**On Wi-Fi, check who owns the saved networks before setupwraith goes.** Here the network in use had been saved
+during first setup, so `tools/disable.sh` skipped setupwraith. Forgetting it and joining again in Settings moved it
+to `com.android.tv.settings`, but an older saved network out of range still belonged to setupwraith and kept it
+skipped: `cmd wifi list-networks` lists them, and `cmd wifi forget-network <id>` removed that one, after which the
+list disabled setupwraith with Wi-Fi still up.
+
 ## Inputs
 
 Five TV inputs are published: the tuner `com.tcl.tvinput/.TDTVInputService/HW1413742848` and four HDMI

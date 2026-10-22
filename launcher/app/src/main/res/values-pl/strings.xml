@@ -20,7 +20,7 @@
     <string name="cant_open">Nie można otworzyć: %1$s</string>
     <string name="date_format">EEEE  d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Pamięć %1$d MB wolne</string>
+    <string name="stats_memory">Pamięć %1$d / %2$d MB</string>
     <string name="stats_storage">Miejsce %1$s wolne</string>
     <string name="dream_name">Zegar</string>
     <string name="vpn">VPN</string>

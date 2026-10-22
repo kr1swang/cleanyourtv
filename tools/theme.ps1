@@ -60,6 +60,14 @@ if (Test-Path $wallpapers -PathType Container) {
         & $py -I tv.py (Put "wallpapers/$($_.Name)") | Out-Null
     }
 }
+# The collection's names (wallpaper_captions); a theme without them leaves no stale names behind.
+$captions = Join-Path $Theme 'wallpapers\captions.txt'
+if (Test-Path $captions -PathType Leaf) {
+    & $py -I b64push.py $captions (Stage 'wallpapers/captions.txt')
+    & $py -I tv.py (Put 'wallpapers/captions.txt') | Out-Null
+} else {
+    & $py -I tv.py (Drop 'wallpapers/captions.txt') | Out-Null
+}
 & $py -I tv.py "printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision')" | Out-Null
 & $py -I tv.py "$restart; echo applied"
 Write-Host "Theme $(Split-Path $Theme -Leaf) is on the TV. Undo with: tools\theme.ps1 -TvHost $TvHost -Reset"

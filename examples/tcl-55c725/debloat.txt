@@ -49,7 +49,8 @@ tv.wuaki.apptv                         # Rakuten TV
 com.tcl.dashboard                      # stock quick-settings panel; the gear key is remapped, see README.md
 com.google.android.apps.tv.dreamx      # ambient mode; set screensaver_components first, see README.md
 
-# Google TV setup wizard: claims Home once launcherx is disabled. On Ethernet there is no Wi-Fi to lose.
+# Google TV setup wizard: claims Home once launcherx is disabled. On Ethernet there is no Wi-Fi to lose; on Wi-Fi,
+# re-join every network it saved first (README.md, Brazilian unit).
 com.google.android.tungsten.setupwraith
 
 # Optional: kept on this unit by choice

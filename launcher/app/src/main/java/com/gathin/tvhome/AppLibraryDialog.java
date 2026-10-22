@@ -4,13 +4,17 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -35,13 +39,43 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
 /** On-demand installed-app picker. Uses the launcher's glass resources; no backdrop capture or blur. */
 final class AppLibraryDialog {
+    /**
+     * The catalogue, the labels and the icons load here, off the UI thread: each label and icon opens the app's
+     * resources, and on a TCL G09 that froze Home for 60-140 ms (2 to 4 janky frames) every time the library opened.
+     */
+    private static final ExecutorService LOADER = Executors.newSingleThreadExecutor();
+    /** Labels kept between openings (LOADER thread only), until the app is updated. */
+    private static final Map<String, Known> KNOWN = new HashMap<>();
+
+    private static final class Known {
+        final long updated;
+        final String label;
+
+        Known(long updated, String label) {
+            this.updated = updated;
+            this.label = label;
+        }
+    }
+
+    private final Handler main = new Handler(Looper.getMainLooper());
+    /** Icons loaded for this opening, dropped with it. */
+    private final Map<String, Drawable> icons = new HashMap<>();
+    private final Set<String> iconsLoading = new HashSet<>();
+    private final Runnable dismissed;
+    private boolean closed;
+    /** Only the latest load fills the catalogue. */
+    private int loads;
     private final Activity activity;
     private final Predicate<String> onHome;
     private final Runnable changed;
@@ -115,6 +149,7 @@ final class AppLibraryDialog {
         this.reducedMotion = reducedMotion;
         this.onHome = onHome;
         this.changed = changed;
+        this.dismissed = dismissed;
         density = activity.getResources().getDisplayMetrics().density;
         panel = new LinearLayout(activity);
         panel.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
@@ -129,13 +164,30 @@ final class AppLibraryDialog {
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
-        popup.setOnDismissListener(() -> { dismissActions(); stopHighlight(); dismissed.run(); });
+        popup.setOnDismissListener(() -> {
+            closed = true;
+            dismissActions();
+            stopHighlight();
+            icons.clear();
+            dismissed.run();
+        });
     }
 
-    void close() { dismissActions(); popup.dismiss(); }
+    void close() {
+        dismissActions();
+        if (popup.isShowing()) {
+            popup.dismiss();
+        } else if (!closed) {
+            closed = true;   // still loading: it never shows
+            dismissed.run();
+        }
+    }
 
     void show() {
-        refresh();
+        load(this::reveal);
+    }
+
+    private void reveal() {
         popup.showAtLocation(activity.getWindow().getDecorView(), Gravity.CENTER, 0, 0);
         View container = panel.getRootView();
         if (container.getLayoutParams() instanceof WindowManager.LayoutParams) {
@@ -145,7 +197,7 @@ final class AppLibraryDialog {
             activity.getWindowManager().updateViewLayout(container, params);
         }
         panel.setAlpha(0f);
-        panel.animate().alpha(1f).setDuration(180).start();
+        panel.animate().alpha(1f).setDuration(reducedMotion ? Motion.REDUCED_MS : 180).start();
     }
 
     /** Called by the activity's existing package receiver; an uninstall cannot leave a stale action. */
@@ -153,30 +205,68 @@ final class AppLibraryDialog {
     private final java.util.Set<String> tvPackages = new java.util.HashSet<>();
 
     void refresh() {
+        load(null);
+    }
+
+    /** Reads the catalogue on LOADER, then fills it on the UI thread and runs {@code then}. */
+    private void load(Runnable then) {
         dismissActions();
+        int load = ++loads;
         PackageManager pm = activity.getPackageManager();
-        Map<String, ResolveInfo> unique = new LinkedHashMap<>();
-        tvPackages.clear();
-        // Prefer the TV entry when an app declares both categories.
-        for (String category : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
-            for (ResolveInfo info : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0)) {
-                if (info.activityInfo == null || !info.activityInfo.exported) continue;
-                String pkg = info.activityInfo.packageName;
-                if (Intent.CATEGORY_LEANBACK_LAUNCHER.equals(category)) tvPackages.add(pkg);
-                if (!pkg.equals(activity.getPackageName()) && !unique.containsKey(pkg)) unique.put(pkg, info);
+        String self = activity.getPackageName();
+        LOADER.execute(() -> {
+            Map<String, ResolveInfo> unique = new LinkedHashMap<>();
+            Set<String> tv = new HashSet<>();
+            // Prefer the TV entry when an app declares both categories.
+            for (String category : new String[]{Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER}) {
+                for (ResolveInfo info : pm.queryIntentActivities(new Intent(Intent.ACTION_MAIN).addCategory(category), 0)) {
+                    if (info.activityInfo == null || !info.activityInfo.exported) continue;
+                    String pkg = info.activityInfo.packageName;
+                    if (Intent.CATEGORY_LEANBACK_LAUNCHER.equals(category)) tv.add(pkg);
+                    if (!pkg.equals(self) && !unique.containsKey(pkg)) unique.put(pkg, info);
+                }
             }
-        }
-        totalApps = unique.size();
-        apps = new ArrayList<>(unique.values());
-        installTimes.clear();
-        labels.clear();
+            Map<String, String> names = new HashMap<>();
+            Map<String, Long> installed = new HashMap<>();
+            for (Map.Entry<String, ResolveInfo> entry : unique.entrySet()) {
+                String pkg = entry.getKey();
+                long updated = 0;
+                try {
+                    PackageInfo info = pm.getPackageInfo(pkg, 0);
+                    installed.put(pkg, info.firstInstallTime);
+                    updated = info.lastUpdateTime;
+                } catch (PackageManager.NameNotFoundException | RuntimeException unavailable) {
+                    installed.put(pkg, 0L);
+                }
+                Known known = KNOWN.get(pkg);
+                if (known == null || known.updated != updated) {
+                    known = new Known(updated, loadLabel(pm, entry.getValue()));
+                    KNOWN.put(pkg, known);
+                }
+                names.put(pkg, known.label);
+            }
+            KNOWN.keySet().retainAll(unique.keySet());
+            main.post(() -> {
+                if (closed || load != loads) return;
+                tvPackages.clear();
+                tvPackages.addAll(tv);
+                installTimes.clear();
+                installTimes.putAll(installed);
+                labels.clear();
+                labels.putAll(names);
+                fill(new ArrayList<>(unique.values()));
+                if (then != null) then.run();
+            });
+        });
+    }
+
+    private void fill(List<ResolveInfo> catalogue) {
+        totalApps = catalogue.size();
+        apps = catalogue;
         Map<String, Boolean> home = new HashMap<>();
         for (ResolveInfo app : apps) {
             String pkg = app.activityInfo.packageName;
             home.put(pkg, onHome.test(pkg));
-            label(app);
-            try { installTimes.put(pkg, pm.getPackageInfo(pkg, 0).firstInstallTime); }
-            catch (PackageManager.NameNotFoundException | RuntimeException unavailable) { installTimes.put(pkg, 0L); }
         }
         catalogTime = System.currentTimeMillis();
         Collator collator = Collator.getInstance();
@@ -195,11 +285,39 @@ final class AppLibraryDialog {
         String pkg = app.activityInfo.packageName;
         String cached = labels.get(pkg);
         if (cached != null) return cached;
-        String value;
-        try { value = Cards.cleanLabel(String.valueOf(app.loadLabel(activity.getPackageManager())), pkg); }
-        catch (RuntimeException unavailable) { value = pkg; }
+        String value = loadLabel(activity.getPackageManager(), app);
         labels.put(pkg, value);
         return value;
+    }
+
+    private static String loadLabel(PackageManager pm, ResolveInfo app) {
+        String pkg = app.activityInfo.packageName;
+        try { return Cards.cleanLabel(String.valueOf(app.loadLabel(pm)), pkg); }
+        catch (RuntimeException unavailable) { return pkg; }
+    }
+
+    /** The app's icon from this opening's cache, or loaded on LOADER and set once it arrives. */
+    private void bindIcon(ImageView icon, ResolveInfo app) {
+        String pkg = app.activityInfo.packageName;
+        icon.setTag(pkg);
+        Drawable cached = icons.get(pkg);
+        icon.setImageDrawable(cached);
+        if (cached != null || !iconsLoading.add(pkg)) return;
+        PackageManager pm = activity.getPackageManager();
+        LOADER.execute(() -> {
+            Drawable loaded;
+            try { loaded = app.loadIcon(pm); }
+            catch (RuntimeException unavailable) { loaded = null; }
+            Drawable result = loaded;
+            main.post(() -> {
+                iconsLoading.remove(pkg);
+                if (closed) return;
+                Drawable shown = result != null ? result : activity.getDrawable(R.drawable.ic_apps);
+                icons.put(pkg, shown);
+                // The view may show another app by now; a view bound to it later takes it from the cache.
+                if (pkg.equals(icon.getTag())) icon.setImageDrawable(shown);
+            });
+        });
     }
 
     private void heading(String text) {
@@ -267,8 +385,8 @@ final class AppLibraryDialog {
             @Override public float getValue(View view) { return view.getTranslationX() + scrollOffset; }
             @Override public void setValue(View view, float value) { view.setTranslationX(value - scrollOffset); }
         });
-        spring.setSpring(new SpringForce().setStiffness(reducedMotion ? 1400f : 260f)
-                .setDampingRatio(reducedMotion ? 0.95f : 0.58f));
+        if (reducedMotion) Motion.reduce(spring);
+        else spring.setSpring(new SpringForce().setStiffness(260f).setDampingRatio(0.58f));
         list.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
                 scrollOffset += dx;
@@ -399,7 +517,7 @@ final class AppLibraryDialog {
         menuPanel.setScaleY(0.92f);
         menuPanel.setTranslationY(-dp(8));
         menu.showAtLocation(activity.getWindow().getDecorView(), Gravity.TOP | Gravity.START, x, y);
-        menuPanel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(220)
+        menuPanel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(reducedMotion ? Motion.REDUCED_MS : 220)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         rows.getChildAt(0).requestFocus();
     }
@@ -473,9 +591,7 @@ final class AppLibraryDialog {
         @Override public void onBindViewHolder(@NonNull Row holder, int position) {
             ResolveInfo app = apps.get(position);
             String pkg = app.activityInfo.packageName;
-            ImageView icon = holder.itemView.findViewById(R.id.icon);
-            try { icon.setImageDrawable(app.loadIcon(activity.getPackageManager())); }
-            catch (RuntimeException unavailable) { icon.setImageResource(R.drawable.ic_apps); }
+            bindIcon(holder.itemView.findViewById(R.id.icon), app);
             TextView name = holder.itemView.findViewById(R.id.title);
             name.setText(label(app));
             name.setEllipsize(TextUtils.TruncateAt.END);

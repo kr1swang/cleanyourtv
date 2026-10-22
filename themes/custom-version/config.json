@@ -13,5 +13,6 @@
     "com.android.vending"
   ],
   "wallpaper_true_color": true,
-  "ambient_glow": false
+  "ambient_glow": false,
+  "dock_opacity": 33
 }

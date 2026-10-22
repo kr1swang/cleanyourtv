@@ -166,6 +166,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean dockTitle;
     /** The owner's saved order (reorder button, Order): key -> rank. Empty when there is none or it no longer applies. */
     private Map<String, Integer> savedRanks = Collections.emptyMap();
+    /** Dock size recorded with the saved order (Order.docked), or -1: then dock_apps says which tiles are docked. */
+    private int savedDocked = -1;
     /** Reorder mode: no empty dock slots, so every position holds a tile that can move. */
     private boolean reordering;
     private final TileListener listener;
@@ -192,6 +194,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean showHomeSettings;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): no overshoot, shorter fades. */
     private final boolean reducedMotion;
+    /** The focus zoom may overshoot (config.xml, focus_overshoot). */
+    private final boolean focusOvershoot;
     /** Package to the action its tile sends instead of the start screen (config.xml, launch_actions). */
     private final Map<String, String> launchActions;
     /** Tile names and bundled banners that replace the app's own (config.xml, app_labels and app_banners). */
@@ -210,6 +214,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.showLibrary = cfg.appLibrary;
         this.reducedMotion = cfg.reducedMotion;
+        this.focusOvershoot = cfg.focusOvershoot;
         this.rowsBelowDock = cfg.rowsBelowDock;
         this.dockTitle = cfg.dockTitle;
         this.dockRow = cfg.dockRow;
@@ -298,7 +303,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     ctx.getDrawable(R.drawable.ic_home_settings), null, 0));
         }
         docked = 0;
-        while (docked < fresh.size() && favourites.contains(fresh.get(docked).pkg)) docked++;
+        while (docked < fresh.size() && isDocked(fresh.get(docked))) docked++;
         emptySlots = dockRow && !reordering ? DockSlots.empty(docked, dockSize, fresh.size(), fillDock) : 0;
         for (int i = 0; i < emptySlots; i++) {
             fresh.add(docked + i, new Entry(Entry.EMPTY, "", new ComponentName(ctx, "empty-dock-slot-" + i),
@@ -385,7 +390,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             v.setPadding(v.getPaddingLeft(), pad, v.getPaddingRight(), pad);
         }
         name.setLayoutParams(nameLp);
-        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha);
+        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot);
     }
 
     @Override
@@ -505,9 +510,20 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return isLibraryAt(position) ? Long.MIN_VALUE : items.get(position).component.flattenToShortString().hashCode();
     }
 
-    /** Uses this saved order from the next reload() (Order.ranks). */
-    void setSavedOrder(Map<String, Integer> ranks) {
+    /** Uses this saved order and dock size from the next reload() (Order.ranks, Order.docked). */
+    void setSavedOrder(Map<String, Integer> ranks, int docked) {
         savedRanks = ranks;
+        savedDocked = docked;
+    }
+
+    /**
+     * A tile in the dock: one of the first savedDocked tiles of the saved order when one was recorded, so an app
+     * the owner moved into the dock stays there (#499); else a dock_apps entry.
+     */
+    private boolean isDocked(Entry e) {
+        if (savedDocked < 0) return favourites.contains(e.pkg);
+        Integer rank = savedRanks.get(e.component.flattenToShortString());
+        return rank != null && rank < savedDocked;
     }
 
     /** Reorder mode on or off; takes effect at the next reload() (empty dock slots are left out while on). */
@@ -661,9 +677,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final boolean reducedMotion;
         /** Alpha of the name while the tile is not focused (always_show_names). */
         final float restNameAlpha;
+        final boolean overshoot;
 
         Holder(View v, TileListener listener, boolean animations, boolean advancedEffects,
-               boolean reducedMotion, float restNameAlpha) {
+               boolean reducedMotion, float restNameAlpha, boolean overshoot) {
             super(v);
             card = v.findViewById(R.id.card);
             cardBackground = card.getBackground();
@@ -676,6 +693,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.reducedMotion = reducedMotion;
             card.configureMotion(animations, reducedMotion);
             this.restNameAlpha = restNameAlpha;
+            this.overshoot = overshoot;
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
@@ -699,7 +717,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 view.setActivated(focused && !animations);
                 banner.animate().cancel();
                 name.animate().cancel();
-                card.updateScale(!animations ? 0 : reducedMotion ? (focused ? 120 : 80)
+                card.updateScale(!animations ? 0 : reducedMotion ? (focused ? Motion.REDUCED_MS : 60)
                         : (focused ? 160 : 120));
                 if (!animations) {
                     view.setTranslationY(0f);
@@ -708,7 +726,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     name.setAlpha(focused ? 1f : restNameAlpha);
                     name.setTranslationY(0f);
                 } else if (reducedMotion) {
-                    name.animate().alpha(focused ? 1f : restNameAlpha).setDuration(100).start();
+                    name.setAlpha(focused ? 1f : restNameAlpha);
                     // Same place as the full motion's slide ends: the layout's -6dp is only its starting point, and
                     // left there the name overlaps the zoomed tile.
                     // Only on focus: snapping it back to -6dp while it fades out would jump it up over the tile.

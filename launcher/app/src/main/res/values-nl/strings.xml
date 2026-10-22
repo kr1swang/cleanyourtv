@@ -20,7 +20,7 @@
     <string name="cant_open">Kan %1$s niet openen</string>
     <string name="date_format">EEEE d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Geheugen %1$d MB vrij</string>
+    <string name="stats_memory">Geheugen %1$d / %2$d MB</string>
     <string name="stats_storage">Opslag %1$s vrij</string>
     <string name="dream_name">Klok</string>
     <string name="vpn">VPN</string>

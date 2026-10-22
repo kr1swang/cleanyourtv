@@ -21,7 +21,7 @@
     <!-- "মঙ্গলবার, ২০ অক্টোবর"; Android writes the numbers in Bangla digits. -->
     <string name="date_format">EEEE, d MMMM</string>
     <string name="stats_cpu">সিপিইউ %1$d%%</string>
-    <string name="stats_memory">মেমরি %1$d MB খালি</string>
+    <string name="stats_memory">মেমরি %1$d / %2$d MB</string>
     <string name="stats_storage">স্টোরেজ %1$s খালি</string>
     <string name="dream_name">ঘড়ি</string>
     <string name="vpn">VPN</string>

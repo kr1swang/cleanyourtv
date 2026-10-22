@@ -20,7 +20,7 @@
     <string name="cant_open">تعذّر فتح %1$s</string>
     <string name="date_format">EEEE  d MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">الذاكرة %1$d م.ب متاحة</string>
+    <string name="stats_memory">الذاكرة %1$d / %2$d م.ب</string>
     <string name="stats_storage">التخزين %1$s متاح</string>
     <string name="dream_name">الساعة</string>
     <string name="vpn">VPN</string>

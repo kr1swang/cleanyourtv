@@ -30,7 +30,9 @@ tv() { "$PY" -I tv.py "$@"; }
 # back and switch accessibility on again as build-and-install does. Some TVs (TCL Smart TV Pro G03, Android 11)
 # also keep the service in their "crashed" list after the force-stop and leave it unbound until accessibility
 # itself goes off and on again, so switch it off with the list cleared and wait a second before writing back.
-RESTART="a=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; case \"\$a\" in *$PKG*) sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1 ;; esac"
+# By then Android has already emptied the list and switched accessibility off (Xiaomi MiTV-MOOR2, Android 11), so
+# clearing it changed nothing and the services stayed crashed: write the list back first, so the clear is a change.
+RESTART="a=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; case \"\$a\" in *$PKG*) sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1; sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1 ;; esac"
 
 # Some firmware (TCL G07, Android 11) locks the shell out of Android/data. Files are staged in
 # /data/local/tmp and copied in, or written through the launcher's ThemeProvider when that is refused.
@@ -74,6 +76,13 @@ if [ -d "$THEME/wallpapers" ]; then
         tv "$(put "wallpapers/$NAME")" >/dev/null ;;
     esac
   done
+fi
+# The collection's names (wallpaper_captions); a theme without them leaves no stale names behind.
+if [ -f "$THEME/wallpapers/captions.txt" ]; then
+  "$PY" -I b64push.py "$THEME/wallpapers/captions.txt" "$(stage wallpapers/captions.txt)"
+  tv "$(put wallpapers/captions.txt)" >/dev/null
+else
+  tv "$(del wallpapers/captions.txt)" >/dev/null
 fi
 tv "printf '%s' '$REVISION' > $TMP-theme_revision; $(put theme_revision)" >/dev/null
 tv "$RESTART; echo applied" | tail -n 1

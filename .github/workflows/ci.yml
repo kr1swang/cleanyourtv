@@ -51,4 +51,4 @@ jobs:
           echo "release APK: $((size / 1024)) KB"
           echo "bundled theme: $((theme_size / 1024)) KB"
           test "$theme_size" -lt 12582912 || { echo "Bundled theme exceeds 12 MiB"; exit 1; }
-          test "$((size - theme_size))" -lt 450560 || { echo "Launcher excluding bundled theme is over 440 KB"; exit 1; }
+          test "$((size - theme_size))" -lt 471040 || { echo "Launcher excluding bundled theme is over 460 KB"; exit 1; }

@@ -59,7 +59,7 @@
     <string name="card_state_new_key">Nový klíč</string>
     <string name="card_state_new_label">Nový název</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Volná paměť %1$d MB</string>
+    <string name="stats_memory">Paměť %1$d / %2$d MB</string>
     <string name="stats_storage">Volné místo %1$s</string>
     <string name="quick_picture">Obraz</string>
     <string name="quick_network">Síť</string>

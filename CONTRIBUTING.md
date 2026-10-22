@@ -2,6 +2,19 @@
 
 Thanks for helping more TVs lose their ads. Three kinds of contributions are especially welcome.
 
+## Where does my idea go?
+
+The launcher stays small on purpose, so pick the smallest home that fits:
+
+| Your idea | Where it goes |
+|---|---|
+| A TV model, a fix, a translation, a small switch that is off by default | A pull request here (sections 1 to 3 below) |
+| A new look: colours, wallpaper, dock, columns | [`themes/`](themes/README.md), with a screenshot from a real TV |
+| A widget or tile that can be its own small app | [`addons/`](addons/README.md), as a module card; it never touches `launcher/` |
+| A whole new launcher, a heavy restyle, a port to another platform | Your own repo, plus one row in [`SHOWCASE.md`](SHOWCASE.md) (section 4) |
+
+Everything merged into `themes/` and `addons/` shows up on [cleanyour.tv/addons](https://cleanyour.tv/addons).
+
 ## 1. Add your TV model
 
 Every brand ships different bloat. If you ran the prompt (or did it by hand) on a TV that isn't in
@@ -31,9 +44,9 @@ DynamicAnimation, no Kotlin, no Compose, no network. It targets TVs with 1 GB of
 - Anything that depends on a specific TV goes in `app/src/main/res/values/config.xml`, not in code.
 - Keep D-pad navigation deterministic. Test Up/Down/Left/Right from every edge.
 - Verify on a real TV, not only the emulator. The easiest way is remote key injection plus a
-  screenshot: `tools/tv.py 'input keyevent KEYCODE_DPAD_DOWN'` then
-  `tools/tv.py --screenshot shots/after.png` (the command captures on the TV and pulls the PNG, and
-  creates the folder if it is missing). Include a screenshot in your pull request.
+  screenshot: `tools/tv.py --screenshot shots/after.png DPAD_DOWN` presses the key, waits a second
+  (`--wait` changes that), captures on the TV and pulls the PNG, creating the folder if it is missing.
+  Include a screenshot in your pull request.
 - Long presses (hold OK on Settings or on a tile) can't always be injected: `input keyevent --longpress`
   arrives as a short press on some firmware (Android TV 8.0 on a Philips opens the app instead). Writing
   to the remote's own input device works, because Android then repeats the held key itself. Find the
@@ -41,6 +54,28 @@ DynamicAnimation, no Kotlin, no Compose, no network. It targets TVs with 1 GB of
   then hold it for a second:
   `tools/tv.py 'e=/dev/input/event1; sendevent $e 1 352 1; sendevent $e 0 0 0; sleep 1.2; sendevent $e 1 352 0; sendevent $e 0 0 0'`.
   This needs the shell user in the `input` group (`tools/tv.py id`).
+  SELinux can refuse it even then: on a TCL 55C728 (Google TV 11, enforcing) the shell is in `input`,
+  yet `sendevent` fails with `Permission denied` and `logcat` shows
+  `avc: denied { write } ... scontext=u:r:shell:s0 tcontext=u:object_r:input_device:s0`, while
+  `--longpress` arrives as a short press too. On a set like that, test long presses with the remote.
+
+### Automated navigation and lifecycle checks
+
+- Use D-pad key events throughout focus tests, including entering and leaving Reorder.
+  Injected touch input can enter Android's system-wide [touch mode](https://developer.android.com/develop/ui/views/touch-and-input/input-events#TouchMode),
+  where ordinary buttons may not take focus. If a test uses touch, send a directional key
+  and verify the focused tile before continuing with D-pad assertions.
+- After Home, an app transition or a reboot, wait with a timeout for the launcher UI and
+  focused window before sending navigation or capturing a hierarchy. A fixed sleep or
+  a boot-completion property alone does not establish that Home is ready. Android's
+  [UI Automator guidance](https://developer.android.com/training/testing/other-components/ui-automator-legacy#wait)
+  demonstrates waiting for the launcher and for specific UI conditions.
+- For synthetic memory checks, record the process state, requested trim level and command
+  result. ActivityManager [can reject background trim levels for foreground processes](https://android.googlesource.com/platform/frameworks/base/+/master/services/core/java/com/android/server/am/ActivityManagerService.java).
+  To exercise hidden Home, put an opaque app in front and verify Home's process state;
+  use a trim level supported by the target Android version. Treat a rejected command as
+  a test setup failure. A delivered trim callback tests recovery behavior, not performance
+  under real memory pressure.
 
 Build with `TV_HOST=<ip> launcher/build-and-install.sh` (JDK 17, Android SDK platform 34 and
 build-tools 34.0.0; on macOS `brew install openjdk@17 android-commandlinetools` then
@@ -50,6 +85,9 @@ build-tools 34.0.0; on macOS `brew install openjdk@17 android-commandlinetools` 
 Ideas that fit the direction: an idle screensaver with clock and ambient colour, per-TV icon packs
 for apps without banners, a settings screen to edit the dock from the TV, localisation.
 Ideas that don't: recommendation rows, content feeds, ads, telemetry.
+
+A new theme goes in `themes/<name>/` with its `config.json` and a required `screenshot.jpg` of Home on a
+real TV with that theme; see [Adding a theme](themes/README.md#adding-a-theme).
 
 ## 3. Improve the prompt and tools
 
@@ -69,7 +107,8 @@ different look, and tools around the launcher; this repo keeps one small referen
 points at everything else. The rules for a row are on that page.
 
 Things that stay in this repo: debloat lists, fixes and small, opt-in features for the reference
-launcher, prompt and tool improvements. Things that go in the showcase: a second launcher, a
+launcher, prompt and tool improvements. A feature that can be its own small app goes in [`addons/`](addons/README.md)
+as a module card. Things that go in the showcase: a second launcher, a
 restyle, a platform port, anything with its own background services or network access.
 
 ## Pull requests

@@ -20,7 +20,7 @@
     <string name="cant_open">%1$s ochilmadi</string>
     <string name="date_format">EEEE  d-MMMM</string>
     <string name="stats_cpu">Protsessor %1$d%%</string>
-    <string name="stats_memory">Xotira: %1$d MB boʻsh</string>
+    <string name="stats_memory">Xotira: %1$d / %2$d MB</string>
     <string name="stats_storage">Disk: %1$s boʻsh</string>
     <string name="dream_name">Soat</string>
     <string name="vpn">VPN</string>

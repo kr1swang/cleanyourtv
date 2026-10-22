@@ -16,9 +16,11 @@
 #
 # Stock launcher: com.google.android.apps.tv.launcherx. Live TV / HDMI: com.tcl.tv (TVActivity) with inputs from
 # com.tcl.tvinput (tuner, HDMI 1-3, AV). The launcher's default live_tv_package is MediaTek's, so the Inputs menu
-# has no Live TV row until a theme sets "live_tv_package": "com.tcl.tv". config.json in this folder sets it
-# and the gear button below; push it with: TV_HOST=<tv ip> tools/theme.sh examples/tcl-g03-google-tv
-# Already disabled at the factory: au.com.stan.and (Stan), tv.wuaki.apptv (Rakuten TV).
+# has no Live TV row until a theme sets "live_tv_package": "com.tcl.tv". config.json in this folder sets it,
+# the gear button and the app buttons described under "Second unit" below; push it with:
+# TV_HOST=<tv ip> tools/theme.sh examples/tcl-g03-google-tv
+# Already disabled at the factory: au.com.stan.and (Stan), tv.wuaki.apptv (Rakuten TV); the second unit below
+# also had com.tcl.smartalexa off at the factory.
 #
 # Before batch 6 (setupwraith): on this unit the Wi-Fi saved during first setup belonged to setupwraith
 # (`dumpsys wifi | grep -o 'cname=[^ ]*'`), so disabling it would have deleted the network. Forgetting the
@@ -32,6 +34,22 @@
 #   "settings_key_keycodes": [4077] in the theme brings it back (verified with the real remote); with
 #   "settings_key_panel": true it opens the launcher's quick settings panel over any app.
 # - `input keyevent SETTINGS` opens Android's version easter egg here; inject 176 instead.
+#
+# Second unit, 2026-10-21, same AR09 build, applied in the batches below with a screenshot after each and then
+# rebooted with launcherx off: the list minus Netflix and Prime Video, minus the factory-off smartalexa, plus
+# launcherx (38 packages) stayed disabled, and HDMI, Netflix playback, the remote and Wi-Fi all worked.
+# AdGuard's Private DNS (private_dns_mode hostname) changed nothing for playback. Two things differ:
+# - Its Bluetooth remote is "TCL_RC902V_M1" (also /dev/input/event3, Generic.kl), not the "TCL_RC902V_MM" above.
+#   Netflix (HID 0x0c0051, TCL_NETFLIX), YouTube (0x0c0057, TCL_YOUTUBE) and Prime Video (0x0c005f, keycode
+#   4099) are broadcasts only launcherx answers, so all three do nothing once it is off. `getevent -lt` prints
+#   the HID usage and the Linux key under each button, which is how the two remotes are told apart.
+# - HOME_KEY_SERVICE=1 with the app_keys in config.json brings all three back (verified with the real remote;
+#   a button whose app you disabled still opens nothing). Gear is keycode 4077 on this remote too, so
+#   settings_key_keycodes and settings_key_panel above apply unchanged.
+# setupwraith owned the Wi-Fi on this unit as well, and this order worked: forget and re-join the network,
+# disable setupwraith while launcherx still owns Home, run launcher/build-and-install.sh, switch the
+# screensaver, then disable dreamx. Home landed on the new launcher straight away (mFocusedApp checked), with
+# no RecoveryActivity in between.
 #
 # DO NOT DISABLE: com.tcl.tv, com.tcl.tvinput (Live TV, tuner, HDMI/AV), com.tcl.suspension (Quick panel and the
 # Input key's source panel), com.tcl.settings, com.tcl.system.server, com.tcl.providers.config, com.tcl.initsetup,

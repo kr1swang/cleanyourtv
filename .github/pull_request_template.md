@@ -14,3 +14,7 @@
 - [ ] No network, no background service, no new permission
 - [ ] New strings in `values/strings.xml` and the other `values-*` folders
 - [ ] Anything TV-specific is in `config.xml` or a theme, not in code
+
+### If this adds or changes a theme
+- [ ] `themes/<name>/config.json` and `themes/<name>/screenshot.jpg`: Home on a real TV with the theme, 1280×720 JPEG under 300 KB
+- [ ] A row in `themes/README.md` showing the screenshot

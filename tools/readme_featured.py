@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 FONT, OUT = sys.argv[1], sys.argv[2]
 LOGOS = ["techcrunch", "techradar", "tomsguide", "mashable", "androidauthority", "xda", "flatpanelshd", "itsfoss",
          "phandroid", "gigazine", "xataka", "winfuture", "frandroid", "macitynet", "techaeris", "techpp"]
-MORE = "+57 more  ·  73 articles from 21 countries"
+MORE = "+67 more  ·  83 articles from 22 countries"
 W, LH, GAP, ROWGAP, PAD = 1600, 54, 40, 36, 80
 def f(size, wt):
     x = ImageFont.truetype(FONT, size); x.set_variation_by_axes([wt]); return x

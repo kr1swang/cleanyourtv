@@ -1,5 +1,7 @@
 package com.gathin.tvhome;
 
+import android.content.res.Resources;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Locale;
@@ -58,13 +60,13 @@ final class Festival {
     }
 
     /** The greeting to show while active, or "" to keep the normal time-of-day greeting. */
-    String greetingText() {
+    String greetingText(Resources res) {
         if (!greeting.isEmpty()) return greeting;
         switch (name) {
             case "dussehra":
-                return "Happy Dussehra";
+                return res.getString(R.string.festival_dussehra_greeting);
             case "diwali":
-                return "Happy Diwali";
+                return res.getString(R.string.festival_diwali_greeting);
             default:
                 return "";
         }

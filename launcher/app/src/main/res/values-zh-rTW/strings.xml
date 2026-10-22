@@ -20,7 +20,7 @@
     <string name="cant_open">無法開啟 %1$s</string>
     <string name="date_format">M月d日 EEEE</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">記憶體剩餘 %1$d MB</string>
+    <string name="stats_memory">記憶體 %1$d / %2$d MB</string>
     <string name="stats_storage">儲存空間剩餘 %1$s</string>
     <string name="dream_name">時鐘</string>
     <string name="vpn">VPN</string>

@@ -1,7 +1,6 @@
 package com.gathin.tvhome;
 
 import android.animation.ArgbEvaluator;
-import android.animation.ValueAnimator;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,6 +16,9 @@ import java.util.Random;
 final class ClockScene {
 
     private static final long MOVE_MS = 60_000L;
+    /** The glow's colour change: 16 steps over 8 s. Animated per frame it redrew the full-screen gradient ~480 times. */
+    private static final int GLOW_STEPS = 16;
+    private static final long GLOW_STEP_MS = 500L;
     /** Deep, low-brightness glow colours; the glow is drawn at partial alpha on black. */
     private static final int[] PALETTE = {0xFF2B5CFF, 0xFF00A39A, 0xFF8A3FFC, 0xFFE0661B, 0xFFD6336C};
 
@@ -60,13 +62,14 @@ final class ClockScene {
     }
 
     void stop() {
-        handler.removeCallbacks(tick);
+        handler.removeCallbacksAndMessages(null);   // the tick and any glow steps still queued
+        content.animate().cancel();
     }
 
     private void moveClock() {
-        content.animate().alpha(0f).setDuration(900).withEndAction(() -> {
+        content.animate().alpha(0f).setDuration(900).withLayer().withEndAction(() -> {
             placeClock();
-            content.animate().alpha(1f).setDuration(1200).start();
+            content.animate().alpha(1f).setDuration(1200).withLayer().start();
         }).start();
     }
 
@@ -88,10 +91,12 @@ final class ClockScene {
     private void shiftGlow() {
         int from = glowColor;
         colorIndex = (colorIndex + 1) % PALETTE.length;
-        ValueAnimator anim = ValueAnimator.ofObject(new ArgbEvaluator(), from, PALETTE[colorIndex]);
-        anim.setDuration(8000);
-        anim.addUpdateListener(a -> setGlow((int) a.getAnimatedValue()));
-        anim.start();
+        int to = PALETTE[colorIndex];
+        ArgbEvaluator mix = new ArgbEvaluator();
+        for (int i = 1; i <= GLOW_STEPS; i++) {
+            float f = (float) i / GLOW_STEPS;
+            handler.postDelayed(() -> setGlow((int) mix.evaluate(f, from, to)), i * GLOW_STEP_MS);
+        }
     }
 
     private void setGlow(int color) {

@@ -32,9 +32,13 @@
 #   IR driver logs "u4IRKey after convert: 0xffffffff" and no keycode reaches InputDispatcher
 #   (getevent shows scancodes 0x129/0x13e, but the IR device's vendor keylayout drops them). With
 #   their apps disabled the buttons simply do nothing; no launcher key service can remap them.
-# - The TV closes Wi-Fi (and ADB with it) in standby, and `settings put secure
-#   enabled_accessibility_services` was found cleared once afterwards: re-check accessibility
-#   services after a standby cycle if you rely on one.
+# - Volume keys do reach Android (KEY_VOLUMEUP/DOWN on event0), but the firmware changes the volume
+#   before the accessibility filter and never passes them on, so no app (InputKeyService included)
+#   can replace the system volume slider.
+# - The TV closes Wi-Fi (and ADB with it) in standby. Accessibility services survived days of
+#   standby cycles; only a force-stop of the launcher switched InputKeyService off.
+# - No microphone (no android.hardware.microphone) and an IR-only remote, so voice comes from a
+#   phone or Nest speaker ("Hey Google, ... on the TV"). That needs katniss: keep it if you use it.
 
 # --- Vestel telemetry and retail junk ---
 com.vestel.vestelreporter                     # Vestel analytics/telemetry uploader
@@ -51,9 +55,10 @@ com.google.android.play.games                 # Play Games
 com.google.android.apps.nbu.smartconnect.tv   # Smart Connect
 com.google.android.backdrop                   # ambient photo screensaver (launcher's ClockDream replaces it)
 
-# --- Owner's checklist choices (this unit: no voice, no stock YouTube, no Prime) ---
-com.google.android.katniss                    # Google Assistant / voice search (mic unused here)
-com.google.android.youtube.tv                 # stock YouTube (SmartTube kept instead)
+# --- Owner's checklist choices (this unit: no stock YouTube, no Prime) ---
+# com.google.android.katniss                  # Google Assistant: disabled at first, re-enabled a day later
+#                                             # because "Hey Google" from the owner's phone stopped working
+com.google.android.youtube.tv                # stock YouTube (SmartTube kept instead)
 com.google.android.youtube.tvmusic            # YouTube Music
 com.amazon.amazonvideo.livingroom             # Prime Video (unused here)
 com.mediatek.wwtv.mediaplayer                 # USB media player; re-enable: pm enable --user 0 com.mediatek.wwtv.mediaplayer

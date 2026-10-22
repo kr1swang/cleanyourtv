@@ -35,7 +35,10 @@ public final class AppCardView extends FrameLayout {
         } else {
             animate().scaleX(scale).scaleY(scale).setDuration(duration)
                     .setInterpolator(EASING)
-                    .setUpdateListener(a -> invalidateShadow()).withLayer().start();
+                    .setUpdateListener(a -> invalidateShadow());
+            // Upstream reduced motion skips the hardware layer for its short zoom.
+            if (!reducedMotion) animate().withLayer();
+            animate().start();
         }
     }
 

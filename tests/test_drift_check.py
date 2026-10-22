@@ -358,6 +358,19 @@ class DriftCheckTest(unittest.TestCase):
         self.assertIn(f"Home: set to {CUSTOM}/.MainActivity", result.stdout)
         self.assertNotIn(FALLBACK, " ".join(self.sent()))
 
+    def test_fix_does_not_take_home_to_a_factory_test_app(self):
+        # com.duokan.factorytest/.FactoryLauncher answers HOME on a Xiaomi Mi TV 4A; Home on it is the
+        # factory test screen, so with no launcher left --fix changes nothing rather than move Home there.
+        self.write_list(["com.example.music", STOCK])
+        self.tv(installed=["com.example.music", "com.example.store", STOCK, "com.duokan.factorytest"],
+                disabled=["com.example.music", "com.example.store"],
+                home=f"{STOCK}/.MainActivity",
+                home_activities=[FACTORY, f"{STOCK}/.MainActivity"])
+        result = self.run_check("--fix", str(self.list_path))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("launcher/build-and-install.sh", result.stdout)
+        self.assertNotIn("set-home-activity", " ".join(self.sent()))
+
     def test_fix_refuses_a_home_only_a_fallback_can_take(self):
         self.write_list(["com.example.music", STOCK])
         self.tv(installed=["com.example.music", "com.example.store", STOCK, "com.tcl.tv"],
@@ -394,6 +407,8 @@ MEDIATEK_INPUT = "com.mediatek.tvinput"
 BASE = ["com.example.music", "com.example.store", STOCK, CUSTOM]
 # What a TCL set shows when no launcher is enabled; not a home the viewer can use.
 FALLBACK = "com.tcl.keycustomfunctionservice/.FallbackHome"
+# Xiaomi's factory test, which answers HOME on a Mi TV 4A.
+FACTORY = "com.duokan.factorytest/.FactoryLauncher"
 
 
 if __name__ == "__main__":

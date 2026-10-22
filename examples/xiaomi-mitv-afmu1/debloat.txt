@@ -1,0 +1,69 @@
+# Xiaomi TV Stick 4K 2nd gen (MiTV-AFMU1, codename twilight, product adastra, Amlogic), Google TV 14 (SDK 34),
+# firmware UKG3.250826.001 / V816.0.7.0.UZFAATK.
+# Fingerprint: Xiaomi/adastra/twilight:14/UKG3.250826.001/V816.0.7.0.UZFAATK:user/release-keys
+#
+# Apply:   TV_HOST=<stick ip> tools/disable.sh examples/xiaomi-mitv-afmu1/debloat.txt
+# Undo:    TV_HOST=<stick ip> tools/restore.sh examples/xiaomi-mitv-afmu1/debloat.txt com.google.android.apps.tv.launcherx
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# A streaming stick: no HDMI-in or tuner, so leave live_tv_package empty in config.xml.
+# Stock launcher: com.google.android.apps.tv.launcherx (disabled by launcher/build-and-install.sh).
+#
+# Notes from this stick:
+# - Shares the twilight board with Xiaomi TV Box S 3rd gen (MiTV-AFMU0), but product is adastra
+#   and Xiaomi's local media apps (mimusic2, mediaexplorer, mitv.gallery) are not installed.
+# - setupwraith's RecoveryActivity (HOME priority 1, launcherx priority 2) takes Home once
+#   launcherx is off, so setupwraith has to go too, and it has to go FIRST. Re-enable setupwraith
+#   if you need to re-pair the remote.
+# - Disabling setupwraith takes the stick off Wi-Fi if the network was saved during first setup:
+#   that network belongs to setupwraith, and Android deletes it with the app.
+#   On the stick, forget the network and join it again in Settings > Network & Internet first.
+#   The re-joined network belongs to android.uid.system and survives disabling launcherx and setupwraith.
+#   Check before disabling: tools/tv.py "dumpsys wifi" | grep -o 'cname=[^ ]*'
+# - Kept on purpose: Google Assistant (katniss), phone remote (tv.remote.service),
+#   Miracast / Mi Share (smartshare, wfdsinkhelperservice, mi_connect_service),
+#   YouTube, Google Ambient screensaver (dreamx).
+# - Leave alone: com.xiaomi.android.tvsetup.partnercustomizer, mitv.service, com.droidlogic*.
+
+# Telemetry and feedback
+com.miui.tv.analytics
+com.xiaomi.statistic
+com.xiaomi.tvqs.overseas.y24           # Xiaomi quality-stats uploader
+com.google.android.feedback
+com.android.tv.feedbackconsent
+
+# PatchWall, content rows, promos, auto-installs
+com.mitv.tvhome.atv
+com.mitv.tvhome.michannel
+com.mitv.tvhome.mitvplus
+com.mitv.tvhome.oemtab
+com.xm.webcontent
+android.autoinstalls.config.soc.amlogic
+
+# Personal choice: voice assistant, phone remote, Mi cast/share (uncomment to disable; the mic button stops working)
+# com.google.android.katniss
+# com.google.android.tv.remote.service
+# com.xiaomi.mitv.smartshare
+# com.xiaomi.wfdsinkhelperservice
+# com.xiaomi.mi_connect_service
+
+# Preloaded apps
+com.google.android.youtube.tvmusic
+com.google.android.play.games
+com.google.android.marvin.talkback
+com.mitv.videoplayer
+com.android.printspooler
+
+# Personal choice: preloaded streaming apps, kept enabled here. Uncomment the ones you don't use
+# com.netflix.ninja                    # Netflix
+# com.google.android.youtube.tv        # YouTube
+# com.amazon.amazonvideo.livingroom    # Prime Video
+
+# Optional, uncomment if unused
+# com.google.android.apps.tv.dreamx    # Google ambient screensaver (switch to the Clock dream first)
+
+# Setup wizard, takes Home after the stock launcher is disabled
+com.google.android.tungsten.setupwraith
+
+# Stock Google TV launcher, replaced by launcher/ (build-and-install.sh disables it after Home moves)
+# com.google.android.apps.tv.launcherx

@@ -19,8 +19,9 @@
     <string name="not_available">No disponible en este TV</string>
     <string name="cant_open">No se puede abrir %1$s</string>
     <string name="date_format">EEEE d \'de\' MMMM</string>
+    <string name="date_format_home">EEEE\nd \'de\' MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Memoria %1$d MB libres</string>
+    <string name="stats_memory">Memoria %1$d / %2$d MB</string>
     <string name="stats_storage">Almacenamiento %1$s libre</string>
     <string name="dream_name">Reloj</string>
     <string name="launcher_settings">Ajustes del lanzador</string>

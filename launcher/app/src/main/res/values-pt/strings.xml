@@ -21,7 +21,7 @@
     <string name="date_format">EEEE  d \'de\' MMMM</string>
     <string name="date_format_home">EEEE\nd \'de\' MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Memória %1$d MB livres</string>
+    <string name="stats_memory">Memória %1$d / %2$d MB</string>
     <string name="stats_storage">Armazenamento %1$s livre</string>
     <string name="dream_name">Relógio</string>
     <string name="vpn">VPN</string>

@@ -20,7 +20,7 @@
     <string name="cant_open">לא ניתן לפתוח את %1$s</string>
     <string name="date_format">EEEE  d בMMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">זיכרון %1$d MB פנוי</string>
+    <string name="stats_memory">זיכרון %1$d / %2$d MB</string>
     <string name="stats_storage">אחסון %1$s פנוי</string>
     <string name="dream_name">שעון</string>
     <string name="vpn">VPN</string>

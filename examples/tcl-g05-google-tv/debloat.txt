@@ -11,15 +11,20 @@
 # com.tcl.keyhelp, com.tcl.autopair, com.tcl.tcl_bt_rcu_service (remote) and com.tcl.providers.config.
 # Unlike the G10, com.tcl.ttvs ships enabled here; it carries TCL's BI analytics service.
 #
-# Known quirk, read before replacing the launcher (the one report so far where disabling setupwraith
-# did NOT stick):
+# Known quirk, read before replacing the launcher (this US build is the exception: disabling
+# setupwraith does not stick here, while the two G05_4K_GB reports say that it does):
 # - With launcherx disabled, com.google.android.tungsten.setupwraith/.RecoveryActivity claims HOME at
 #   priority 1 and Home lands on a black, looping recovery screen. Shell cannot disable that component.
 #   Disabling the whole setupwraith package worked until a reboot, after which this TV had it back in
 #   charge, unlike the MOOR2, QM6K and Chromecast reports where the disable survives.
+#   All three reports share the AR2101 build ID; this unit is the one on incremental AR68. The
+#   G05_4K_GB units (tcl-65c735, and docs/devices/tcl-55c728-g05-4k-gb.md on AR28) kept it off
+#   across a reboot, so compare ro.build.version.incremental before promising either outcome.
 #   Recover with: pm enable com.google.android.apps.tv.launcherx; pm enable com.google.android.tungsten.setupwraith
-# - The launcher half is therefore unverified on the G05: launcher/build-and-install.sh will refuse and
-#   roll back while Home resolves to setupwraith (README, Troubleshooting). This list is the debloat half.
+# - The launcher half is therefore unverified on this build: launcher/build-and-install.sh will refuse
+#   and roll back while Home resolves to setupwraith (README, Troubleshooting). This list is the
+#   debloat half. The 55C728 report installed its own launcher and saw it stay Home across a reboot,
+#   but never ran build-and-install.sh, so the installer is still unverified on G05 firmware.
 #   Contributed by damonearl (PR #73).
 
 # TCL content, ads and promos

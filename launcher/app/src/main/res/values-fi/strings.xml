@@ -65,7 +65,7 @@
     <string name="card_state_new_label">Uusi nimi</string>
     <string name="greeting_with_name">%1$s, %2$s</string>
     <string name="stats_cpu">Suoritin %1$d %%</string>
-    <string name="stats_memory">Muistia vapaana %1$d Mt</string>
+    <string name="stats_memory">Muisti %1$d / %2$d Mt</string>
     <string name="stats_storage">Tallennustilaa vapaana %1$s</string>
     <string name="reorder">Järjestä sovellukset</string>
     <string name="reorder_hint">OK nostaa sovelluksen, nuolet siirtävät sitä ja Takaisin laskee sen paikalleen. Lopeta painamalla Takaisin uudelleen.</string>

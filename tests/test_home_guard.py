@@ -59,6 +59,8 @@ def answer(command):
         if state["home_fails"]:
             sys.exit(1)
         return (state["home"] or "") + "\n"
+    if command.startswith("dumpsys activity"):
+        return state.get("home_process", "")
     if command.startswith("settings get global "):
         return "null\n"
     return ""
@@ -132,6 +134,7 @@ class HomeGuardTest(unittest.TestCase):
             "claims": [STOCK],
             "home_fails": False,
             "claims_fail": False,
+            "home_process": "",
             "commands": [],
         }
         state.update(overrides)
@@ -220,6 +223,21 @@ class HomeGuardTest(unittest.TestCase):
                                  "a vendor fallback is not a launcher to fall back on")
                 self.assertIn(f"Skipping {STOCK}", self.output(result))
 
+    def test_a_factory_test_app_does_not_count_as_another_home(self):
+        # A Xiaomi Mi TV 4A answers the HOME query with com.duokan.factorytest/.FactoryLauncher next to
+        # the launcher and a FallbackHome. Counting the factory test as another Home let a list disable
+        # the owner and hand Home to the factory test screen.
+        for entry in self.entries():
+            for factory in ("com.duokan.factorytest/.FactoryLauncher", "com.example.factory_test/.Main",
+                            "com.mediatek.factorymode/.FactoryHome"):
+                with self.subTest(entry=entry, factory=factory):
+                    self.tv(claims=[factory, STOCK, "com.android.tv.settings/.system.FallbackHome"])
+                    result, sent = self.disable(entry)
+                    self.assertEqual(result.returncode, 0, self.output(result))
+                    self.assertNotIn(f"pm disable-user --user 0 {STOCK}", sent,
+                                     "a factory test app is not a launcher to fall back on")
+                    self.assertIn(f"Skipping {STOCK}", self.output(result))
+
     def test_a_tv_that_cannot_list_its_homes_is_left_with_one(self):
         # tv.py fails or the TV answers nothing: the owner is the only Home this run knows about.
         for entry in self.entries():
@@ -228,6 +246,32 @@ class HomeGuardTest(unittest.TestCase):
                 result, sent = self.disable(entry)
                 self.assertEqual(result.returncode, 0, self.output(result))
                 self.assertNotIn(f"pm disable-user --user 0 {STOCK}", sent)
+
+    def test_a_firmware_without_cmd_package_still_finds_home(self):
+        # `cmd` arrived with Android 7. On a KitKat set the query answers the shell's own error, and the
+        # guard used to be skipped in silence while the list went on to disable the only Home (#795).
+        # The framework has printed the package holding Home since 4.x: `dumpsys activity` says
+        # "mHomeProcess: ProcessRecord{52f4a5c8 2f4b:com.google.android.tvlauncher/u0a56}".
+        for entry in self.entries():
+            with self.subTest(entry=entry):
+                self.tv(home="/system/bin/sh: cmd: not found",
+                        home_process="  mHomeProcess: ProcessRecord{52f4a5c8 2f4b:"
+                                     + STOCK + "/u0a56}")
+                result, sent = self.disable(entry)
+                self.assertEqual(result.returncode, 0, self.output(result))
+                self.assertNotIn(f"pm disable-user --user 0 {STOCK}", sent,
+                                 "Home was readable from dumpsys, so the guard must still run")
+                self.assertIn(f"Skipping {STOCK}", self.output(result))
+
+    def test_a_tv_that_cannot_name_its_home_is_told_so(self):
+        # Neither query names Home: the guard cannot check anything, and the run says that instead of
+        # looking like it checked. Silently skipping the guard is what the brick report did not see.
+        for entry in self.entries():
+            with self.subTest(entry=entry):
+                self.tv(home="/system/bin/sh: cmd: not found", home_process="")
+                result, sent = self.disable(entry)
+                self.assertEqual(result.returncode, 0, self.output(result))
+                self.assertIn("Could not tell which app owns Home", self.output(result))
 
     def test_force_disables_the_owner(self):
         for entry in self.entries():

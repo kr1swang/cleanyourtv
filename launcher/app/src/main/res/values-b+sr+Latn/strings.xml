@@ -20,7 +20,7 @@
     <string name="cant_open">Nije moguće otvoriti %1$s</string>
     <string name="date_format">EEEE, d. MMMM</string>
     <string name="stats_cpu">CPU %1$d%%</string>
-    <string name="stats_memory">Memorija %1$d MB slobodno</string>
+    <string name="stats_memory">Memorija %1$d / %2$d MB</string>
     <string name="stats_storage">Skladište %1$s slobodno</string>
     <string name="dream_name">Sat</string>
     <string name="vpn">VPN</string>

@@ -8,7 +8,8 @@
 #
 # Stock launcher: com.google.android.apps.tv.launcherx. Live TV app: com.tcl.tv (also owns HDMI playback).
 # Keep com.tcl.tvinput, com.tcl.suspension (Input/source menu), com.tcl.dashboard, com.tcl.autopair,
-# com.tcl.systemserver (mic hotkeys), com.tcl.providers.config and com.tcl.initsetup (channel install).
+# com.tcl.systemserver (mic hotkeys) and com.tcl.providers.config. com.tcl.initsetup is in the list
+# below (it also owns channel installation) - comment it out if you still need to scan channels.
 # Firmware updates come through Play Services (gms SystemUpdatePanoActivity); there is no TCL OTA package.
 
 # TCL telemetry and analytics
@@ -16,6 +17,8 @@ com.tcl.ttvs                           # TCL BI/awareness/identifier services
 com.tcl.logkit                         # log capture and upload
 com.tcl.interactive                    # TCL TIAS background service
 com.google.android.feedback
+com.graymatrix.did                     # device analytics (data app; on the AS23 unit)
+com.mirakulo.astrotv.service           # analytics service (data app; on the AS23 unit)
 
 # TCL content, ads and promos
 com.tcl.channelplus                    # TCL Live FAST channels, also removes them from Live TV
@@ -28,6 +31,9 @@ com.tcl.smartlink.core                 # bundles a silent app installer
 
 # Background services
 com.tcl.guard                          # TGuard: device-use tracking, memory cleaner
+com.tcl.smartalexa                     # Alexa client (AS23 unit; keep it if you use Alexa)
+com.tcl.useragreement                  # EULA/privacy screens (AS23 unit)
+com.tcl.initsetup                      # TCL first-run setup incl. SambaTV ACR hooks; re-enable before rescanning channels
 com.tcl.usercenter                     # TCL account sign-in
 com.tcl.exhibit                        # store demo
 com.tcl.esticker                       # store demo stickers
