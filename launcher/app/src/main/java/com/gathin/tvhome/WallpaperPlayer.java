@@ -43,6 +43,7 @@ final class WallpaperPlayer {
     private final int dimColor;
     /** The picture on screen, released once the next one has been drawn. */
     private Bitmap current;
+    private WallpaperSurface surface;
     private boolean active;
     private boolean closed;
     private boolean loading;
@@ -119,6 +120,13 @@ final class WallpaperPlayer {
     /** The decoded image also covers the video decoder's startup and release. */
     View poster() {
         return image.getParent() == null ? null : image;
+    }
+
+    /** Video keeps its ImageView poster; static images can retain a separate composition layer. */
+    void separateSurface(int backgroundColor) {
+        if (current == null) return;
+        surface = new WallpaperSurface(image, current, backgroundColor);
+        root.addView(surface, 0, new FrameLayout.LayoutParams(-1, -1));
     }
 
     void stop() {
@@ -228,6 +236,7 @@ final class WallpaperPlayer {
         Bitmap old = current;
         current = bitmap;
         image.setImageBitmap(bitmap);
+        if (surface != null) surface.show(bitmap);
         if (old != null && old != bitmap) image.postDelayed(old::recycle, 500);
     }
 

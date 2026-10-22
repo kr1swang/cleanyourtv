@@ -396,6 +396,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             videoWallpaper = VideoWallpaper.attach(this, root, wallpaperPlayer.poster(),
                     cfg.animations && !cfg.reducedMotion);
         }
+        if (videoWallpaper == null) wallpaperPlayer.separateSurface(cfg.backgroundColor);
         sky = findViewById(R.id.sky);
         sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
         glass = findViewById(R.id.glass);
