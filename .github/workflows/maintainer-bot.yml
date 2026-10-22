@@ -4,12 +4,19 @@
 # The bot reads the PR through the API (title, body, file list, patches) and reads its rules
 # (.github/maintainer/MAINTAINER.md) and precedents from the default branch, never from the PR.
 # It only writes one sticky comment and labels from a fixed list. It never merges, closes or approves.
+#
+# v4: every push is reviewed again (the same changes, or Markdown only, are re-checked without a model call).
+# Ordinary comments get their own concurrency group, so a "done, pushed" comment can't cancel the review of the
+# push it talks about (that is what left #670 and #730 stale). Every 6 hours a sweep re-reviews any open PR whose
+# review is older than its head commit; the first sweep also redoes the v1 reviews once (about $2.50).
 name: maintainer-bot
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
   issue_comment:
     types: [created]
+  schedule:
+    - cron: "23 */6 * * *"
   workflow_dispatch:
     inputs:
       pr:
@@ -21,19 +28,23 @@ permissions:
   pull-requests: write
   issues: write
 concurrency:
-  group: maintainer-bot-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'backfill' }}
+  # one review per PR at a time; a newer push cancels the older review. Ordinary comments never join the group.
+  group: >-
+    maintainer-bot-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr || 'backfill' }}-${{
+    (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '/bot review'))
+    && github.run_id || 'review' }}
   cancel-in-progress: true
 jobs:
   review:
     if: >-
       (github.event_name == 'pull_request_target' && !github.event.pull_request.draft) ||
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
        startsWith(github.event.comment.body, '/bot review') &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     runs-on: ubuntu-latest
-    # A single PR review gets 30 minutes; the backfill (workflow_dispatch) keeps 5 hours.
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 300 || 30 }}
+    # A single PR review gets 30 minutes; the backfill (workflow_dispatch) and the 6-hourly sweep keep 5 hours.
+    timeout-minutes: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 300 || 30 }}
     steps:
       - id: day
         run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
@@ -42,7 +53,7 @@ jobs:
           path: .maintainer-bot
           key: maintainer-bot-ledger-${{ steps.day.outputs.day }}-${{ github.run_id }}
           restore-keys: maintainer-bot-ledger-${{ steps.day.outputs.day }}-
-      - uses: Gathin23/maintainer-bot@b303f262f227702d8953ad4785eaa326d0bb9276 # maintainer-bot live-fix, pinned
+      - uses: Gathin23/maintainer-bot@75610de1d7c6d389e6a49aa85cce31b866184bdd # maintainer-bot v4, pinned
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           og-pc-api-key: ${{ secrets.OG_PC_API_KEY }}

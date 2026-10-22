@@ -255,6 +255,23 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
 - **A reboot on setupwraith's recovery screen factory-reset the TV** (Xiaomi MiTV-MOSR4). Disable
   setupwraith before launcherx. If `mFocusedApp` shows `.RecoveryActivity`, re-enable launcherx
   first and do not reboot. [Notes](devices/xiaomi-mitv-mosr4.md).
+- **Stuck on the boot animation after the launcher change, ADB gone** (JVC LT-43N7115, CVTE
+  `TP.SK706S.PC822`, Android 11, [#741](https://github.com/Gathin23/cleanyourtv/discussions/741)): the stock
+  launcher `com.cvte.tv.launcher.space` was disabled and a remote-key helper enabled before one reboot.
+  Nothing was uninstalled, so try in this order: wait ten minutes once; boot to safe mode (hold Power on
+  the remote during the animation on many sets), which turns off added apps, then re-enable the stock
+  launcher under Settings > Apps > show system apps; keep retrying `adb connect <ip>:5555` for a couple of
+  minutes right after power-on and run `pm enable com.cvte.tv.launcher.space` and
+  `settings put secure enabled_accessibility_services ""` if it answers (a phone hotspot with the old
+  network's name and password stands in for a missing router); wipe the cache partition from the recovery
+  menu. A factory reset also works but erases everything, so it comes last. The prompt now keeps the stock
+  launcher enabled on CVTE boards without a tested list.
+- **Accounts & profiles is empty after the stock launcher is disabled** (TCL 75C845X2, `G08_4K_GB`,
+  Google TV 14, [#304](https://github.com/Gathin23/cleanyourtv/discussions/304)). The accounts are still
+  there (`dumpsys account` lists them); the page lives in `com.google.android.apps.tv.launcherx`, and while
+  launcherx is enabled it takes Home back (`set-home-activity` prints `Success` and changes nothing, and
+  its home activity can't be disabled from the shell). To switch profile: `pm enable --user 0
+  com.google.android.apps.tv.launcherx`, switch in Settings, then disable it again and set Home last.
 - **The remote's mic button does nothing, or opens the Assistant and it never hears you**, seen on a
   Xiaomi TV Box S 3rd gen (`MiTV-AFMU0`, `twilight`, Google TV 14, `V816.0.7.0.UZFAABX`). Two
   packages have to stay enabled, and re-enabling only one of them is what makes this hard to

@@ -2,6 +2,8 @@
 
 Thanks for helping more TVs lose their ads. Three kinds of contributions are especially welcome.
 
+Working with a coding agent? Point it at [`AGENTS.md`](AGENTS.md): the same rules, written for agents.
+
 ## Where does my idea go?
 
 The launcher stays small on purpose, so pick the smallest home that fits:

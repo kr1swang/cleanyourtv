@@ -133,6 +133,11 @@ Launcher
   `dumpsys wifi | grep -o 'cname=[^ ]*'`: a Wi-Fi network saved during first setup belongs to it, and
   Android deletes that network the moment it is disabled, which takes the TV off Wi-Fi and ADB. If it
   does, ask me to forget the network and re-join it in Settings first.
+- On a CVTE board (any `com.cvte.*` package), leave its stock launcher (`com.cvte.tv.launcher.*`) enabled
+  unless the `examples/` folder for that exact board disables it: make your launcher Home with
+  `set-home-activity`, reboot once, and confirm Home and ADB come back before anything else. Don't enable a
+  remote-key helper in the same pass. A JVC LT-43N7115 (`TP.SK706S.PC822`, Android 11) hung on its boot
+  animation with ADB gone after both were done before one reboot (#741).
 - On Google TV the stock launcher also answers the remote's app buttons (Netflix, YouTube and the like),
   Input and Settings/dashboard buttons, so after disabling it ask me to press each one, and remap any that
   do nothing with the launcher's key services: `input_key_keycodes` and `app_keys` with
