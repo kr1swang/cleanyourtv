@@ -29,6 +29,7 @@
     <string name="home_settings_help">Kies je oorspronkelijke startscherm om CleanYourTV niet meer als Home te gebruiken, of CleanYourTV om terug te schakelen. De oorspronkelijke launcher moet ingeschakeld zijn en je tv moet een keuzescherm voor het startscherm hebben; gebruik eerst het herstelscript als hij uitgeschakeld is.</string>
     <string name="launcher_settings">Launcher-instellingen</string>
     <string name="columns_label">Apps per rij</string>
+    <string name="dock_opacity_label">Dekking van de dockbalk</string>
     <string name="rows_below_dock_label">Rijen onder het dock</string>
     <string name="wallpaper_label">Achtergrond</string>
     <string name="wallpaper_state">Achtergrond: %1$s</string>
@@ -74,7 +75,11 @@
     <string name="dock_edit">Dock bewerken</string>
     <string name="dock_edit_hint">Kies de plek in het dock die je wilt wijzigen en druk op OK. Terug om te stoppen.</string>
     <string name="dock_edit_pick_app">Kies nu de app voor die plek en druk op OK. Terug om een andere plek te kiezen.</string>
+    <string name="tile_add_to_dock">Toevoegen aan dock</string>
+    <string name="tile_replace_in_dock">Vervangen door andere app</string>
+    <string name="dock_edit_pick_place">Kies de plek in het dock voor deze app en druk op OK. Terug om te annuleren.</string>
     <string name="reorder">Apps ordenen</string>
+    <string name="tile_move">Verplaatsen</string>
     <string name="reorder_hint">OK pakt een app op, de pijlen verplaatsen hem, Terug zet hem neer. Nog eens Terug om te stoppen.</string>
     <string name="reorder_not_saved">Kon de nieuwe volgorde niet opslaan</string>
     <string name="app_library">Appbibliotheek</string>

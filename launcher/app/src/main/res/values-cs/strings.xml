@@ -26,6 +26,7 @@
     <string name="home_settings_help">Vyberte původní domovskou obrazovku, pokud už nechcete CleanYourTV používat jako domovskou, nebo CleanYourTV, pokud se k ní chcete vrátit. Původní launcher musí být zapnutý a televize musí nabízet výběr domovské obrazovky. Pokud byl vypnutý, spusťte nejdřív skript pro obnovení.</string>
     <string name="launcher_settings">Nastavení domovské obrazovky</string>
     <string name="columns_label">Aplikací v řádku</string>
+    <string name="dock_opacity_label">Krytí pruhu docku</string>
     <string name="animations_state">Animace: %1$s</string>
     <string name="advanced_effects">Pokročilé efekty</string>
     <string name="advanced_effects_state">Pokročilé efekty: %1$s</string>
@@ -68,7 +69,11 @@
     <string name="dock_edit">Upravit dok</string>
     <string name="dock_edit_hint">Vyberte místo v doku, které chcete změnit, a stiskněte OK. Tlačítkem Zpět skončíte.</string>
     <string name="dock_edit_pick_app">Nyní vyberte aplikaci pro toto místo a stiskněte OK. Tlačítkem Zpět vyberete jiné místo.</string>
+    <string name="tile_add_to_dock">Přidat do doku</string>
+    <string name="tile_replace_in_dock">Nahradit jinou aplikací</string>
+    <string name="dock_edit_pick_place">Vyberte místo v doku pro tuto aplikaci a stiskněte OK. Tlačítkem Zpět zrušíte.</string>
     <string name="reorder">Seřadit aplikace</string>
+    <string name="tile_move">Přesunout</string>
     <string name="reorder_hint">OK zvedne aplikaci, šipky ji posunou, Zpět ji položí. Dalším Zpět skončíte.</string>
     <string name="reorder_not_saved">Nové pořadí se nepodařilo uložit</string>
     <string name="app_library">Knihovna aplikací</string>

@@ -22,6 +22,11 @@
 # mirroring (cast.sink, dialservice, awvflingreceiver, whisperplay, whisperlink, com.amazon.tv.matter for Matter
 # casting), Amazon sign-in for apps (com.amazon.tv.ottssocompanionapp, com.amazon.imp), profiles, com.amazon.tv.oobe
 # (needed for a factory reset), the screensaver, accessibility (com.amazon.logan), notification center.
+# com.amazon.imp confirmed load-bearing on a second AFTKRT unit (same karat board, Fire OS 8.1.8.5): disabling it
+# together with shoptv.client, shoptv.firetv.client, media.recommendations, sneakpeek, systemnotices, tv.earlyaccess
+# and tv.acr left HomeActivity_vNext resumed and the remote fully responsive, but painted nothing -- confirmed black
+# on the physical TV. Re-enabling just those eight (imp included) fixed it within seconds, no reboot needed; the
+# other seven were not re-tested standalone, so this list's existing success with them already disabled stands.
 # Fire OS 8 packages looked at and left alone: com.amazon.adep (package verification / security events),
 # com.amazon.platform.fdra (package allowlisting), com.amazon.tv.turnstile (PIN sign-in), com.amazon.tv.consents,
 # com.amazon.ssm / ssmsys (captive portal, error codes), com.amazon.tiramisubootsupport, com.amazon.d3 (has a demo

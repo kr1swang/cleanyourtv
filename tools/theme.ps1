@@ -25,16 +25,25 @@ $revision = [guid]::NewGuid().ToString('N')
 # put the list back if it had ours. Writing the same list back is not enough: the force-stop also turns
 # accessibility_enabled off, and the service only binds again once the list changes. So restart first, then
 # clear the list, switch accessibility off (some TVs keep the service "crashed" and unbound otherwise), write
-# the list back and switch accessibility on again.
-$restart = "a=`$(settings get secure enabled_accessibility_services); am force-stop $pkg; am start -n $pkg/.MainActivity >/dev/null; case `"`$a`" in *$pkg*) sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services `"`$a`"; settings put secure accessibility_enabled 1 ;; esac"
+# the list back and switch accessibility on again. When the launcher is already Home it comes back through the Home
+# intent, since `am start -n` from the shell leaves a second MainActivity behind the Home one; before the handover
+# it is started by name as before.
+$restart = "a=`$(settings get secure enabled_accessibility_services); am force-stop $pkg; case `"`$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1)`" in $pkg/*) am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null ;; *) am start -n $pkg/.MainActivity >/dev/null ;; esac; case `"`$a`" in *$pkg*) sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services `"`$a`"; settings put secure accessibility_enabled 1 ;; esac"
 
 # Some firmware (TCL G07, Android 11) locks the shell out of Android/data. Files are staged in
 # /data/local/tmp and copied in, or written through the launcher's ThemeProvider when that is refused.
+# The provider has to be tried first: on Android 14 the shell can write into Android/data, so cp "succeeds",
+# but the file it creates belongs to the shell (uid 2000) and the launcher then gets EACCES opening it, which
+# silently ignores the theme whenever the file did not exist yet - a fresh install, or after a reinstall.
+# A provider write creates the file as the launcher, and it cannot truncate a file the shell owns either, so
+# remove our copy first. cp stays as the fallback for firmware without the provider.
 $uri = "content://$pkg.theme"
 $tmp = '/data/local/tmp/cyt-theme'
 # A file's staging path; wallpapers/a.jpg is staged as $tmp-wallpapers-a.jpg.
 function Stage($name) { "$tmp-$($name -replace '/', '-')" }
-function Put($name) { $t = Stage $name; "cp $t $dir/$name 2>/dev/null || content write --uri $uri/$name < $t; rm -f $t" }
+# Android 8 and 9 have no `content write`: they print "[ERROR] Unsupported operation: write" but exit 0, so
+# that message counts as a failure and cp runs.
+function Put($name) { $t = Stage $name; "rm -f $dir/$name 2>/dev/null; { o=`$(content write --uri $uri/$name < $t 2>&1) && case `"`$o`" in *'Unsupported operation'*) false ;; esac; } || cp $t $dir/$name 2>/dev/null; rm -f $t" }
 function Drop($name) { "rm -f $dir/$name 2>/dev/null; content delete --uri $uri/$name 2>/dev/null" }
 
 if ($Reset) {

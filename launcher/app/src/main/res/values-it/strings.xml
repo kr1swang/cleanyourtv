@@ -24,6 +24,7 @@
     <string name="home_settings_help">Seleziona la home originale per smettere di usare CleanYourTV come Home, oppure CleanYourTV per tornare indietro. Il launcher originale deve essere attivo e la TV deve offrire la scelta della home; se era disattivato, usa prima lo script di ripristino.</string>
     <string name="launcher_settings">Impostazioni del launcher</string>
     <string name="columns_label">App per riga</string>
+    <string name="dock_opacity_label">Opacità della barra del dock</string>
     <string name="rows_below_dock_label">Righe sotto il dock</string>
     <string name="wallpaper_label">Sfondo</string>
     <string name="wallpaper_state">Sfondo: %1$s</string>
@@ -69,7 +70,11 @@
     <string name="dock_edit">Modifica dock</string>
     <string name="dock_edit_hint">Scegli il posto del dock da cambiare e premi OK. Indietro per finire.</string>
     <string name="dock_edit_pick_app">Ora scegli l\'app da mettere lì e premi OK. Indietro per scegliere un altro posto.</string>
+    <string name="tile_add_to_dock">Aggiungi al dock</string>
+    <string name="tile_replace_in_dock">Sostituisci con un\'altra app</string>
+    <string name="dock_edit_pick_place">Scegli il posto del dock per questa app e premi OK. Indietro per annullare.</string>
     <string name="reorder">Riordina le app</string>
+    <string name="tile_move">Sposta</string>
     <string name="reorder_hint">OK prende un\'app, le frecce la spostano, Indietro la posiziona. Ancora Indietro per finire.</string>
     <string name="reorder_not_saved">Impossibile salvare il nuovo ordine</string>
     <string name="app_library">Libreria app</string>

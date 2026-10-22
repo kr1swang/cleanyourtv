@@ -112,19 +112,30 @@
     <!-- Remote buttons that open Settings, by Linux scancode (HOME_KEY_SERVICE=1 build-and-install.sh). Remotes
          that send KEYCODE_SETTINGS need no entry. Some send a code Android does not map: the Xiaomi/Fengmi
          projector remote's gear button is scancode 384 (KEY_TAPE). Find yours with
-         `tools/tv.py 'getevent -lt'` while pressing the button. Leave empty to omit. -->
+         `tools/tv.py 'getevent -lt'` while pressing the button - but a HID consumer-control usage prints an
+         evdev MSC_SCAN there, which is not always the scanCode the framework reports, so a number that takes
+         nothing is no proof the press never arrived. Leave empty to omit. -->
     <integer-array name="settings_key_scancodes">
     </integer-array>
     <!-- The same by Android keycode, for buttons whose scancode is shared. TCL Google TV remotes send their
          Settings button as keycode 83 (KEYCODE_NOTIFICATION, which the stock Google TV home turned into its quick
          settings panel) on scancode 240 (KEY_UNKNOWN), the scancode several TCL buttons share. Find the keycode
-         with `tools/tv.py 'logcat -v time -s InputReader:D'` while pressing the button. Leave empty to omit. -->
+         with `tools/tv.py 'logcat -v time -s InputReader:D'` while pressing the button - some firmwares print no
+         key line there at any verbosity, and a `getevent` MSC_SCAN is a different number, so the reliable route is
+         a temporary `Log.d` in the helper's `onKeyEvent`: `getKeyCode()`, `getScanCode()`, `getDeviceId()`, read
+         after a HOME_KEY_SERVICE=1 rebuild. Leave empty to omit. -->
     <integer-array name="settings_key_keycodes">
     </integer-array>
     <!-- What those Settings buttons open: false, the TV's Settings; true, a small glass panel at the top right
          with TV settings, Display, Network, Apps (re-enable an app) and Launcher settings, over whatever is on screen.
          Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
     <bool name="settings_key_panel">false</bool>
+
+    <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
+         off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
+         Settings stays off. Needs WRITE_SECURE_SETTINGS, which build-and-install grants with RESTORE_KEY_SERVICES=1
+         (-RestoreKeyServices on Windows). Can also be set with "restore_key_services": true in a theme's config.json. -->
+    <bool name="restore_key_services">false</bool>
 
     <!-- More remote buttons that open the input switcher, by Android keycode (INPUT_KEY_SERVICE=1
          build-and-install.sh; KEYCODE_TV always does). For buttons only a disabled app answered: the Xiaomi
@@ -177,6 +188,12 @@
          shelf above it. false makes the dock apps simply the first tiles of one plain grid (still in dock_apps
          order, no empty slots), with names under every tile and the glow behind every focused tile. -->
     <bool name="dock_row">true</bool>
+    <!-- Inputs, Wi-Fi and Settings folded into one round gear at the top right, like Google TV: OK drops a menu
+         with the three, hold OK keeps the launcher menu. Off by default; a theme can set "top_menu": true. -->
+    <bool name="top_menu">false</bool>
+    <!-- A direct Launcher settings action instead of TV Settings in the header (or top_menu).
+         Off by default; a theme can set "launcher_settings_button": true. -->
+    <bool name="launcher_settings_button">false</bool>
     <!-- The dock band as light frosted glass, like the Inputs, Wi-Fi and Settings pills, so a sky or wallpaper shows
          through it. false (the default) keeps the solid near-black band, or the cinematic shelf's dark glass. Can
          also be set with "dock_glass": true in a theme's config.json. -->
@@ -209,6 +226,10 @@
          pictures in wallpapers/ ("01-dusk.jpg<TAB>Dusk over the peaks", one per line). A picture without a line
          shows no name. Can also be set with "wallpaper_captions": true in a theme's config.json. -->
     <bool name="wallpaper_captions">false</bool>
+    <!-- Hold OK on a tile opens a small menu: Move (picks the tile up for reordering), Remove from Home (only with
+         app_library) and App info. false keeps the old behaviour: holding OK opens the app's App info page.
+         Can also be set with "tile_menu": true in a theme's config.json. -->
+    <bool name="tile_menu">false</bool>
 
     <!-- Grid rows left visible under the dock on the home screen. 0 = dock sits at the very bottom. Tiles shrink if
          the dock, its title and this many rows would not otherwise fit the screen height. -->

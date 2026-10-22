@@ -8,6 +8,7 @@
     <string name="home_settings_help">选择原始桌面即可关闭简洁桌面的默认桌面状态；需要切回时选择简洁桌面。原始桌面必须仍处于启用状态；若安装脚本已停用它，请先用恢复脚本启用。电视还须提供系统桌面选择页。</string>
     <string name="launcher_settings">简洁桌面设置</string>
     <string name="columns_label">每行应用数量</string>
+    <string name="dock_opacity_label">Dock 栏不透明度</string>
     <string name="animations_state">动态效果：%1$s</string>
     <string name="advanced_effects">高级动态效果</string>
     <string name="advanced_effects_state">高级动态效果：%1$s</string>
@@ -40,7 +41,11 @@
     <string name="dock_edit">编辑程序坞</string>
     <string name="dock_edit_hint">选择要更改的程序坞位置，然后按确定。按返回完成。</string>
     <string name="dock_edit_pick_app">现在选择要放在那里的应用，然后按确定。按返回重新选择位置。</string>
+    <string name="tile_add_to_dock">添加到程序坞</string>
+    <string name="tile_replace_in_dock">替换为其他应用</string>
+    <string name="dock_edit_pick_place">为此应用选择程序坞位置，然后按确定。按返回取消。</string>
     <string name="reorder">调整应用顺序</string>
+    <string name="tile_move">移动</string>
     <string name="reorder_hint">按确定选中应用，方向键移动，按返回放下。再按一次返回完成。</string>
     <string name="reorder_not_saved">无法保存新顺序</string>
     <string name="app_library">应用库</string>

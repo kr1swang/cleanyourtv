@@ -10,7 +10,7 @@ The honest part is the evidence, not the category. On firmware where most packag
 `android.uid.system`, about fifty of them "have" RECORD_AUDIO and none of them record anything;
 a per-package permission scan would call all fifty listeners. So this audit says which names the
 firmware itself nominated, which ones are known components with a known job, which ones only matched
-by name, and which ones actually touched the microphone op since boot (`appops`). It never claims a
+by name, and which ones have microphone access in the returned AppOps history. It never claims a
 package is listening.
 
 Disabling is left to `tools/disable.sh`, so the undo path is the one every list already uses: the
@@ -143,7 +143,7 @@ def voice_setting_owners(dev):
 
 
 def probe(dev, name):
-    """What the package declares about the microphone, and whether it used it since boot."""
+    """What the package declares about the microphone, and its returned AppOps history."""
     dump = shell(dev, f"dumpsys package {name}")
     uid = None
     declared = None
@@ -156,12 +156,19 @@ def probe(dev, name):
 
 
 def used_microphone(ops):
-    """True / False / None (the TV did not answer) from `appops get <pkg> RECORD_AUDIO`."""
+    """True for recorded access, False for no history, None for unknown output."""
     if not ops or "error" in ops.lower() or "exception" in ops.lower():
         return None
-    if "no operations" in ops.lower():
-        return False
-    return "RECORD_AUDIO" in ops
+    lines = [line.strip() for line in ops.splitlines()]
+    for line in lines:
+        if not line.startswith("RECORD_AUDIO: "):
+            continue
+        # A mode (including a UID override) or rejectTime is not evidence of access.
+        # AppOps prints time only for a recorded access, using TimeUtils.formatDuration.
+        if line.endswith(" (running)") or re.search(
+                r"; time=(?:0|[+-](?:\d+[dhms])*\d+ms) ago(?:;| \(running\)|$)", line):
+            return True
+    return False if "No operations." in lines else None
 
 
 def classify(name, owners, probed):
@@ -186,10 +193,12 @@ def classify(name, owners, probed):
 
     used = used_microphone(probed.get("appops", ""))
     if used is False:
-        evidence.append("appops: no RECORD_AUDIO use since boot")
+        evidence.append("appops: no RECORD_AUDIO history returned")
     elif used is True:
-        evidence.append("appops: RECORD_AUDIO was used since boot, which is the one line worth "
-                        "reading in full (`appops get <package> RECORD_AUDIO`)")
+        evidence.append("appops: recorded RECORD_AUDIO access in the returned history "
+                        "(read in full with `appops get <package> RECORD_AUDIO`)")
+    else:
+        evidence.append("appops: RECORD_AUDIO access is unknown from this output")
     return category, note, evidence
 
 

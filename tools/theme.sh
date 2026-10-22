@@ -8,8 +8,15 @@
 set -euo pipefail
 # Resolve the theme folder against the caller's directory before moving into tools/.
 # Git Bash's pwd says /c/Users/..., which the Windows Python cannot open; pwd -W gives C:/Users/... (as in disable.sh).
+# An absolute argument needs the same: /c/Users/... passed through as typed reached the JSON check below, which
+# could not open it and called the file "not valid JSON". A folder that does not exist keeps the path as typed,
+# so the "no config.json" message names what the caller gave.
 THEME_ARG="${1:-}"
-case "$THEME_ARG" in --reset|"") ;; /*) ;; *) THEME_ARG="$(pwd -W 2>/dev/null || pwd)/$THEME_ARG" ;; esac
+case "$THEME_ARG" in
+  --reset|"") ;;
+  /*) THEME_ARG="$(cd "$THEME_ARG" 2>/dev/null && { pwd -W 2>/dev/null || pwd; } || printf '%s' "$THEME_ARG")" ;;
+  *) THEME_ARG="$(pwd -W 2>/dev/null || pwd)/$THEME_ARG" ;;
+esac
 cd "$(dirname "$0")"
 : "${TV_HOST:?set TV_HOST to the TV IP address, e.g. TV_HOST=192.168.1.50 $0 themes/aurora}"
 PY=venv/bin/python
@@ -32,15 +39,25 @@ tv() { "$PY" -I tv.py "$@"; }
 # itself goes off and on again, so switch it off with the list cleared and wait a second before writing back.
 # By then Android has already emptied the list and switched accessibility off (Xiaomi MiTV-MOOR2, Android 11), so
 # clearing it changed nothing and the services stayed crashed: write the list back first, so the clear is a change.
-RESTART="a=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; am start -n $PKG/.MainActivity >/dev/null; case \"\$a\" in *$PKG*) sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1; sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1 ;; esac"
+# When the launcher is already Home, it comes back through the Home intent: `am start -n` from the shell brings it
+# back in an ordinary task, and the next Home press starts a second MainActivity next to it. Otherwise (a theme
+# pushed before the handover) it is started by name as before, so the new look still shows.
+RESTART="a=\$(settings get secure enabled_accessibility_services); am force-stop $PKG; case \"\$(cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1)\" in $PKG/*) am start -a android.intent.action.MAIN -c android.intent.category.HOME >/dev/null ;; *) am start -n $PKG/.MainActivity >/dev/null ;; esac; case \"\$a\" in *$PKG*) sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1; sleep 1; settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$a\"; settings put secure accessibility_enabled 1 ;; esac"
 
 # Some firmware (TCL G07, Android 11) locks the shell out of Android/data. Files are staged in
 # /data/local/tmp and copied in, or written through the launcher's ThemeProvider when that is refused.
+# The provider has to be tried first: on Android 14 the shell can write into Android/data, so cp "succeeds",
+# but the file it creates belongs to the shell (uid 2000) and the launcher then gets EACCES opening it, which
+# silently ignores the theme whenever the file did not exist yet - a fresh install, or after a reinstall.
+# A provider write creates the file as the launcher, and it cannot truncate a file the shell owns either, so
+# remove our copy first. cp stays as the fallback for firmware without the provider.
 URI=content://$PKG.theme
 TMP=/data/local/tmp/cyt-theme
 # A file's staging path; wallpapers/a.jpg is staged as $TMP-wallpapers-a.jpg.
 stage() { echo "$TMP-${1//\//-}"; }
-put() { echo "cp $(stage "$1") $DIR/$1 2>/dev/null || content write --uri $URI/$1 < $(stage "$1"); rm -f $(stage "$1")"; }
+# Android 8 and 9 have no `content write`: they print the usage and "[ERROR] Unsupported operation: write" but
+# exit 0, so the exit status alone would skip cp and leave the file deleted. Treat that message as a failure.
+put() { echo "rm -f $DIR/$1 2>/dev/null; { o=\$(content write --uri $URI/$1 < $(stage "$1") 2>&1) && case \"\$o\" in *'Unsupported operation'*) false ;; esac; } || cp $(stage "$1") $DIR/$1 2>/dev/null; rm -f $(stage "$1")"; }
 del() { echo "rm -f $DIR/$1 2>/dev/null; content delete --uri $URI/$1 2>/dev/null"; }
 
 if [ "${1:-}" = --reset ]; then

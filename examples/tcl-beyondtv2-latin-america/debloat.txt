@@ -2,6 +2,7 @@
 # (API 28), build PPR1.180610.011, security patch 2021-01-05. Realtek RTD2851 family
 # (ro.board.platform = rtd285o), firmware V8-R851T02-LF1V660, client TCL-LA-RT2851-S1.
 # Fingerprint: TCL/BeyondTV2/BeyondTV:9/PPR1.180610.011/AP08:user/release-keys
+# What the launcher's clips, gradients and layers cost on this GPU: docs/devices/tcl-beyondtv2-v660.md
 # 2 GB RAM with 800 MB zRAM, 32-bit userspace, eMMC with 10 GB /data. Latin America set
 # (TCL app store, no India Jio/Airtel/Hotstar; a set of UK Freeview catch-up apps is preloaded
 # and was already disabled at the factory).

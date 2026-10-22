@@ -53,7 +53,11 @@
     <string name="dock_edit">Editar a dock</string>
     <string name="dock_edit_hint">Escolha o lugar da dock a mudar e prima OK. Voltar para terminar.</string>
     <string name="dock_edit_pick_app">Agora escolha a app a colocar lá e prima OK. Voltar para escolher outro lugar.</string>
+    <string name="tile_add_to_dock">Adicionar à dock</string>
+    <string name="tile_replace_in_dock">Substituir por outra app</string>
+    <string name="dock_edit_pick_place">Escolha o lugar da dock para esta app e prima OK. Voltar para cancelar.</string>
     <string name="reorder">Reordenar apps</string>
+    <string name="tile_move">Mover</string>
     <string name="reorder_hint">OK pega numa app, as setas movem-na, Voltar pousa-a. Voltar outra vez para terminar.</string>
     <string name="reorder_not_saved">Não foi possível guardar a nova ordem</string>
     <string name="app_library">Biblioteca de apps</string>
@@ -76,6 +80,7 @@
     <!-- Launcher settings, quick settings panel, race-weekend panel and cinematic shelf. -->
     <string name="launcher_settings">Configurações do launcher</string>
     <string name="columns_label">Apps por fileira</string>
+    <string name="dock_opacity_label">Opacidade da faixa do dock</string>
     <string name="rows_below_dock_label">Fileiras abaixo do dock</string>
     <string name="wallpaper_label">Papel de parede</string>
     <string name="wallpaper_state">Papel de parede: %1$s</string>

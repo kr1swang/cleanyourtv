@@ -1,10 +1,10 @@
 # CleanYourTV in the press
 
-Every article about CleanYourTV (called tv-vibehack until 19 October 2026) that we could open and check: **83 articles**, 54 of them from outlets in 22 countries, 5 from Spanish-language sites in Latin America and 24 from newsletters, blogs and AI news sites. Headlines are in the language they were published in. Syndicated copies and auto-generated listings are left out.
+Every article about CleanYourTV (called tv-vibehack until 19 October 2026) that we could open and check: **85 articles**, 56 of them from outlets in 23 countries, 5 from Spanish-language sites in Latin America and 24 from newsletters, blogs and AI news sites. Headlines are in the language they were published in. Syndicated copies and auto-generated listings are left out.
 
 Wrote about it and not here? Open an issue or a pull request with the link.
 
-[United States](#united-states)&nbsp;11 · [United Kingdom](#united-kingdom)&nbsp;2 · [India](#india)&nbsp;2 · [Denmark](#denmark)&nbsp;1 · [Japan](#japan)&nbsp;2 · [Bangladesh](#bangladesh)&nbsp;1 · [United Arab Emirates](#united-arab-emirates)&nbsp;1 · [France](#france)&nbsp;3 · [Germany](#germany)&nbsp;3 · [Spain](#spain)&nbsp;2 · [Italy](#italy)&nbsp;2 · [Norway](#norway)&nbsp;1 · [Portugal](#portugal)&nbsp;1 · [Czechia](#czechia)&nbsp;1 · [Ukraine](#ukraine)&nbsp;1 · [Greece](#greece)&nbsp;1 · [Egypt](#egypt)&nbsp;1 · [Brazil](#brazil)&nbsp;3 · [Latin America (Spanish-language)](#latin-america-spanish-language)&nbsp;5 · [China](#china)&nbsp;7 · [Taiwan](#taiwan)&nbsp;1 · [Indonesia](#indonesia)&nbsp;6 · [Thailand](#thailand)&nbsp;1 · [Online (newsletters, blogs, AI news)](#online-newsletters-blogs-ai-news)&nbsp;24
+[United States](#united-states)&nbsp;11 · [United Kingdom](#united-kingdom)&nbsp;2 · [India](#india)&nbsp;2 · [Denmark](#denmark)&nbsp;1 · [Japan](#japan)&nbsp;2 · [Bangladesh](#bangladesh)&nbsp;1 · [United Arab Emirates](#united-arab-emirates)&nbsp;1 · [France](#france)&nbsp;3 · [Germany](#germany)&nbsp;3 · [Spain](#spain)&nbsp;2 · [Italy](#italy)&nbsp;2 · [Norway](#norway)&nbsp;1 · [Portugal](#portugal)&nbsp;1 · [Czechia](#czechia)&nbsp;1 · [Ukraine](#ukraine)&nbsp;1 · [Greece](#greece)&nbsp;1 · [Egypt](#egypt)&nbsp;1 · [Brazil](#brazil)&nbsp;3 · [Latin America (Spanish-language)](#latin-america-spanish-language)&nbsp;5 · [China](#china)&nbsp;7 · [Taiwan](#taiwan)&nbsp;1 · [Indonesia](#indonesia)&nbsp;6 · [Thailand](#thailand)&nbsp;1 · [Vietnam](#vietnam)&nbsp;2 · [Online (newsletters, blogs, AI news)](#online-newsletters-blogs-ai-news)&nbsp;24
 
 ## United States
 
@@ -179,6 +179,13 @@ Wrote about it and not here? Open an issue or a pull request with the link.
 | Outlet | Article | Date |
 | --- | --- | --- |
 | iPhoneMod | [Clean Your TV ชุบชีวิต Android TV สไตล์ Apple TV ลื่นตาไร้โฆษณา](https://www.iphonemod.net/clean-your-tv-android-tv-debloat-launcher.html) | 19&nbsp;Oct |
+
+## Vietnam
+
+| Outlet | Article | Date |
+| --- | --- | --- |
+| VnExpress | [Dùng AI 'độ' giao diện smart TV](https://vnexpress.net/dung-ai-do-giao-dien-smart-tv-5134574.html) | 20&nbsp;Oct |
+| Znews (Tri Thức) | [Dùng Claude để 'giải cứu' TV cũ](https://tech.zingnews.vn/dung-claude-de-giai-cuu-tv-cu-post1691091.html) | 22&nbsp;Oct |
 
 ## Online (newsletters, blogs, AI news)
 

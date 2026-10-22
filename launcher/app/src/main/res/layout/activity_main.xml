@@ -65,7 +65,7 @@
                 android:singleLine="true"
                 android:textColor="#B3FFFFFF"
                 android:textSize="12sp"
-                android:fontFamily="@font/outfit_medium"
+                android:fontFamily="@string/font_medium"
                 android:letterSpacing="0.22"
                 android:textAllCaps="true" />
         </LinearLayout>
@@ -78,7 +78,7 @@
             android:singleLine="true"
             android:textColor="#FFFFFFFF"
             android:textSize="34sp"
-            android:fontFamily="@font/outfit_light"
+            android:fontFamily="@string/font_light"
             android:letterSpacing="-0.01"
             android:includeFontPadding="false" />
 
@@ -90,7 +90,7 @@
             android:singleLine="true"
             android:textColor="#99FFFFFF"
             android:textSize="12sp"
-            android:fontFamily="@font/outfit_medium"
+            android:fontFamily="@string/font_medium"
             android:letterSpacing="0.12" />
     </LinearLayout>
 
@@ -119,7 +119,7 @@
             android:layout_height="wrap_content"
             android:textColor="#FFFFFFFF"
             android:textSize="48sp"
-            android:fontFamily="@font/outfit_light"
+            android:fontFamily="@string/font_light"
             android:letterSpacing="-0.02"
             android:includeFontPadding="false"
             android:singleLine="true" />
@@ -134,7 +134,7 @@
             android:singleLine="true"
             android:textColor="#B3FFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/outfit_light"
+            android:fontFamily="@string/font_light"
             android:visibility="gone" />
 
         <LinearLayout
@@ -164,7 +164,7 @@
             android:singleLine="true"
             android:textColor="#CCFFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/outfit_medium"
+            android:fontFamily="@string/font_medium"
             android:textFontWeight="500"
             android:includeFontPadding="false"
             android:visibility="gone" />
@@ -178,7 +178,7 @@
             android:format24Hour="@string/lockscreen_date_format"
             android:textColor="#CCFFFFFF"
             android:textSize="15sp"
-            android:fontFamily="@font/outfit_medium"
+            android:fontFamily="@string/font_medium"
             android:textFontWeight="500"
             android:includeFontPadding="false" />
 
@@ -209,7 +209,7 @@
             android:ellipsize="end"
             android:textColor="#D9FFFFFF"
             android:textSize="14sp"
-            android:fontFamily="@font/outfit_medium"
+            android:fontFamily="@string/font_medium"
             android:focusable="false"
             android:visibility="gone" />
     </LinearLayout>

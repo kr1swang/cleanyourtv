@@ -33,6 +33,8 @@ import java.util.Set;
  */
 public class HomeKeyService extends AccessibilityService {
 
+    /** restore_key_services was on when the config was read: this helper is noted for ServiceRepair. */
+    private boolean repairRecord;
     /** Remote buttons that should open Settings (config.xml, settings_key_scancodes and settings_key_keycodes). */
     private int[] settingsScancodes = new int[0];
     private int[] settingsKeycodes = new int[0];
@@ -90,6 +92,10 @@ public class HomeKeyService extends AccessibilityService {
     private void loadConfig() {
         // Keycodes and the panel choice can also come from a theme; theme.sh restarts this service.
         Config config = Config.load(this);
+        // restore_key_services: note that this helper runs, so Home can put it back after a force stop. Here, not
+        // in onServiceConnected: the note is in credential-protected storage too, readable only after the unlock.
+        repairRecord = config.restoreKeyServices;
+        if (repairRecord) ServiceRepair.connected(this, getClass());
         settingsKeycodes = config.settingsKeycodes;
         settingsPanel = config.settingsKeyPanel;
         appKeys = RemoteKeys.parseAppKeys(config.appKeys);
@@ -142,6 +148,13 @@ public class HomeKeyService extends AccessibilityService {
             startActivity(home);
         }
         return true;
+    }
+
+    /** Unbound by Android: the user turned the helper off, so Home doesn't put it back (ServiceRepair). */
+    @Override
+    public boolean onUnbind(Intent intent) {
+        if (repairRecord) ServiceRepair.disconnected(this, getClass());
+        return super.onUnbind(intent);
     }
 
     @Override

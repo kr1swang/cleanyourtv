@@ -24,6 +24,7 @@
     <string name="dream_name">Rellotge</string>
     <string name="launcher_settings">Configuració del llançador</string>
     <string name="columns_label">Aplicacions per fila</string>
+    <string name="dock_opacity_label">Opacitat de la barra del dock</string>
     <string name="animations_state">Animacions: %1$s</string>
     <string name="advanced_effects">Efectes avançats</string>
     <string name="advanced_effects_state">Efectes avançats: %1$s</string>
@@ -37,7 +38,11 @@
     <string name="dock_edit">Edita el dock</string>
     <string name="dock_edit_hint">Tria la posició del dock que vols canviar i prem D\'acord. Enrere per acabar.</string>
     <string name="dock_edit_pick_app">Ara tria l\'aplicació que hi vols posar i prem D\'acord. Enrere per triar una altra posició.</string>
+    <string name="tile_add_to_dock">Afegeix al dock</string>
+    <string name="tile_replace_in_dock">Substitueix per una altra aplicació</string>
+    <string name="dock_edit_pick_place">Tria la posició del dock per a aquesta aplicació i prem D\'acord. Enrere per cancel·lar.</string>
     <string name="reorder">Reordena les aplicacions</string>
+    <string name="tile_move">Mou</string>
     <string name="reorder_hint">D\'acord agafa una aplicació, les fletxes la mouen, Enrere la deixa. Torna a prémer Enrere per acabar.</string>
     <string name="reorder_not_saved">No s\'ha pogut desar el nou ordre</string>
     <string name="app_library">Biblioteca d’aplicacions</string>

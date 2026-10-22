@@ -22,6 +22,7 @@ subtle tint. Updating an existing app does not mark it as new.
   Right from the final app reaches the library pill; Up returns to the last row.
   Hebrew mirrors the horizontal direction, so Left from the final app reaches it.
 
+With `tile_menu` on, holding OK on a Home tile offers Remove from Home as well, next to Move and App info.
 Every checked app can be removed from Home, including the theme’s default apps.
 It stays installed and remains in the library, where one press adds it back.
 There is no hidden-app section and no uninstall action.

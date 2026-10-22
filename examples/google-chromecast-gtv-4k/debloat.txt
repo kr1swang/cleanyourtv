@@ -28,6 +28,13 @@
 #   "Created singleton instance of ClientAuthSigner" in logcat, then disable it again - the receiver
 #   holds the credentials in memory, so casting works until the next reboot
 #   (docs/TROUBLESHOOTING.md, "Casting fails with Untrusted device").
+#   Seen again after a reboot: re-enabling setupwraith brought no ClientAuthSigner line within 3 minutes
+#   and phones did not list the device at all. With setupwraith enabled, restart the receiver instead:
+#   am force-stop com.google.android.apps.mediashell
+#   am start-foreground-service -n com.google.android.apps.mediashell/.CastReceiverService
+#   (nothing starts it again after a force-stop); the signer line follows within seconds.
+# - Turning USB debugging off leaves Wireless debugging listening on its own port. Switch both off when
+#   you are done; tools/adb-closed.py only checks 5555.
 # - With launcherx disabled the YouTube button on the remote does nothing. It sends BUTTON_3
 #   (keycode 190). Button Mapper only remaps added buttons in its paid Pro version; Key Mapper
 #   (open source, keymapperorg/KeyMapper) does it for free. Play Store lists Key Mapper as incompatible

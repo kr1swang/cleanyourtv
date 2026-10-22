@@ -29,6 +29,7 @@
     <string name="home_settings_help">Velg den opprinnelige startskjermen for å slutte å bruke CleanYourTV, eller velg CleanYourTV for å bytte tilbake. Den opprinnelige startskjermen må være aktivert, og TV-en må støtte valg av startskjerm. Kjør tilbakeføringsskriptet først hvis den ble deaktivert.</string>
     <string name="launcher_settings">Innstillinger for startskjermen</string>
     <string name="columns_label">Apper per rad</string>
+    <string name="dock_opacity_label">Dekkevne for dock-feltet</string>
     <string name="rows_below_dock_label">Rader under favorittraden</string>
     <string name="wallpaper_label">Bakgrunnsbilde</string>
     <string name="wallpaper_state">Bakgrunnsbilde: %1$s</string>
@@ -74,7 +75,11 @@
     <string name="dock_edit">Rediger favorittraden</string>
     <string name="dock_edit_hint">Velg plassen du vil endre i favorittraden, og trykk OK. Trykk Tilbake for å avslutte.</string>
     <string name="dock_edit_pick_app">Velg appen du vil plassere der, og trykk OK. Trykk Tilbake for å velge en annen plass.</string>
+    <string name="tile_add_to_dock">Legg til i favorittraden</string>
+    <string name="tile_replace_in_dock">Erstatt med en annen app</string>
+    <string name="dock_edit_pick_place">Velg en plass i favorittraden for denne appen, og trykk OK. Trykk Tilbake for å avbryte.</string>
     <string name="reorder">Endre apprekkefølge</string>
+    <string name="tile_move">Flytt</string>
     <string name="reorder_hint">Trykk OK for å velge en app, bruk pilene for å flytte den, og trykk Tilbake for å plassere den. Trykk Tilbake igjen for å avslutte.</string>
     <string name="reorder_not_saved">Kunne ikke lagre den nye rekkefølgen</string>
     <string name="app_library">Appbibliotek</string>

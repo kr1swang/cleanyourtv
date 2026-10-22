@@ -16,10 +16,14 @@ import android.view.accessibility.AccessibilityEvent;
  */
 public class YouTubeKeyService extends AccessibilityService {
     private static final String TAG = "YouTubeKeyService";
+    private boolean repairRecord;
 
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
+        // Share upstream's opt-in repair registry, preserving this installed component's identity.
+        repairRecord = Config.load(this).restoreKeyServices;
+        if (repairRecord) ServiceRepair.connected(this, getClass());
         // Stock Home may already be visible before this service can observe its window event.
         // Handle startup once per boot; package upgrades and service reconnects must not steal focus.
         int boot = Settings.Global.getInt(getContentResolver(), Settings.Global.BOOT_COUNT, -1);
@@ -81,6 +85,12 @@ public class YouTubeKeyService extends AccessibilityService {
                 .setAction(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_HOME)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        if (repairRecord) ServiceRepair.disconnected(this, getClass());
+        return super.onUnbind(intent);
     }
 
     @Override

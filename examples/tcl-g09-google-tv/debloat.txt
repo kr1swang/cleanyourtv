@@ -18,7 +18,10 @@ com.tcl.logkit                         # log capture and upload
 com.tcl.interactive                    # TCL TIAS background service
 com.google.android.feedback
 com.graymatrix.did                     # device analytics (data app; on the AS23 unit)
-com.mirakulo.astrotv.service           # analytics service (data app; on the AS23 unit)
+# com.mirakulo.astrotv.service is Ginga, the ISDB-Tb broadcast interactive-TV engine (AstroTVService,
+# com.tcl.tv.ginga.PERMISSION), not analytics. TvSettings reads Enable_ginga=false on this set, so it
+# frees nothing here; where Ginga is on, disabling it turns broadcasters' interactive apps off.
+com.mirakulo.astrotv.service           # Ginga (ISDB-Tb broadcast apps), not analytics
 
 # TCL content, ads and promos
 com.tcl.channelplus                    # TCL Live FAST channels, also removes them from Live TV
@@ -38,7 +41,10 @@ com.tcl.usercenter                     # TCL account sign-in
 com.tcl.exhibit                        # store demo
 com.tcl.esticker                       # store demo stickers
 com.tcl.hotelmenu                      # hotel mode
-com.google.android.tv.remote.service   # Google TV phone-app remote
+# com.google.android.tv.remote.service pairs phone remote apps (_androidtvremote2._tcp, 6466 pairing,
+# 6467 remote) and bridges the physical remote's mic (docs/TROUBLESHOOTING.md). A phone's virtual-remote.kl
+# has no Settings/Info/Guide/Menu or channel keys: those presses arrive as KEYCODE_UNKNOWN.
+com.google.android.tv.remote.service   # phone remote apps and the mic too; pm enable restores it
 
 # Preloaded apps
 com.tcl.ocean.instructions             # e-manual

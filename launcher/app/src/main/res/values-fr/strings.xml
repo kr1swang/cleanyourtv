@@ -51,6 +51,7 @@
     <string name="card_state_new_label">Nouveau nom</string>
     <string name="launcher_settings">Paramètres du lanceur</string>
     <string name="columns_label">Applications par ligne</string>
+    <string name="dock_opacity_label">Opacité de la barre du dock</string>
     <string name="animations_state">Animations : %1$s</string>
     <string name="advanced_effects">Effets avancés</string>
     <string name="advanced_effects_state">Effets avancés : %1$s</string>
@@ -64,7 +65,11 @@
     <string name="dock_edit">Modifier le dock</string>
     <string name="dock_edit_hint">Choisissez l\'emplacement du dock à changer et appuyez sur OK. Retour pour terminer.</string>
     <string name="dock_edit_pick_app">Choisissez maintenant l\'appli à y mettre et appuyez sur OK. Retour pour choisir un autre emplacement.</string>
+    <string name="tile_add_to_dock">Ajouter au dock</string>
+    <string name="tile_replace_in_dock">Remplacer par une autre appli</string>
+    <string name="dock_edit_pick_place">Choisissez l\'emplacement du dock pour cette appli et appuyez sur OK. Retour pour annuler.</string>
     <string name="reorder">Réorganiser les applis</string>
+    <string name="tile_move">Déplacer</string>
     <string name="reorder_hint">OK prend une appli, les flèches la déplacent, Retour la pose. Retour à nouveau pour terminer.</string>
     <string name="reorder_not_saved">Impossible d\'enregistrer le nouvel ordre</string>
     <string name="app_library">Bibliothèque d’applications</string>

@@ -1,12 +1,12 @@
 # How CleanYourTV PRs are reviewed
 
 CleanYourTV (Gathin23/cleanyourtv) is a prompt plus tools that debloat Android TV / Google TV / Fire TV over
-ADB and a tiny native launcher (`launcher/`, plain Java, ~445 KB, for 1 GB TVs). Contributors mostly add
+ADB and a tiny native launcher (`launcher/`, plain Java, ~470 KB, for 1 GB TVs). Contributors mostly add
 tested TV lists under `examples/<tv>/`, translations, docs, small launcher options, themes, add-ons and tools.
 
 ## The policy: a small core plus a well-indexed hub
 The main repo stays small and simple: the prompt, tested TV lists, the safety rules and a small, stable
-launcher under the APK size gate (`.github/workflows/ci.yml`, currently 471,040 B). Bigger ideas live next to
+launcher under the APK size gate (`.github/workflows/ci.yml`, currently 491,520 B). Bigger ideas live next to
 it, and every one of them gets a home. Pick the smallest home that fits (CONTRIBUTING, "Where does my idea go?"):
 
 | The idea | Where it goes | Verdict |

@@ -1,0 +1,3 @@
+# Optional: only for the performance tools (tools/trace_report.py). Not needed to clean a TV.
+# tools/venv/bin/pip install -r tools/requirements-perf.txt   See tools/trace.md.
+perfetto==0.58.2

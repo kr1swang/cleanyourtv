@@ -6,7 +6,8 @@
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/ffalcon-r34a0-cn/debloat.txt
 #          (tools/disable.sh uses pm disable-user, which this firmware DENIES — see INSTALL
 #          BLOCKER below; swap to `pm hide` as disable.sh does not know the difference yet)
-# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/ffalcon-r34a0-cn/debloat.txt
+# Undo:    NOT tools/restore.sh — its pm enable cannot undo a hide on this firmware.
+#          Run `pm unhide <package>` for each package listed below instead.
 #
 # INSTALL BLOCKER, read first: `pm disable-user` is denied on this firmware
 # (SecurityException: Permission Denial ... uid=2000 → uid=1000). Use `pm hide` instead;

@@ -74,8 +74,8 @@ final class AppLibraryDialog {
     private final Set<String> iconsLoading = new HashSet<>();
     private final Runnable dismissed;
     private boolean closed;
-    /** Only the latest load fills the catalogue. */
-    private int loads;
+    /** Only the latest load fills the catalogue, and it shows the popup if an opening is waiting. */
+    private final LibraryLoads loads = new LibraryLoads();
     private final Activity activity;
     private final Predicate<String> onHome;
     private final Runnable changed;
@@ -184,7 +184,7 @@ final class AppLibraryDialog {
     }
 
     void show() {
-        load(this::reveal);
+        load(true);
     }
 
     private void reveal() {
@@ -205,13 +205,16 @@ final class AppLibraryDialog {
     private final java.util.Set<String> tvPackages = new java.util.HashSet<>();
 
     void refresh() {
-        load(null);
+        load(false);
     }
 
-    /** Reads the catalogue on LOADER, then fills it on the UI thread and runs {@code then}. */
-    private void load(Runnable then) {
+    /**
+     * Reads the catalogue on LOADER, then fills it on the UI thread. reveal: from opening the library; the popup
+     * appears once the latest load has filled it, even when a refresh replaced the opening's own load.
+     */
+    private void load(boolean reveal) {
         dismissActions();
-        int load = ++loads;
+        int load = loads.start(reveal);
         PackageManager pm = activity.getPackageManager();
         String self = activity.getPackageName();
         LOADER.execute(() -> {
@@ -247,7 +250,7 @@ final class AppLibraryDialog {
             }
             KNOWN.keySet().retainAll(unique.keySet());
             main.post(() -> {
-                if (closed || load != loads) return;
+                if (closed || !loads.isLatest(load)) return;
                 tvPackages.clear();
                 tvPackages.addAll(tv);
                 installTimes.clear();
@@ -255,7 +258,7 @@ final class AppLibraryDialog {
                 labels.clear();
                 labels.putAll(names);
                 fill(new ArrayList<>(unique.values()));
-                if (then != null) then.run();
+                if (loads.takeReveal()) reveal();
             });
         });
     }
@@ -544,7 +547,7 @@ final class AppLibraryDialog {
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
-        view.setTypeface(activity.getResources().getFont(R.font.outfit_medium));
+        view.setTypeface(UiFont.get(activity, R.string.font_medium));
         view.setLetterSpacing(0.01f);
         view.setIncludeFontPadding(false);
         return view;
