@@ -193,8 +193,8 @@
             android:format24Hour="HH:mm"
             android:textColor="#CCFFFFFF"
             android:textSize="73sp"
-            android:fontFamily="@font/outfit_semibold"
-            android:textFontWeight="600"
+            android:fontFamily="@string/font_medium"
+            android:textFontWeight="500"
             android:fontFeatureSettings="tnum"
             android:letterSpacing="0"
             android:includeFontPadding="false" />
