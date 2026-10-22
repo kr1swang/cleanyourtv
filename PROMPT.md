@@ -180,7 +180,7 @@ Custom deployment profiles
 - This fork has INTERNET permission solely for background assets. Its APK bundles config.json and the
   pinned wallpaper-catalog.properties, not images or movies. The catalog specifies release URLs, sizes
   and SHA-256 hashes. Do not follow "latest" or replace published assets in place.
-- A clean install first tries a static preview matching the output. A failed attempt keeps a plain
+- A clean install or cleared app data first tries the FHD static background. A failed attempt keeps a plain
   background; later foreground visits can retry after a two-minute cooldown. Existing external images
   and explicit local/None choices take priority. UI selection downloads only the selected profile and
   its matching preview. Downloads run off the UI thread and apply only after all assets are verified.
@@ -190,8 +190,8 @@ Custom deployment profiles
   and selections, but retains the APK's six-column and Dock defaults; the default preview needs network again.
 - Preserve Cast, voice search, update packages, the Home/app-key service and existing device settings.
   A background selection must not replace external config or alter unrelated keys.
-- For offline/manual deployment, use tools/fetch-wallpapers.py --profile static-1080p, static-4k,
-  1080p-30, 1080p-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
+- For offline/manual deployment, use tools/fetch-wallpapers.py --profile fhd-static, 4k-static,
+  fhd-30, fhd-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
   Push the chosen image as wallpaper.png; merge only video_wallpaper into the device's config.
   Use an empty list for static, or the one selected movie's filename for a fixed video profile.
   An existing downloaded on-TV choice overrides the theme: choose Follow theme when intentionally

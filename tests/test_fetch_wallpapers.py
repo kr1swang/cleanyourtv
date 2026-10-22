@@ -66,9 +66,9 @@ class FetchWallpapersTests(unittest.TestCase):
     def test_cli_downloads_only_selected_resolution(self):
         poster = dict(self.asset, filename="wallpaper_FHD.png")
         movie = dict(self.asset, filename="wallpaper_FHD_60fps.mov")
-        variants = {"gg-1080-60": [poster, movie], "gg-4k-60": [{"url": "unused"}]}
+        variants = {"fhd-60": [poster, movie], "4k-60": [{"url": "unused"}]}
         with patch.object(fetcher, "catalog", return_value=variants), patch.object(
-            sys, "argv", ["fetch-wallpapers.py", "--profile", "1080p-60", "--directory", str(self.destination)]
+            sys, "argv", ["fetch-wallpapers.py", "--profile", "fhd-60", "--directory", str(self.destination)]
         ):
             fetcher.main()
         self.assertEqual((self.destination / self.asset["filename"]).read_bytes(), self.source.read_bytes())

@@ -1,6 +1,5 @@
 <resources>
     <string name="bg_library">Background settings</string>
-    <string name="bg_static">Static</string>
     <string name="bg_current">Current: %1$s</string>
     <string name="bg_downloaded">Downloaded</string>
     <string name="bg_confirm">Download and verify this background, then select it for Home. Press Cancel or Back during the operation to stop and keep the current background.</string>

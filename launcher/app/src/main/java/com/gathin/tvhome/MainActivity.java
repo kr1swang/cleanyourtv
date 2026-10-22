@@ -134,7 +134,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View ambient;
     private VideoWallpaper videoWallpaper;
     private java.util.concurrent.Future<?> wallpaperDownload;
-    private boolean missingDefaultWallpaper, downloadedWallpaperReady;
+    private boolean allowDefaultWallpaper, downloadedWallpaperReady;
     private String wallpaperSelection;
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
@@ -386,7 +386,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         getWindow().setBackgroundDrawable(null);
         wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
         wallpaperSelection = WallpaperLibrary.choice(this);
-        missingDefaultWallpaper = cfg.wallpaperEnabled && cfg.wallpapers.isEmpty();
+        // Remember the source, not file existence: a deleted library poster must be fetched on return.
+        allowDefaultWallpaper = cfg.wallpaperEnabled && (cfg.wallpapers.isEmpty()
+                || (cfg.wallpaper != null
+                    && WallpaperLibrary.directory(this).equals(cfg.wallpaper.getParentFile())));
         // An explicit on-TV wallpaper choice takes precedence over the theme's video.
         if (cfg.wallpaperEnabled && (getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
                 .getString(Config.WALLPAPER_CHOICE_KEY, null) == null || WallpaperLibrary.isSelected(this))) {
@@ -814,7 +817,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         updateClockVisibility();
         tileRefresh.onStart();
-        wallpaperDownload = WallpaperLibrary.prefetch(this, missingDefaultWallpaper, () -> {
+        wallpaperDownload = WallpaperLibrary.prefetch(this, allowDefaultWallpaper, () -> {
             if (isFinishing() || isDestroyed()) return;
             downloadedWallpaperReady = true;
             if (hasWindowFocus()) recreate();
@@ -1097,7 +1100,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onDestroy();
         unregisterReceiver(packageReceiver);
         wallpaperPlayer.close();
-        unregisterReceiver(packageReceiver);
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (topButtonsVisible && tim != null) tim.unregisterCallback(inputCallback);

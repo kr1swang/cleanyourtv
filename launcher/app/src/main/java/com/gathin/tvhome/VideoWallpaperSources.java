@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Selects local renditions named *_WIDTHxHEIGHT.ext using the physical output mode. */
+/** Selects local *_FHD[_30fps|_60fps].ext or *_4K[_30fps|_60fps].ext renditions. */
 final class VideoWallpaperSources {
-    private static final Pattern SIZE = Pattern.compile("_(\\d+)x(\\d+)\\.[^.]+$");
+    private static final Pattern SIZE = Pattern.compile("_(FHD|4K)(?:_(?:30|60)fps)?\\.[^.]+$");
     private final List<Source> sources = new ArrayList<>();
 
     VideoWallpaperSources(File directory, List<String> names) throws IOException {
@@ -21,13 +21,9 @@ final class VideoWallpaperSources {
             int width = 0, height = 0;
             Matcher size = SIZE.matcher(name);
             if (size.find()) {
-                try {
-                    width = Integer.parseInt(size.group(1));
-                    height = Integer.parseInt(size.group(2));
-                } catch (NumberFormatException e) {
-                    continue;
-                }
-                if (width <= 0 || height <= 0) continue;
+                boolean fullHd = "FHD".equals(size.group(1));
+                width = fullHd ? 1920 : 3840;
+                height = fullHd ? 1080 : 2160;
             }
             sources.add(new Source(file, Math.max(width, height), Math.min(width, height)));
         }

@@ -71,21 +71,14 @@ def catalog():
     return variants
 
 
-PROFILES = {
-    "static-1080p": "gg-1080-static", "static-4k": "gg-4k-static",
-    "1080p-30": "gg-1080-30", "1080p-60": "gg-1080-60",
-    "4k-30": "gg-4k-30", "4k-60": "gg-4k-60",
-}
-
-
 def main():
+    variants = catalog()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--profile", required=True, choices=PROFILES,
+    parser.add_argument("--profile", required=True, choices=variants,
                         help="Image or video profile, with its matching poster")
     parser.add_argument("--directory", type=Path, default=THEME, help="Destination folder")
     args = parser.parse_args()
-    variants = catalog()
-    wanted = variants[PROFILES[args.profile]]
+    wanted = variants[args.profile]
     try:
         for asset in wanted:
             fetch(asset, args.directory)

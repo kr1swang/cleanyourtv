@@ -303,7 +303,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Keep settings reachable with the custom header hidden, outside the movable app list.
         fresh.add(new Entry(Entry.BACKGROUND_SETTINGS, ctx.getString(R.string.bg_library),
                 new ComponentName(ctx, WallpaperSettingsActivity.class),
-                ctx.getDrawable(R.drawable.banner_desktop_settings), null, null, 0));
+                ctx.getDrawable(R.drawable.banner_background_settings), null, null, 0));
         // Retain the optional Default-home tile until dependent tile-ordering work is merged.
         if (showHomeSettings
                 && pm.resolveActivity(new Intent(Settings.ACTION_HOME_SETTINGS), 0) != null) {

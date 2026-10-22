@@ -5,8 +5,6 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.view.Display;
-import android.view.WindowManager;
 
 import java.io.*;
 import java.util.*;
@@ -54,12 +52,7 @@ final class WallpaperLibrary {
     }
 
     static WallpaperCatalog.Variant defaultVariant(Context ctx) throws IOException {
-        WindowManager wm = ctx.getSystemService(WindowManager.class);
-        Display.Mode mode = wm == null ? null : wm.getDefaultDisplay().getMode();
-        return catalog(ctx)
-                .defaultImage(
-                        mode == null ? 3840 : mode.getPhysicalWidth(),
-                        mode == null ? 2160 : mode.getPhysicalHeight());
+        return catalog(ctx).defaultImage();
     }
 
     static File poster(Context ctx) {
@@ -90,11 +83,11 @@ final class WallpaperLibrary {
             throw new IOException("Cannot save wallpaper selection");
     }
 
-    static String label(Context ctx, WallpaperCatalog.Variant v) {
-        return v.title + " · " + formatLabel(ctx, v);
+    static String label(WallpaperCatalog.Variant v) {
+        return v.title + " · " + formatLabel(v);
     }
 
-    static String formatLabel(Context ctx, WallpaperCatalog.Variant v) {
+    static String formatLabel(WallpaperCatalog.Variant v) {
         return (v.width >= 3840 ? "4K" : "FHD")
                 + " "
                 + (v.fps == 0 ? "Static" : v.fps + "fps");
@@ -103,7 +96,7 @@ final class WallpaperLibrary {
     static String currentLabel(Context ctx) {
         try {
             WallpaperCatalog.Variant v = selected(ctx);
-            return v == null ? null : label(ctx, v);
+            return v == null ? null : label(v);
         } catch (IOException e) {
             return null;
         }
@@ -141,7 +134,7 @@ final class WallpaperLibrary {
      * First-use poster, or recovery after downloaded files were removed. Never downloads on every
      * Home press.
      */
-    static synchronized Future<?> prefetch(Context owner, boolean missingDefault, Runnable ready) {
+    static synchronized Future<?> prefetch(Context owner, boolean allowDefault, Runnable ready) {
         if (SystemClock.elapsedRealtime() < retryAfter) return null;
         final Context ctx = owner.getApplicationContext();
         final String before = choice(ctx);
@@ -150,7 +143,7 @@ final class WallpaperLibrary {
             v =
                     isSelected(ctx)
                             ? selected(ctx)
-                            : before == null && missingDefault ? defaultVariant(ctx) : null;
+                            : before == null && allowDefault ? defaultVariant(ctx) : null;
             if (v == null || v.present(directory(ctx))) return null;
         } catch (IOException e) {
             return null;

@@ -143,7 +143,7 @@ public final class WallpaperSettingsActivity extends Activity {
     private void refresh() {
         if (catalog == null) return;
         WallpaperCatalog.Variant selected = activeVariant();
-        String active = selected == null ? null : WallpaperLibrary.label(this, selected);
+        String active = selected == null ? null : WallpaperLibrary.label(selected);
         if (active == null) {
             String choice = WallpaperLibrary.choice(this);
             active =
@@ -154,11 +154,9 @@ public final class WallpaperSettingsActivity extends Activity {
         status.setText(getString(R.string.bg_current, active));
         for (int i = 0; i < choices.size(); i++) {
             WallpaperCatalog.Variant v = variants.get(i);
-            long size = 0;
-            for (WallpaperCatalog.Asset a : v.assets()) size += a.size;
-            String suffix = mib(size) + (v.present(WallpaperLibrary.directory(this))
+            String suffix = mib(v.bytes()) + (v.present(WallpaperLibrary.directory(this))
                     ? " · " + getString(R.string.bg_downloaded) : "");
-            choices.get(i).setText(WallpaperLibrary.formatLabel(this, v) + "\n" + suffix);
+            choices.get(i).setText(WallpaperLibrary.formatLabel(v) + "\n" + suffix);
             choices.get(i).setChecked(selected != null && selected.id.equals(v.id));
         }
     }
@@ -174,7 +172,7 @@ public final class WallpaperSettingsActivity extends Activity {
 
     private void confirm(WallpaperCatalog.Variant v) {
         new AlertDialog.Builder(this)
-                .setTitle(WallpaperLibrary.label(this, v))
+                .setTitle(WallpaperLibrary.label(v))
                 .setMessage(R.string.bg_confirm)
                 .setPositiveButton(R.string.bg_apply, (d, w) -> download(v))
                 .setNegativeButton(android.R.string.cancel, null)
@@ -220,7 +218,7 @@ public final class WallpaperSettingsActivity extends Activity {
     }
 
     private void download(WallpaperCatalog.Variant v) {
-        showProgress(WallpaperLibrary.label(this, v), R.string.bg_verifying, true);
+        showProgress(WallpaperLibrary.label(v), R.string.bg_verifying, true);
         final int run = ++generation;
         job =
                 WallpaperLibrary.WORKER.submit(

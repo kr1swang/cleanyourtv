@@ -1,6 +1,5 @@
 <resources>
     <string name="bg_library">背景設定</string>
-    <string name="bg_static">靜態</string>
     <string name="bg_current">目前背景：%1$s</string>
     <string name="bg_downloaded">已下載</string>
     <string name="bg_confirm">下載並驗證完成後將選用此背景，返回首頁即可顯示。過程中可按「取消」或返回鍵中止，保留原本背景。</string>

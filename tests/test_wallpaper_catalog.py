@@ -15,7 +15,9 @@ spec.loader.exec_module(fetcher)
 class WallpaperCatalogTest(unittest.TestCase):
     def test_six_profiles_share_pinned_release_and_resolution_posters(self):
         catalog = fetcher.catalog()
-        self.assertEqual(len(catalog), 6)
+        self.assertEqual(set(catalog), {
+            "fhd-static", "fhd-30", "fhd-60", "4k-static", "4k-30", "4k-60",
+        })
         assets = {}
         for variant, entries in catalog.items():
             self.assertEqual(len(entries), 1 if variant.endswith("static") else 2)
@@ -27,19 +29,19 @@ class WallpaperCatalogTest(unittest.TestCase):
                 self.assertIn("/releases/download/wallpapers-2026-10-22/", asset["url"])
                 assets[asset["filename"]] = asset
         self.assertEqual(len(assets), 6)
-        for resolution in ("1080", "4k"):
-            self.assertEqual(catalog[f"gg-{resolution}-static"][0], catalog[f"gg-{resolution}-30"][0])
-            self.assertEqual(catalog[f"gg-{resolution}-30"][0], catalog[f"gg-{resolution}-60"][0])
+        for resolution in ("fhd", "4k"):
+            self.assertEqual(catalog[f"{resolution}-static"][0], catalog[f"{resolution}-30"][0])
+            self.assertEqual(catalog[f"{resolution}-30"][0], catalog[f"{resolution}-60"][0])
 
     def test_each_cli_profile_downloads_its_poster_and_only_its_movie(self):
-        for profile in fetcher.PROFILES:
+        for profile in fetcher.catalog():
             with self.subTest(profile=profile), patch("sys.argv", ["fetch-wallpapers.py", "--profile", profile]), patch.object(fetcher, "fetch") as download:
                 fetcher.main()
                 got = [call.args[0] for call in download.call_args_list]
-                self.assertEqual(got, fetcher.catalog()[fetcher.PROFILES[profile]])
+                self.assertEqual(got, fetcher.catalog()[profile])
 
     def test_corrupt_download_does_not_overwrite_existing_file(self):
-        asset = fetcher.catalog()["gg-1080-static"][0]
+        asset = fetcher.catalog()["fhd-static"][0]
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             target = folder / asset["filename"]

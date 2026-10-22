@@ -19,7 +19,8 @@ The next download removes abandoned partial files. Errors preserve the current b
 Files live under the app's private `files/wallpaper-library/` directory and survive normal updates.
 **Clear unused files** preserves the active profile's files, including a shared preview. External
 manually deployed files are never removed. Clearing app data removes downloads and selections.
-On first use, Home downloads a static preview matching the physical display. Offline it uses the
+On first use or after app data is cleared, Home downloads the FHD static background.
+Returning Home also retries if its downloaded files are missing. Offline it uses the
 plain background and retries on a later foreground visit, at most once every two minutes. An explicit
 local image, None, or a supplied external wallpaper takes priority. No periodic update checker runs.
 
@@ -38,10 +39,10 @@ these downloads; upstream descriptions of a network-free launcher do not apply t
 ## Manual or offline deployment
 
 ```bash
-python3 tools/fetch-wallpapers.py --profile static-1080p
-python3 tools/fetch-wallpapers.py --profile static-4k
-python3 tools/fetch-wallpapers.py --profile 1080p-30
-python3 tools/fetch-wallpapers.py --profile 1080p-60
+python3 tools/fetch-wallpapers.py --profile fhd-static
+python3 tools/fetch-wallpapers.py --profile 4k-static
+python3 tools/fetch-wallpapers.py --profile fhd-30
+python3 tools/fetch-wallpapers.py --profile fhd-60
 python3 tools/fetch-wallpapers.py --profile 4k-30
 python3 tools/fetch-wallpapers.py --profile 4k-60
 ```
@@ -54,10 +55,13 @@ movie alongside it. Merge only `video_wallpaper` in the existing external JSON: 
 one-element filename list for a fixed video profile. Keep unknown keys. Select Follow theme to leave
 a downloaded on-TV selection; this resets other on-TV overrides too, so preserve them first.
 Do not invoke `tools/theme.sh` just to switch a profile: it replaces the theme and resets choices.
+For automatic resolution selection, list one FHD and one 4K movie using their release filenames
+(`_FHD_30fps.mov`, `_FHD_60fps.mov`, `_4K_30fps.mov` or `_4K_60fps.mov`). The output mode selects
+the resolution; it does not choose a frame rate. Bare `_FHD.mov` and `_4K.mov` names also work.
 
 ## Verification
 
-The JVM tests cover catalog validation, display-sized default selection, shared-preview cache reuse,
+The JVM tests cover catalog validation, FHD static default selection, shared-preview cache reuse,
 offline cache reads, cancellation, truncated/oversized responses, checksum failures and partial cleanup.
 The Python tests check the shared six-profile catalog and command-line downloader. Hardware validation
 of decoder performance, color transitions, remote navigation and Cast is still required before

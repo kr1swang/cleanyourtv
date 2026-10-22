@@ -112,15 +112,10 @@ final class WallpaperCatalog {
         return null;
     }
 
-    Variant defaultImage(int width, int height) {
-        Variant largest = null, best = null;
-        for (Variant v : variants) {
-            if (v.fps != 0) continue;
-            if (largest == null || v.width > largest.width) largest = v;
-            if (v.width >= width && v.height >= height && (best == null || v.width < best.width))
-                best = v;
-        }
-        return best != null ? best : largest;
+    Variant defaultImage() {
+        for (Variant v : variants)
+            if (v.fps == 0 && v.width == 1920 && v.height == 1080) return v;
+        return null;
     }
 
     private static Asset asset(Properties p, String key) {

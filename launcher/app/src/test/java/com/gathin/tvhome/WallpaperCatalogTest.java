@@ -13,8 +13,10 @@ public class WallpaperCatalogTest {
         try (InputStream in = new FileInputStream("../../themes/apple-style/wallpaper-catalog.properties")) {
             WallpaperCatalog catalog = new WallpaperCatalog(in);
             assertEquals(6, catalog.variants.size());
-            assertEquals("Golden Gate", catalog.find("gg-4k-60").title);
-            assertEquals(60, catalog.find("gg-4k-60").fps);
+            assertEquals("fhd-static", catalog.defaultImage().id);
+            assertEquals("wallpaper_FHD.png", catalog.defaultImage().image.name);
+            assertEquals("Golden Gate", catalog.find("4k-60").title);
+            assertEquals(60, catalog.find("4k-60").fps);
         }
     }
 
@@ -57,11 +59,11 @@ public class WallpaperCatalogTest {
     }
 
     @Test
-    public void defaultFollowsDisplayResolution() throws Exception {
+    public void defaultIsFullHdStatic() throws Exception {
         WallpaperCatalog c = read(metadata());
-        assertEquals("hd", c.defaultImage(1920, 1080).id);
-        assertEquals("uhd", c.defaultImage(3840, 2160).id);
-        assertEquals("uhd", c.defaultImage(7680, 4320).id);
+        assertEquals("hd", c.defaultImage().id);
+        assertEquals("hd", read(metadata().replace("variants=hd,uhd", "variants=uhd,hd")).defaultImage().id);
+        assertNull(read(metadata().replace("hd.width=1920", "hd.width=1280")).defaultImage());
         assertEquals("Gate", c.find("hd").title);
     }
 
