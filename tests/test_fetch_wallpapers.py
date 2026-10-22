@@ -22,7 +22,7 @@ class FetchWallpapersTests(unittest.TestCase):
         self.source.write_bytes(b"test video payload")
         self.destination = self.root / "downloads"
         self.asset = {
-            "filename": "wallpaper_1920x1080.mov",
+            "filename": "wallpaper_FHD_60fps.mov",
             "url": self.source.as_uri(),
             "size": self.source.stat().st_size,
             "sha256": hashlib.sha256(self.source.read_bytes()).hexdigest(),
@@ -64,11 +64,11 @@ class FetchWallpapersTests(unittest.TestCase):
         self.assertFalse((self.root / "outside.mov").exists())
 
     def test_cli_downloads_only_selected_resolution(self):
-        poster = dict(self.asset, filename="wallpaper_1920x1080.png")
-        movie = dict(self.asset, filename="wallpaper_1920x1080_60fps.mov")
+        poster = dict(self.asset, filename="wallpaper_FHD.png")
+        movie = dict(self.asset, filename="wallpaper_FHD_60fps.mov")
         variants = {"gg-1080-60": [poster, movie], "gg-4k-60": [{"url": "unused"}]}
         with patch.object(fetcher, "catalog", return_value=variants), patch.object(
-            sys, "argv", ["fetch-wallpapers.py", "--size", "1080p", "--directory", str(self.destination)]
+            sys, "argv", ["fetch-wallpapers.py", "--profile", "1080p-60", "--directory", str(self.destination)]
         ):
             fetcher.main()
         self.assertEqual((self.destination / self.asset["filename"]).read_bytes(), self.source.read_bytes())

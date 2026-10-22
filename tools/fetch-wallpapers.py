@@ -80,24 +80,12 @@ PROFILES = {
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    selection = parser.add_mutually_exclusive_group(required=True)
-    selection.add_argument("--profile", choices=PROFILES, help="Image or video profile, with its matching poster")
-    selection.add_argument("--size", choices=("1080p", "4k", "both"),
-                           help="Legacy 60 fps deployment; retains the old video filenames")
+    parser.add_argument("--profile", required=True, choices=PROFILES,
+                        help="Image or video profile, with its matching poster")
     parser.add_argument("--directory", type=Path, default=THEME, help="Destination folder")
     args = parser.parse_args()
     variants = catalog()
-    if args.profile:
-        wanted = variants[PROFILES[args.profile]]
-    else:
-        sizes = ("1080p", "4k") if args.size == "both" else (args.size,)
-        wanted = []
-        for size in sizes:
-            for asset in variants[PROFILES[size + "-60"]]:
-                asset = dict(asset)
-                if asset["filename"].endswith("_60fps.mov"):
-                    asset["filename"] = asset["filename"].replace("_60fps.mov", ".mov")
-                wanted.append(asset)
+    wanted = variants[PROFILES[args.profile]]
     try:
         for asset in wanted:
             fetch(asset, args.directory)

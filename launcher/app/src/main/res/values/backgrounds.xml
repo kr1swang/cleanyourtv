@@ -1,13 +1,13 @@
 <resources>
-    <string name="bg_library">Background downloads</string>
+    <string name="bg_library">Background settings</string>
     <string name="bg_static">Static</string>
     <string name="bg_current">Current: %1$s</string>
     <string name="bg_downloaded">Downloaded</string>
-    <string name="bg_confirm">Download and verify this version, then apply it when you return Home. The current background stays in use until the download succeeds. Leaving this page cancels the download.</string>
+    <string name="bg_confirm">Download and verify this background, then select it for Home. Press Cancel or Back during the operation to stop and keep the current background.</string>
     <string name="bg_apply">Download / Apply</string>
     <string name="bg_verifying">Checking downloaded files…</string>
     <string name="bg_progress">Downloading %1$s / %2$s</string>
-    <string name="bg_clear">Clear unused downloads</string>
+    <string name="bg_clear">Clear unused files</string>
     <string name="bg_clear_confirm">Free %1$s? Files needed by the current background will be kept.</string>
     <string name="bg_cleaning">Clearing unused files…</string>
     <string name="bg_failed">Could not finish. The current background is unchanged. Check the network and available storage, then retry.</string>

@@ -192,7 +192,6 @@ Custom deployment profiles
   A background selection must not replace external config or alter unrelated keys.
 - For offline/manual deployment, use tools/fetch-wallpapers.py --profile static-1080p, static-4k,
   1080p-30, 1080p-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
-  Legacy --size 1080p/4k/both remains supported and keeps the old 60fps video filenames.
   Push the chosen image as wallpaper.png; merge only video_wallpaper into the device's config.
   Use an empty list for static, or the one selected movie's filename for a fixed video profile.
   An existing downloaded on-TV choice overrides the theme: choose Follow theme when intentionally

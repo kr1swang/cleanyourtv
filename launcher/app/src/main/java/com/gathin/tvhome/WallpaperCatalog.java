@@ -35,7 +35,7 @@ final class WallpaperCatalog {
     }
 
     static final class Variant {
-        final String id, background, title, titleZh;
+        final String id, background, title;
         final int width, height, fps;
         final Asset image, video;
 
@@ -43,7 +43,6 @@ final class WallpaperCatalog {
                 String id,
                 String background,
                 String title,
-                String titleZh,
                 int width,
                 int height,
                 int fps,
@@ -57,7 +56,6 @@ final class WallpaperCatalog {
             this.id = id;
             this.background = background;
             this.title = title;
-            this.titleZh = titleZh;
             this.width = width;
             this.height = height;
             this.fps = fps;
@@ -97,7 +95,6 @@ final class WallpaperCatalog {
                                 id,
                                 background,
                                 required(p, background + ".title"),
-                                required(p, background + ".title.zh"),
                                 Integer.parseInt(required(p, id + ".width")),
                                 Integer.parseInt(required(p, id + ".height")),
                                 fps,

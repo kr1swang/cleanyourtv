@@ -8,10 +8,19 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 public class WallpaperCatalogTest {
+    @Test
+    public void shippedCatalogContainsAllSixVariants() throws Exception {
+        try (InputStream in = new FileInputStream("../../themes/apple-style/wallpaper-catalog.properties")) {
+            WallpaperCatalog catalog = new WallpaperCatalog(in);
+            assertEquals(6, catalog.variants.size());
+            assertEquals("Golden Gate", catalog.find("gg-4k-60").title);
+            assertEquals(60, catalog.find("gg-4k-60").fps);
+        }
+    }
+
     private String metadata() {
         return "variants=hd,uhd\n"
                    + "background.title=Gate\n"
-                   + "background.title.zh=橋\n"
                    + "hd.background=background\n"
                    + "hd.width=1920\n"
                    + "hd.height=1080\n"
@@ -48,12 +57,12 @@ public class WallpaperCatalogTest {
     }
 
     @Test
-    public void defaultFollowsDisplayResolutionAndPreservesChinese() throws Exception {
+    public void defaultFollowsDisplayResolution() throws Exception {
         WallpaperCatalog c = read(metadata());
         assertEquals("hd", c.defaultImage(1920, 1080).id);
         assertEquals("uhd", c.defaultImage(3840, 2160).id);
         assertEquals("uhd", c.defaultImage(7680, 4320).id);
-        assertEquals("橋", c.find("hd").titleZh);
+        assertEquals("Gate", c.find("hd").title);
     }
 
     @Test

@@ -61,7 +61,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, EMPTY = 3, BACKGROUND_SETTINGS = 4;
 
         final int kind;
         final String label;
@@ -300,6 +300,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             if (ca != cb) return ca ? -1 : 1;
             return a.label.compareToIgnoreCase(b.label);
         });
+        // Keep settings reachable with the custom header hidden, outside the movable app list.
+        fresh.add(new Entry(Entry.BACKGROUND_SETTINGS, ctx.getString(R.string.bg_library),
+                new ComponentName(ctx, WallpaperSettingsActivity.class),
+                ctx.getDrawable(R.drawable.banner_desktop_settings), null, null, 0));
         // Retain the optional Default-home tile until dependent tile-ordering work is merged.
         if (showHomeSettings
                 && pm.resolveActivity(new Intent(Settings.ACTION_HOME_SETTINGS), 0) != null) {
@@ -425,6 +429,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.card.setVisibility(View.VISIBLE);
         h.card.setFocusable(true);
         h.name.setText(e.name);
+        h.card.setContentDescription(e.label);
         // Keep dock names hidden unless the upstream always_show_names option is enabled.
         h.name.setVisibility(dockRow && position < dockSize && restNameAlpha == 0f ? View.GONE : View.VISIBLE);
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
@@ -474,6 +479,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 ? ActivityOptions.makeCustomAnimation(ctx,
                         R.anim.app_open_enter, R.anim.app_open_exit).toBundle()
                 : null;
+        if (e.kind == Entry.BACKGROUND_SETTINGS) {
+            ctx.startActivity(new Intent(ctx, WallpaperSettingsActivity.class), options);
+            return;
+        }
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), options);
@@ -546,10 +555,12 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return emptySlots > 0;
     }
 
-    /** Tiles that can be moved: everything but the "Default home" tile, which always stays last. */
+    /** Settings shortcuts stay after the movable apps. */
     int movableCount() {
         int n = items.size();
-        return n > 0 && items.get(n - 1).kind == Entry.HOME_SETTINGS ? n - 1 : n;
+        while (n > 0 && (items.get(n - 1).kind == Entry.HOME_SETTINGS
+                || items.get(n - 1).kind == Entry.BACKGROUND_SETTINGS)) n--;
+        return n;
     }
 
     /** Keys of the movable tiles in their current order, for Order (empty dock slots are not tiles). */

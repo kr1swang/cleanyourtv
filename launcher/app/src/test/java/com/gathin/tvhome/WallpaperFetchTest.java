@@ -30,7 +30,6 @@ public class WallpaperFetchTest {
                 "test",
                 "gate",
                 "Gate",
-                "橋",
                 1920,
                 1080,
                 moving ? 60 : 0,

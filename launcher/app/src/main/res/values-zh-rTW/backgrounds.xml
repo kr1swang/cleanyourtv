@@ -1,13 +1,13 @@
 <resources>
-    <string name="bg_library">背景下載與管理</string>
+    <string name="bg_library">背景設定</string>
     <string name="bg_static">靜態</string>
     <string name="bg_current">目前背景：%1$s</string>
     <string name="bg_downloaded">已下載</string>
-    <string name="bg_confirm">下載並驗證完成後套用，返回首頁即可顯示。下載成功前保留目前背景；離開此頁會取消下載。</string>
+    <string name="bg_confirm">下載並驗證完成後將選用此背景，返回首頁即可顯示。過程中可按「取消」或返回鍵中止，保留原本背景。</string>
     <string name="bg_apply">下載／套用</string>
     <string name="bg_verifying">正在檢查已下載檔案…</string>
     <string name="bg_progress">下載中 %1$s／%2$s</string>
-    <string name="bg_clear">清除未使用的下載檔案</string>
+    <string name="bg_clear">清除未使用的檔案</string>
     <string name="bg_clear_confirm">釋放 %1$s？會保留目前背景需要的檔案。</string>
     <string name="bg_cleaning">正在清除未使用檔案…</string>
     <string name="bg_failed">未能完成操作，目前背景保持不變。請檢查網路與可用儲存空間後重試。</string>

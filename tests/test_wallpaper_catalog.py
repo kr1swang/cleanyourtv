@@ -21,6 +21,7 @@ class WallpaperCatalogTest(unittest.TestCase):
             self.assertEqual(len(entries), 1 if variant.endswith("static") else 2)
             for asset in entries:
                 self.assertEqual(Path(asset["filename"]).name, asset["filename"])
+                self.assertEqual(asset["url"].rsplit("/", 1)[1], asset["filename"])
                 self.assertRegex(asset["sha256"], r"^[0-9a-f]{64}$")
                 self.assertGreater(asset["size"], 0)
                 self.assertIn("/releases/download/wallpapers-2026-10-22/", asset["url"])
@@ -36,13 +37,6 @@ class WallpaperCatalogTest(unittest.TestCase):
                 fetcher.main()
                 got = [call.args[0] for call in download.call_args_list]
                 self.assertEqual(got, fetcher.catalog()[fetcher.PROFILES[profile]])
-
-    def test_legacy_cli_preserves_60fps_filenames(self):
-        with patch("sys.argv", ["fetch-wallpapers.py", "--size", "both"]), patch.object(fetcher, "fetch") as download:
-            fetcher.main()
-            movies = [c.args[0] for c in download.call_args_list if c.args[0]["filename"].endswith(".mov")]
-            self.assertEqual([m["filename"] for m in movies], ["wallpaper_1920x1080.mov", "wallpaper_3840x2160.mov"])
-            self.assertTrue(all(m["url"].endswith("_60fps.mov") for m in movies))
 
     def test_corrupt_download_does_not_overwrite_existing_file(self):
         asset = fetcher.catalog()["gg-1080-static"][0]

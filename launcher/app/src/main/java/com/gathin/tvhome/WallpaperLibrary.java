@@ -91,15 +91,13 @@ final class WallpaperLibrary {
     }
 
     static String label(Context ctx, WallpaperCatalog.Variant v) {
-        String title =
-                ctx.getResources().getConfiguration().getLocales().get(0).getLanguage().equals("zh")
-                        ? v.titleZh
-                        : v.title;
-        return title
-                + " · "
-                + (v.width >= 3840 ? "4K" : "1080p")
-                + " · "
-                + (v.fps == 0 ? ctx.getString(R.string.bg_static) : v.fps + " fps");
+        return v.title + " · " + formatLabel(ctx, v);
+    }
+
+    static String formatLabel(Context ctx, WallpaperCatalog.Variant v) {
+        return (v.width >= 3840 ? "4K" : "FHD")
+                + " "
+                + (v.fps == 0 ? "Static" : v.fps + "fps");
     }
 
     static String currentLabel(Context ctx) {

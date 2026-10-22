@@ -16,11 +16,13 @@ import java.util.concurrent.Future;
 /** Remote-only picker. Files are verified on a worker before the selected preference changes. */
 public final class WallpaperSettingsActivity extends Activity {
     private final Handler ui = new Handler(Looper.getMainLooper());
-    private final List<Button> choices = new ArrayList<>();
+    private final List<RadioButton> choices = new ArrayList<>();
     private TextView status;
     private ProgressBar progress;
-    private Button cancel, clear;
+    private AlertDialog progressDialog;
+    private TextView progressMessage;
     private WallpaperCatalog catalog;
+    private final List<WallpaperCatalog.Variant> variants = new ArrayList<>();
     private Future<?> job;
     private int generation;
 
@@ -45,43 +47,54 @@ public final class WallpaperSettingsActivity extends Activity {
         status.setTextColor(0xFFCCCCCC);
         status.setPadding(0, dp(12), 0, dp(12));
         body.addView(status);
-        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setMax(100);
-        progress.setVisibility(View.GONE);
-        body.addView(progress);
-        cancel = button(body, getString(android.R.string.cancel));
-        cancel.setVisibility(View.GONE);
-        cancel.setOnClickListener(
-                v -> {
-                    cancelJob();
-                    refresh();
-                });
         try {
             catalog = WallpaperLibrary.catalog(this);
+            variants.addAll(catalog.variants);
+            variants.sort(Comparator.comparing((WallpaperCatalog.Variant v) -> v.background)
+                    .thenComparingInt(v -> v.width).thenComparingInt(v -> v.fps));
+            boolean multipleBackgrounds = catalog.variants.stream()
+                    .map(v -> v.background).distinct().count() > 1;
             String last = "";
-            for (WallpaperCatalog.Variant variant : catalog.variants) {
-                if (!last.equals(variant.background)) {
-                    last = variant.background;
+            int lastWidth = 0;
+            LinearLayout row = null;
+            for (WallpaperCatalog.Variant variant : variants) {
+                boolean newBackground = !last.equals(variant.background);
+                if (multipleBackgrounds && newBackground) {
                     TextView heading = new TextView(this);
-                    heading.setText(
-                            getResources()
-                                            .getConfiguration()
-                                            .getLocales()
-                                            .get(0)
-                                            .getLanguage()
-                                            .equals("zh")
-                                    ? variant.titleZh
-                                    : variant.title);
+                    heading.setText(variant.title);
                     heading.setTextColor(0xFFFFFFFF);
                     heading.setTextSize(22);
                     heading.setPadding(0, dp(16), 0, dp(8));
                     body.addView(heading);
                 }
-                Button b = button(body, "");
+                if (row == null || newBackground || lastWidth != variant.width) {
+                    row = new LinearLayout(this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    body.addView(row);
+                }
+                last = variant.background;
+                lastWidth = variant.width;
+                RadioButton b = new RadioButton(this) {
+                    // Selection follows the applied file, not an unconfirmed click or download.
+                    @Override public void toggle() {}
+                };
+                b.setButtonDrawable(new android.graphics.drawable.InsetDrawable(
+                        b.getButtonDrawable(), dp(12), 0, 0, 0));
+                b.setTextSize(18);
+                b.setTextColor(0xFFFFFFFF);
+                b.setButtonTintList(android.content.res.ColorStateList.valueOf(0xFFB3E1C5));
+                b.setPadding(dp(12), 0, dp(12), 0);
+                b.setCompoundDrawablePadding(dp(10));
+                b.setBackgroundResource(R.drawable.background_radio_focus);
+                LinearLayout.LayoutParams cell = new LinearLayout.LayoutParams(0, dp(76), 1f);
+                cell.setMargins(0, dp(6), dp(8), dp(6));
+                row.addView(b, cell);
                 choices.add(b);
-                b.setOnClickListener(v -> confirm(variant));
+                b.setOnClickListener(v -> {
+                    if (!b.isChecked()) confirm(variant);
+                });
             }
-            clear = button(body, getString(R.string.bg_clear));
+            Button clear = button(body, getString(R.string.bg_clear));
             clear.setOnClickListener(
                     v -> {
                         try {
@@ -111,6 +124,8 @@ public final class WallpaperSettingsActivity extends Activity {
         b.setText(text);
         b.setAllCaps(false);
         b.setTextSize(18);
+        b.setTextColor(0xFFFFFFFF);
+        b.setBackgroundResource(R.drawable.background_radio_focus);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(54));
         lp.topMargin = dp(5);
         body.addView(b, lp);
@@ -127,7 +142,8 @@ public final class WallpaperSettingsActivity extends Activity {
 
     private void refresh() {
         if (catalog == null) return;
-        String active = WallpaperLibrary.currentLabel(this);
+        WallpaperCatalog.Variant selected = activeVariant();
+        String active = selected == null ? null : WallpaperLibrary.label(this, selected);
         if (active == null) {
             String choice = WallpaperLibrary.choice(this);
             active =
@@ -137,12 +153,22 @@ public final class WallpaperSettingsActivity extends Activity {
         }
         status.setText(getString(R.string.bg_current, active));
         for (int i = 0; i < choices.size(); i++) {
-            WallpaperCatalog.Variant v = catalog.variants.get(i);
-            long missing = 0;
-            for (WallpaperCatalog.Asset a : v.assets())
-                if (!a.present(WallpaperLibrary.directory(this))) missing += a.size;
-            String suffix = missing == 0 ? getString(R.string.bg_downloaded) : mib(missing);
-            choices.get(i).setText(WallpaperLibrary.label(this, v) + " · " + suffix);
+            WallpaperCatalog.Variant v = variants.get(i);
+            long size = 0;
+            for (WallpaperCatalog.Asset a : v.assets()) size += a.size;
+            String suffix = mib(size) + (v.present(WallpaperLibrary.directory(this))
+                    ? " · " + getString(R.string.bg_downloaded) : "");
+            choices.get(i).setText(WallpaperLibrary.formatLabel(this, v) + "\n" + suffix);
+            choices.get(i).setChecked(selected != null && selected.id.equals(v.id));
+        }
+    }
+
+    private WallpaperCatalog.Variant activeVariant() {
+        try {
+            return WallpaperLibrary.choice(this) == null
+                    ? WallpaperLibrary.defaultVariant(this) : WallpaperLibrary.selected(this);
+        } catch (IOException ignored) {
+            return null; // Catalog errors are reported when opening the page.
         }
     }
 
@@ -155,20 +181,46 @@ public final class WallpaperSettingsActivity extends Activity {
                 .show();
     }
 
-    private void busy(boolean busy) {
-        for (Button b : choices) b.setEnabled(!busy);
-        if (clear != null) clear.setEnabled(!busy);
-        progress.setVisibility(busy ? View.VISIBLE : View.GONE);
-        cancel.setVisibility(busy ? View.VISIBLE : View.GONE);
-        if (busy) {
-            progress.setProgress(0);
-            cancel.requestFocus();
-        }
+    private void showProgress(String title, int message, boolean cancellable) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(24), dp(12), dp(24), dp(12));
+        progressMessage = new TextView(this);
+        progressMessage.setText(message);
+        progressMessage.setTextSize(18);
+        content.addView(progressMessage);
+        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);
+        progress.setIndeterminate(true);
+        LinearLayout.LayoutParams bar = new LinearLayout.LayoutParams(-1, dp(12));
+        bar.topMargin = dp(16);
+        content.addView(progress, bar);
+        AlertDialog.Builder dialog = new AlertDialog.Builder(this)
+                .setTitle(title).setView(content).setCancelable(cancellable);
+        if (cancellable) dialog.setNegativeButton(android.R.string.cancel, (d, w) -> {
+            cancelJob();
+            refresh();
+        });
+        progressDialog = dialog.create();
+        progressDialog.setOnCancelListener(d -> {
+            cancelJob();
+            refresh();
+        });
+        progressDialog.setCanceledOnTouchOutside(false);
+        progressDialog.show();
+        progressDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (cancellable) progressDialog.getButton(AlertDialog.BUTTON_NEGATIVE).requestFocus();
+    }
+
+    private void dismissProgress() {
+        if (progressDialog != null) progressDialog.dismiss();
+        progressDialog = null;
+        progress = null;
+        progressMessage = null;
     }
 
     private void download(WallpaperCatalog.Variant v) {
-        busy(true);
-        status.setText(R.string.bg_verifying);
+        showProgress(WallpaperLibrary.label(this, v), R.string.bg_verifying, true);
         final int run = ++generation;
         job =
                 WallpaperLibrary.WORKER.submit(
@@ -183,11 +235,12 @@ public final class WallpaperSettingsActivity extends Activity {
                                                         ui.post(
                                                                 () -> {
                                                                     if (run != generation) return;
+                                                                    progress.setIndeterminate(false);
                                                                     progress.setProgress(
                                                                             (int)
                                                                                     (done * 100
                                                                                             / total));
-                                                                    status.setText(
+                                                                    progressMessage.setText(
                                                                             getString(
                                                                                     R.string
                                                                                             .bg_progress,
@@ -198,7 +251,7 @@ public final class WallpaperSettingsActivity extends Activity {
                                         () -> {
                                             if (run != generation) return;
                                             job = null;
-                                            busy(false);
+                                            dismissProgress();
                                             try {
                                                 WallpaperLibrary.apply(this, v);
                                                 setResult(RESULT_OK);
@@ -217,7 +270,6 @@ public final class WallpaperSettingsActivity extends Activity {
                                         () -> {
                                             if (run == generation) {
                                                 job = null;
-                                                busy(false);
                                                 fail(e);
                                             }
                                         });
@@ -226,8 +278,7 @@ public final class WallpaperSettingsActivity extends Activity {
     }
 
     private void deleteUnused() {
-        busy(true);
-        status.setText(R.string.bg_cleaning);
+        showProgress(getString(R.string.bg_clear), R.string.bg_cleaning, false);
         final int run = ++generation;
         job =
                 WallpaperLibrary.WORKER.submit(
@@ -238,7 +289,7 @@ public final class WallpaperSettingsActivity extends Activity {
                                         () -> {
                                             if (run == generation) {
                                                 job = null;
-                                                busy(false);
+                                                dismissProgress();
                                                 refresh();
                                             }
                                         });
@@ -247,7 +298,6 @@ public final class WallpaperSettingsActivity extends Activity {
                                         () -> {
                                             if (run == generation) {
                                                 job = null;
-                                                busy(false);
                                                 fail(e);
                                             }
                                         });
@@ -257,7 +307,10 @@ public final class WallpaperSettingsActivity extends Activity {
 
     private void fail(Exception e) {
         Log.w("WallpaperLibrary", "Wallpaper operation failed", e);
-        status.setText(R.string.bg_failed);
+        dismissProgress();
+        refresh();
+        new AlertDialog.Builder(this).setMessage(R.string.bg_failed)
+                .setPositiveButton(android.R.string.ok, null).show();
     }
 
     private void cancelJob() {
@@ -266,7 +319,7 @@ public final class WallpaperSettingsActivity extends Activity {
             job.cancel(true);
             job = null;
         }
-        busy(false);
+        dismissProgress();
     }
 
     @Override

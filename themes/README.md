@@ -14,7 +14,7 @@ powershell -ExecutionPolicy Bypass -File tools\theme.ps1 -TvHost 192.168.1.50 th
 
 | Theme | What it does | Screenshot |
 |---|---|---|
-| `apple-style/` | This fork's bundled six-column Dock and wallpaper defaults; requires the custom build for its clock, layout and video support. Chromecast capture from 2026-10-21; ADB omitted the playing video layer. | <img src="apple-style/screenshot.jpg" width="320" alt="apple-style theme on Chromecast; video layer not captured"> |
+| `apple-style/` | This fork's bundled six-column Dock and wallpaper defaults; requires the custom build for its clock, layout and video support. Chromecast capture with the Golden Gate static wallpaper. | <img src="apple-style/screenshot.jpg" width="320" alt="apple-style theme on Chromecast with Golden Gate wallpaper"> |
 | `default/` | The built-in look written out as JSON, as a starting point for your own | <img src="default/screenshot.jpg" width="320" alt="default theme"> |
 | `aurora/` | A dark aurora wallpaper (teal and violet on navy, darker at the bottom) with a matching background colour | <img src="aurora/screenshot.jpg" width="320" alt="aurora theme"> |
 | `dussehra/` | Festive skin for Dussehra (ends 21 Oct 2026): a marigold toran, a faint gold rangoli, a diya for Wi-Fi, a bell for Inputs, a marigold for Settings and a petal shower | <img src="dussehra/screenshot.jpg" width="320" alt="dussehra theme"> |

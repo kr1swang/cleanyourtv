@@ -3,9 +3,10 @@
 The APK bundles the six-column Dock defaults in `config.json` and the pinned asset catalog in
 `wallpaper-catalog.properties`. Images and movies are downloaded from
 [wallpapers-2026-10-22](https://github.com/kr1swang/cleanyourtv/releases/tag/wallpapers-2026-10-22).
-The previous Release remains available for older installations.
+Release filenames use `wallpaper_FHD` and `wallpaper_4K`, with `_30fps` or `_60fps` for movies.
+Release, downloader and cache filenames share the same FHD / 4K naming.
 
-Open **Launcher settings → Background downloads**. Golden Gate offers static 1080p, static 4K,
+Open the flower **Background settings** card. Golden Gate offers static 1080p, static 4K,
 1080p/30 fps, 1080p/60 fps, 4K/30 fps and 4K/60 fps. The picker shows download size, progress and
 cached versions. A video profile also downloads its resolution's preview. The two frame rates share
 that preview. All six files were uploaded to the new Release, including the original 60 fps files.
@@ -16,7 +17,7 @@ is available. Leaving the picker or pressing Cancel stops the job; verified asse
 The next download removes abandoned partial files. Errors preserve the current background.
 
 Files live under the app's private `files/wallpaper-library/` directory and survive normal updates.
-**Clear unused downloads** preserves the active profile's files, including a shared preview. External
+**Clear unused files** preserves the active profile's files, including a shared preview. External
 manually deployed files are never removed. Clearing app data removes downloads and selections.
 On first use, Home downloads a static preview matching the physical display. Offline it uses the
 plain background and retries on a later foreground visit, at most once every two minutes. An explicit
@@ -46,8 +47,7 @@ python3 tools/fetch-wallpapers.py --profile 4k-60
 ```
 
 The tool reads the same catalog as Android, verifies existing files and downloads only missing or
-invalid assets. `--size 1080p`, `--size 4k` and `--size both` retain the legacy 60 fps filenames while
-also fetching the matching previews. Downloaded media is ignored by Git.
+invalid assets. Each profile fetches its matching preview. Downloaded media is ignored by Git.
 
 Copy the chosen image to `/sdcard/Android/data/<package>/files/wallpaper.png` and, for video, copy the
 movie alongside it. Merge only `video_wallpaper` in the existing external JSON: `[]` for static or a
