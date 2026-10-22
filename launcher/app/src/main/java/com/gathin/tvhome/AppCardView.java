@@ -18,6 +18,8 @@ public final class AppCardView extends FrameLayout {
     void configureMotion(boolean enabled, boolean reduced) {
         motion = enabled;
         reducedMotion = reduced;
+        // Reuse the card texture across focus changes instead of rebuilding it per zoom.
+        setLayerType(enabled && !reduced ? LAYER_TYPE_HARDWARE : LAYER_TYPE_NONE, null);
     }
 
     private float targetScale() {
@@ -36,8 +38,6 @@ public final class AppCardView extends FrameLayout {
             animate().scaleX(scale).scaleY(scale).setDuration(duration)
                     .setInterpolator(EASING)
                     .setUpdateListener(a -> invalidateShadow());
-            // Upstream reduced motion skips the hardware layer for its short zoom.
-            if (!reducedMotion) animate().withLayer();
             animate().start();
         }
     }
