@@ -54,6 +54,10 @@ tools/venv/bin/python tools/trace_report.py traces/before --vs traces/after --ma
 
 With `--vs`, a third table shows the change in each median. A run over twice the median is starred.
 
+Slices still open when the recording ends have no measured duration. The report leaves those durations
+out and counts only completed draws. If the first RenderThread draw is unfinished, the first-frame time
+is unavailable too; completed lifecycle steps are still reported.
+
 Frame times and missed deadlines need [FrameTimeline](https://perfetto.dev/docs/data-sources/frametimeline),
 available on Android 12 and later. Without its data for the launcher process, these metrics are omitted
 (or shown as `–` beside measured runs). `nav` still counts RenderThread draws and reports their duration

@@ -47,6 +47,9 @@ it without waiting, the first lines of `build-and-install.sh` have an adb comman
   app open its warning from the background when it holds this. The app draws no overlay window.
 - **Exact alarms** (`SCHEDULE_EXACT_ALARM`), granted with `appops` where it exists (Android 12+), so the
   timer fires on the minute; without it the alarm may come a few minutes late.
+- **Auto-start** (`AUTO_START` or `APP_AUTO_START`, TCL only), granted with `appops` and saved with
+  `appops write-settings`: TCL's TclAppBoot otherwise refuses to bind `SleepService` while the app is not
+  running, so the timer ends without putting the TV to standby. Other TVs do not have the op and ignore it.
 - No network, no storage permission, no background service: between setting the timer and its end there are
   two alarms and nothing running.
 - **`AlarmReceiver`** is exported only to callers holding `WRITE_SECURE_SETTINGS`, which the adb shell has and

@@ -71,7 +71,7 @@ package name.
   tools/tv.py 'pm enable com.haiersoft.launcherproject2995hk'
   # ...once per package that was disabled, or once per package in the backup
   tools/tv.py 'pm list packages -d'      # must print nothing
-  tools/tv.py reboot
+  tools/tv.py --reboot                   # returns once ADB accepts it; wait for the TV to come back
   ```
 
   This set showed `INICIALIZANDO` once more on the reboot and then booted normally. Boots take 33–73 s.

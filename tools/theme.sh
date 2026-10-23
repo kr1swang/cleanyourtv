@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Push a theme (a folder with config.json and optionally wallpaper.png or wallpaper.jpg) to the launcher on the TV and
-# restart Home so it picks it up. The launcher reads the files from its external files directory and
-# overlays config.json on its built-in config.xml; see themes/README.md for the keys.
+# Push a theme (config.json, optionally wallpaper.png, wallpaper.jpg or a wallpapers/ collection) to the
+# launcher on the TV and restart Home so it picks it up. The launcher reads the files from its external files
+# directory and overlays config.json on its built-in config.xml; see themes/README.md for the keys.
 #
 # Usage: TV_HOST=192.168.1.50 tools/theme.sh themes/aurora
 #        TV_HOST=192.168.1.50 tools/theme.sh --reset        # remove the overlay, back to config.xml
@@ -60,8 +60,14 @@ stage() { echo "$TMP-${1//\//-}"; }
 put() { echo "rm -f $DIR/$1 2>/dev/null; { o=\$(content write --uri $URI/$1 < $(stage "$1") 2>&1) && case \"\$o\" in *'Unsupported operation'*) false ;; esac; } || cp $(stage "$1") $DIR/$1 2>/dev/null; rm -f $(stage "$1")"; }
 del() { echo "rm -f $DIR/$1 2>/dev/null; content delete --uri $URI/$1 2>/dev/null"; }
 
+# The collection a theme can push. A push empties it before writing the theme's own pictures, and --reset has to
+# empty it too: the launcher's wallpaper picker (LauncherSettingsActivity.showWallpaperPicker) lists that folder
+# itself, and an on-TV pick of one of its pictures is read back from it (WallpaperRotation.chosen), so a reset
+# that left the pictures behind still shows the theme it just removed. Both paths use this one string.
+CLEAR_WALLPAPERS="mkdir -p $DIR/wallpapers 2>/dev/null; rm -f $DIR/wallpapers/*.jpg $DIR/wallpapers/*.jpeg $DIR/wallpapers/*.png $DIR/wallpapers/*.webp $DIR/wallpapers/*.JPG $DIR/wallpapers/*.JPEG $DIR/wallpapers/*.PNG $DIR/wallpapers/*.WEBP 2>/dev/null; content delete --uri $URI/wallpapers 2>/dev/null"
+
 if [ "${1:-}" = --reset ]; then
-  tv "mkdir -p $DIR 2>/dev/null; $(del config.json); $(del wallpaper.jpg); $(del wallpaper.png); printf '%s' '$REVISION' > $TMP-theme_revision; $(put theme_revision); $RESTART; echo reset" | tail -n 1
+  tv "mkdir -p $DIR 2>/dev/null; $(del config.json); $(del wallpaper.jpg); $(del wallpaper.png); $(del wallpapers/captions.txt); $CLEAR_WALLPAPERS; printf '%s' '$REVISION' > $TMP-theme_revision; $(put theme_revision); $RESTART; echo reset" | tail -n 1
   exit 0
 fi
 THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
@@ -81,7 +87,7 @@ elif [ -f "$THEME/wallpaper.jpg" ]; then
 else
   tv "$(del wallpaper.jpg); $(del wallpaper.png)" >/dev/null
 fi
-tv "mkdir -p $DIR/wallpapers 2>/dev/null; rm -f $DIR/wallpapers/*.jpg $DIR/wallpapers/*.jpeg $DIR/wallpapers/*.png $DIR/wallpapers/*.webp $DIR/wallpapers/*.JPG $DIR/wallpapers/*.JPEG $DIR/wallpapers/*.PNG $DIR/wallpapers/*.WEBP 2>/dev/null; content delete --uri $URI/wallpapers 2>/dev/null" >/dev/null
+tv "$CLEAR_WALLPAPERS" >/dev/null
 if [ -d "$THEME/wallpapers" ]; then
   for IMAGE in "$THEME"/wallpapers/*; do
     [ -f "$IMAGE" ] || continue

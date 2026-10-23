@@ -156,7 +156,7 @@ class KeysTableCoversConfigXmlTest(unittest.TestCase):
         for name in missing:
             with self.subTest(key=name):
                 self.fail(f"the launcher reads `{name}` from config.xml and the Keys table has no row "
-                          f"for it: add one (AGENTS.md's switch recipe) or, if it is not a key a "
+                          f"for it: add one (docs/workflows/launcher-switch.md) or, if it is not a key a "
                           f"reader sets, add it to EXEMPT with the page that documents it instead")
 
     def test_settings_fallback_components_has_its_row(self):

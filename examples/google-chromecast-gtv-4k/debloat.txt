@@ -1,9 +1,11 @@
 # Chromecast with Google TV 4K (2020, device sabrina, product sabrina_prod_stable), 2 GB RAM
 # Google TV 14 (SDK 34), build UTTC.250917.004 (14193937)
+# Second unit: Canada, same build, one day of use (2026-10-22). Notes under "Second unit" below.
 #
 # Apply:   TV_HOST=<ip> tools/disable.sh examples/google-chromecast-gtv-4k/debloat.txt
 # Undo:    TV_HOST=<ip> tools/restore.sh examples/google-chromecast-gtv-4k/debloat.txt com.google.android.apps.tv.launcherx
 # Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+# To keep phone casting and the stock home (no new launcher), use debloat-keep-cast.txt in this folder instead.
 #
 # Stock launcher: com.google.android.apps.tv.launcherx. No Live TV app and no HDMI inputs (it's a dongle):
 # leave live_tv_package empty in config.xml.
@@ -50,6 +52,40 @@
 # - Disabling dreamx leaves screensaver_components pointing at it. Point it at the launcher's clock:
 #   settings put secure screensaver_components com.gathin.tvhome/.ClockDream
 # - Animation scales already ship at 0.5x on this build.
+#
+# Second unit. The list's telemetry and preloaded-app groups were applied (the screensaver pair and
+# setupwraith were kept), plus a few apps by choice;
+# after a reboot the disabled list was unchanged. Private DNS validated, and YouTube and Plex loaded
+# their profiles. Power and Ethernet came through one USB-C hub.
+# - On Ethernet the Wireless debugging toggle flipped straight back off: unplug the cable, join Wi-Fi
+#   and pair as above. Wireless debugging also went off at every reboot (Wi-Fi drops during boot) and
+#   had to be switched on again by hand; the pairing was kept and the stock adb reconnected on its own.
+#   Port 5555 from `adb tcpip` lasted until the next reboot.
+# - The hub stayed powered with USB debugging on: `ip link` still listed eth0 (NO-CARRIER only because
+#   the cable was out), while `dumpsys usb` printed host_connected=false and sys.usb.config was "none",
+#   so host_connected=false was no proof the hub was gone. With USB debugging still on, plugging the
+#   Ethernet cable back in brought the Chromecast up on Ethernet, and tools/adb-closed.py then reported
+#   5555 refused (not checked whether that came from a restart or from Wireless debugging going off).
+# - The remote ("Chromecast Remote", 18d1:9450; /odm/usr/keylayout/Vendor_18d1_Product_9450.kl is not
+#   readable from the shell) shows YouTube and Netflix as KEY_UNKNOWN in `getevent -lt`, with MSC_SCAN
+#   000c0077 and 000c0078: the usages the Google TV Streamer list maps to BUTTON_3 (190) and
+#   BUTTON_4 (191).
+# - Home by redirect: launcherx and setupwraith left enabled for casting, stock_home_redirect set to
+#   com.google.android.apps.tv.launcherx, HomeKeyService enabled by hand. launcher/build-and-install.sh
+#   with STOCK_LAUNCHER=none installs, then stops at its Home check, as expected while launcherx is
+#   Home. Home pressed in an app landed on the new launcher. After a reboot the TV stayed on the Google
+#   TV home: it is drawn before Android binds HomeKeyService, so no window change reaches the redirect
+#   (#698 and #1024 work on this).
+# - With the redirect on, the YouTube button did nothing although launcherx was enabled. The redirect
+#   opens the launcher with ACTION_MAIN + CATEGORY_HOME, so this is consistent with #698's explanation
+#   (this launcher becomes the Home process and launcherx loses its Android 14 exemption for background
+#   activity starts, BAL_BLOCK), but no BAL_BLOCK line was captured in logcat. app_keys
+#   "190:com.google.android.youtube.tv" and "191:<package>" in a theme, handled by HomeKeyService,
+#   worked with both buttons on the real remote. (Seen on a build with a local boot check added to
+#   HomeKeyService; the redirect's intent was main's.)
+# - Holding Volume Up on the real remote still ramped with HomeKeyService filtering keys (key_filter at
+#   its default) and Button Mapper's accessibility service enabled as well. Not checked with
+#   HomeKeyService alone.
 #
 # Kept on purpose: Google Assistant (com.google.android.katniss), Cast receiver
 # (com.google.android.apps.mediashell), phone remote (com.google.android.tv.remote.service), Play Store /

@@ -31,6 +31,11 @@ def box(text):
 
 def compare(a, b, masks, threshold):
     """(pixels that differ by more than threshold in any channel, their bounding box or None, the largest difference)."""
+    return _compare(a, b, masks, threshold)[:3]
+
+
+def _compare(a, b, masks, threshold):
+    """The comparison numbers and the binary pixel mask they describe."""
     from PIL import ImageChops, ImageDraw
     a, b = a.convert("RGB").copy(), b.convert("RGB").copy()
     for im in (a, b):
@@ -43,7 +48,7 @@ def compare(a, b, masks, threshold):
     worst = ImageChops.lighter(ImageChops.lighter(r, g), bl)
     over = worst.point(lambda v: 255 if v > threshold else 0)
     count = over.histogram()[255]
-    return count, over.getbbox(), max(worst.getdata())
+    return count, over.getbbox(), max(worst.getdata()), over
 
 
 def redact(im, region):
@@ -118,13 +123,12 @@ def main(argv=None):
     if outside:
         print(f"a box is outside the {a.size[0]}x{a.size[1]} screenshot: {outside[0]}", file=sys.stderr)
         return 2
-    count, bbox, worst = compare(a, b, args.mask, args.threshold)
+    count, bbox, worst, diff = _compare(a, b, args.mask, args.threshold)
     if args.out:
         pair(a, b, args.blur, args.label_pair, args.scale).save(args.out)
         print(f"{args.out}: written")
     if args.diff:
-        from PIL import ImageChops
-        ImageChops.difference(a.convert("RGB"), b.convert("RGB")).point(lambda v: 255 if v > args.threshold else 0).save(args.diff)
+        diff.save(args.diff)
     masked = f" ({len(args.mask)} region{'s' if len(args.mask) != 1 else ''} masked)" if args.mask else ""
     if count == 0:
         print(f"identical{masked}: no pixel differs by more than {args.threshold}")

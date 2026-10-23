@@ -188,12 +188,15 @@ esac
 #   RESTORE_KEY_SERVICES=1  grants WRITE_SECURE_SETTINGS, so that with restore_key_services (config.xml or a
 #                         theme) Home puts these helpers back after a force stop of the launcher
 # TCL firmware (TclAppBoot) refuses to bind an app's accessibility service while the app is not running unless it
-# holds the AUTO_START app-op, so grant it first; other TVs do not know the op and ignore it. A service that is
+# holds the AUTO_START app-op, so grant it first; other TVs do not know the op and ignore it. Builds name it
+# AUTO_START (G08, AU02) or APP_AUTO_START (G10), so set both. App-ops reach the disk lazily: without
+# `appops write-settings` the next reboot drops the grant, TclAppBoot refuses the service again and Home falls back
+# to the stock launcher (TCL 55Q6C, Google TV 14, UTT2.250416.001 AU02). A service that is
 # already listed was refused while the APK was replaced, and binds again only once the list changes, so clear it,
 # switch accessibility off and write it back (as tools/theme.sh does).
 enable_service() {   # appends to enabled_accessibility_services without dropping other services
   svc=com.gathin.tvhome/.$1
-  "$PY" -I ../tools/tv.py "cmd appops set com.gathin.tvhome AUTO_START allow 2>/dev/null; s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$1*) settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$s\" ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
+  "$PY" -I ../tools/tv.py "cmd appops set com.gathin.tvhome AUTO_START allow 2>/dev/null; cmd appops set com.gathin.tvhome APP_AUTO_START allow 2>/dev/null; appops write-settings 2>/dev/null; s=\$(settings get secure enabled_accessibility_services); case \"\$s\" in *$1*) settings put secure enabled_accessibility_services ''; settings put secure accessibility_enabled 0; sleep 1; settings put secure enabled_accessibility_services \"\$s\" ;; null|'') settings put secure enabled_accessibility_services $svc ;; *) settings put secure enabled_accessibility_services \"\$s:$svc\" ;; esac; settings put secure accessibility_enabled 1; echo $1 enabled"
 }
 if [ "${INPUT_KEY_SERVICE:-0}" = 1 ]; then enable_service InputKeyService; fi
 if [ "${HOME_KEY_SERVICE:-0}" = 1 ]; then enable_service HomeKeyService; fi

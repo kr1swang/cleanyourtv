@@ -41,4 +41,6 @@ if ($LASTEXITCODE) { throw 'sending the APK failed; run this again' }
 Tv 'pm install -r /data/local/tmp/sleeptimer.apk; rm -f /data/local/tmp/sleeptimer.apk'
 Tv ('s=$(settings get secure enabled_accessibility_services); case :$s: in *:SVC:*) ;; *) if [ -z $s ] || [ $s = null ]; then s=SVC; else s=$s:SVC; fi; settings put secure enabled_accessibility_services $s;; esac; settings put secure accessibility_enabled 1'.Replace('SVC', $svc))
 Tv "appops set $pkg SYSTEM_ALERT_WINDOW allow; appops set $pkg SCHEDULE_EXACT_ALARM allow 2>/dev/null; true"
+# TCL's TclAppBoot refuses to bind SleepService unless the app may auto-start; write-settings keeps it past a reboot.
+Tv "appops set $pkg AUTO_START allow 2>/dev/null; appops set $pkg APP_AUTO_START allow 2>/dev/null; appops write-settings 2>/dev/null; true" | Out-Null
 Write-Host 'Installed. Pick a time on the Sleep Timer card.'

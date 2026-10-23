@@ -280,3 +280,66 @@ removed the paired computer, switched Wireless debugging and USB debugging off, 
   not tested after the list. Live TV and YouTube were opened, not watched for long.
 - Standby/wake, a cold boot from mains, and a firmware update are untested.
 - The volume repeat was measured with both helpers bound only. No bisect, and no `key_filter` false run.
+
+## Third unit: 55Q6C (Vietnam, Wi-Fi)
+
+One owner's session on 2026-10-23, following [`PROMPT.md`](../../PROMPT.md) on macOS with Claude Code. `tools/tv.py
+--probe` reported `Smart TV Pro`, device `G08`, Android 14 (SDK 34), `tcl9618-user 14 UTT2.250416.001 AU02
+release-keys` and `ro.adb.secure = 1`: the same pair as this folder.
+
+### Connecting
+
+- Wireless debugging only, as on the 65Q7D. macOS Local Network privacy blocked every connection from the agent's
+  own shell ("No route to host", even to the router). Pairing (`adb pair`) and the first `adb connect` were run from
+  an ordinary terminal; that started the adb server there, after which the agent's `adb` reached the TV through it.
+  `adb tcpip 5555`, then `adb forward tcp:15555 tcp:5555` with `TV_HOST=127.0.0.1 TV_PORT=15555` gave `tools/` a
+  connection, without `tools/relay.py`. The forward dropped once and had to be set again.
+- Port 5555 stayed open across both reboots in this session, until debugging was switched off.
+
+### The list as applied
+
+24 packages in four batches with a screenshot after each: this list minus the owner's keeps (Google voice
+`katniss`, AirPlay's three packages, `miracast`, Netflix and its token manager, `ui_mediaCenter` for a USB drive,
+`t_solo`, `hearaid` and `UpdatePeripheral` for TCL speakers), plus `com.google.android.youtube.tvmusic`.
+`com.tcl.magiconnectfree` was already disabled when the session started. After two reboots `pm list packages -d`
+still listed all 25, none came back.
+
+### Home without disabling setupwraith
+
+The saved Wi-Fi belonged to setupwraith (`cname=com.google.android.tungsten.setupwraith`), and the owner uses
+Chromecast, whose credentials come from setupwraith (`docs/TROUBLESHOOTING.md`). The first
+`launcher/build-and-install.sh` run rolled back as designed: Home resolved to `setupwraith/.RecoveryActivity`.
+
+Instead of disabling setupwraith, both it and launcherx stayed enabled and the launcher took Home through
+`stock_home_redirect`:
+
+- `config.xml`: `stock_home_redirect` `com.google.android.apps.tv.launcherx`, `settings_key_keycodes` `[83]`,
+  `app_keys` `190:com.google.android.youtube.tv` and `4062:com.netflix.ninja`, `live_tv_package` `com.tcl.tv`.
+- `STOCK_LAUNCHER=none launcher/build-and-install.sh` installs it and leaves launcherx alone. Its Home check then
+  reports launcherx, which is expected here; `HomeKeyService` was enabled afterwards the same way the script does.
+- Home from inside YouTube landed on `com.gathin.tvhome/.MainActivity` (`mFocusedApp`), and after a reboot the TV
+  started straight into it. Launcherx flashes for a moment before the redirect.
+- The owner pressed Home, Settings, YouTube, Netflix and Input on the real remote: all worked. Holding volume up
+  kept ramping with `HomeKeyService` bound and `key_filter` true, so the G09 repeat loss did not show on this set.
+
+### TclAppBoot after a reboot
+
+After the first reboot `HomeKeyService` was enabled but unbound, `accessibility_enabled` read `0`, and logcat had
+`[TclAppBoot]:forbid bind service ComponentInfo{com.gathin.tvhome/com.gathin.tvhome.HomeKeyService}`.
+`appops get com.gathin.tvhome` showed `AUTO_START: ignore`: the install script's `cmd appops set ... AUTO_START
+allow` had not reached the disk. `appops set com.gathin.tvhome AUTO_START allow; appops write-settings`, then
+clearing and rewriting the enabled list, bound the helper, and it bound on its own after the next reboot. The Sleep
+Timer add-on needed the same op (`AUTO_START` here, not `APP_AUTO_START`).
+
+### AirPlay and Cast on this network
+
+AirPlay (Settings > System > AirPlay and HomeKit Settings) was on and listening on port 7000, yet an iPhone found
+neither AirPlay nor Cast while the TV and phone were on the router's 5 GHz network (a VNPT iGate GW020-H, whose
+pages offer no isolation or multicast setting). With both on its 2.4 GHz network the TV appeared in Screen
+Mirroring. That is the router, not the debloat: nothing AirPlay-related was disabled.
+
+### Test limits
+
+- One set, one session, two reboots. Nothing here has been lived with for several days.
+- HDMI inputs and the tuner were not used after the list; Live TV opened.
+- Private DNS (`dns.adguard-dns.com`) validated and FPT Play loaded; no long playback test.

@@ -39,8 +39,9 @@ if ($LASTEXITCODE) { throw 'sending the APK failed; run this again' }
 Tv 'pm install -r /data/local/tmp/tvstatic.apk; rm -f /data/local/tmp/tvstatic.apk'
 # Android 10 and later let an app open a screen from the background only when it may draw over other apps.
 Tv "appops set $pkg SYSTEM_ALERT_WINDOW allow"
-# TCL's TclAppBoot keeps apps from starting at boot unless they may auto-start; elsewhere the op doesn't exist.
-Tv "appops set $pkg APP_AUTO_START allow 2>/dev/null; true" | Out-Null
+# TCL's TclAppBoot keeps apps from starting at boot unless they may auto-start (AUTO_START on G08 builds,
+# APP_AUTO_START on G10); elsewhere the op doesn't exist. write-settings saves it before the next reboot.
+Tv "appops set $pkg AUTO_START allow 2>/dev/null; appops set $pkg APP_AUTO_START allow 2>/dev/null; appops write-settings 2>/dev/null; true" | Out-Null
 # Starting the watcher once takes the app out of the stopped state, without which Android withholds BOOT_COMPLETED.
 Tv "am start-foreground-service -n $pkg/.WatchService --ez play $(if ($NoPlay) { 'false' } else { 'true' })"
 Write-Host 'Installed. The static plays whenever the screen turns on; its settings are on the TV Static card.'

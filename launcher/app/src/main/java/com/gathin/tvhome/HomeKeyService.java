@@ -7,11 +7,16 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.os.UserManager;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.provider.Settings;
 import android.view.KeyEvent;
+import android.view.ViewConfiguration;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Toast;
 
@@ -26,7 +31,8 @@ import java.util.Set;
  * the stock launcher is disabled the button does nothing. Every other key passes through untouched.
  *
  * With stock_home_redirect set, it also sends the stock launcher's home screen back here, for firmware that turns
- * that launcher on again after it was disabled (XGIMI's xrmservice does, on its own remote keys).
+ * that launcher on again after it was disabled (XGIMI's xrmservice does, on its own remote keys), or that cannot be
+ * disabled at all, and a short press of Home opens this launcher even when the stock home is already on screen.
  *
  * Enable over adb:
  *   settings put secure enabled_accessibility_services com.gathin.tvhome/.HomeKeyService
@@ -50,6 +56,8 @@ public class HomeKeyService extends AccessibilityService {
     private BroadcastReceiver unlockReceiver;
     /** The stock launcher's HOME activities (stock_home_redirect), disabled ones included. */
     private final Set<String> stockHome = new HashSet<>();
+    /** Stops key filtering while a game controller is connected; null unless gamepad_passthrough and key_filter, or before the unlock. */
+    private GamepadPassthrough gamepads;
 
     @Override
     protected void onServiceConnected() {
@@ -87,6 +95,7 @@ public class HomeKeyService extends AccessibilityService {
     @Override
     public void onDestroy() {
         stopWaitingForUnlock();
+        if (gamepads != null) gamepads.stop();
         super.onDestroy();
     }
 
@@ -115,8 +124,14 @@ public class HomeKeyService extends AccessibilityService {
             info.eventTypes |= AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             setServiceInfo(info);
         }
+        if (!stockHome.isEmpty()) probeAtBoot();
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
+        // gamepad_passthrough, off by default. Only with key_filter on: off, the service never filters keys.
+        if (config.gamepadPassthrough && config.keyFilter && gamepads == null) {
+            gamepads = new GamepadPassthrough(this);
+            gamepads.start();
+        }
     }
 
     private boolean isSettingsKey(KeyEvent event) {
@@ -146,6 +161,10 @@ public class HomeKeyService extends AccessibilityService {
         }
         if (RemoteKeys.handle(this, event, appKeys.get(event.getKeyCode()),
                 holdAppKeys.get(event.getKeyCode()))) return true;
+        if (event.getKeyCode() == KeyEvent.KEYCODE_HOME && !stockHome.isEmpty()) {
+            redirectHomeKey(event);
+            return false;
+        }
         if (event.getKeyCode() != KeyEvent.KEYCODE_ALL_APPS) return false;
         if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
             Intent home = new Intent(Intent.ACTION_MAIN)
@@ -169,10 +188,55 @@ public class HomeKeyService extends AccessibilityService {
         // stock_home_redirect: the firmware turned the stock launcher back on and its home screen came up.
         if (stockHome.isEmpty() || event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
         CharSequence cls = event.getClassName();
-        if (cls != null && stockHome.contains(cls.toString())) {
-            startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(getPackageName())
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
+        if (cls != null && stockHome.contains(cls.toString())) openHome();
+    }
+
+    /** How long after boot the first bind still counts as "at boot" for probeAtBoot. */
+    static final long BOOT_WINDOW_MS = 3 * 60 * 1000L;
+
+    /** stock_home_redirect at boot: the stock home is often on screen before Android binds this service, so no
+     *  window event for it arrives (#1116). Once per boot, open ProbeActivity: when it closes, whatever was in
+     *  front comes back and sends a window event, and onAccessibilityEvent covers it only if it is the stock home.
+     *  An HDMI input or an app that the TV resumed at boot is left alone. */
+    private void probeAtBoot() {
+        int boot = Settings.Global.getInt(getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+        SharedPreferences prefs = getSharedPreferences("boot", MODE_PRIVATE);
+        if (!firstBindAfterBoot(boot, prefs.getInt("probe_boot", -1), SystemClock.elapsedRealtime())) return;
+        prefs.edit().putInt("probe_boot", boot).apply();
+        try {
+            startActivity(new Intent(this, ProbeActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
+        } catch (ActivityNotFoundException | SecurityException ignored) {
         }
+    }
+
+    static boolean firstBindAfterBoot(int boot, int lastBoot, long uptimeMs) {
+        return boot >= 0 && boot != lastBoot && uptimeMs < BOOT_WINDOW_MS;
+    }
+
+    /** Lets the system see the key, so a long press still does what the firmware gives it. */
+    private static final long HOME_KEY_DELAY_MS = 250;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+
+    /** stock_home_redirect on the Home key: when the stock home is already on screen (it came up at boot, before
+     *  Android bound this service), Home brings it up again with no window change, so the redirect above never
+     *  fires and the TV stays on the stock home until another app opens (#1116). A short press opens this
+     *  launcher shortly after the system has handled the key; a long press (Google TV's quick settings) is left
+     *  alone. Held time, not repeats: key repeats are made after accessibility filtering, so none arrive here. */
+    private void redirectHomeKey(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()
+                && isShortPress(event.getDownTime(), event.getEventTime(), ViewConfiguration.getLongPressTimeout())) {
+            handler.postDelayed(this::openHome, HOME_KEY_DELAY_MS);
+        }
+    }
+
+    static boolean isShortPress(long downTime, long upTime, long longPressTimeout) {
+        return upTime - downTime < longPressTimeout;
+    }
+
+    private void openHome() {
+        startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(getPackageName())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
     }
 
     @Override

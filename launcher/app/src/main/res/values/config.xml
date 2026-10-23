@@ -50,7 +50,9 @@
          a TV with separate antenna, cable and satellite tuners. It opens that input's channel
          collection, restricted to live_tv_package. Empty keeps automatic selection and its existing
          OEM passthrough route. If the ID is absent or the app cannot handle the collection, open
-         the Live TV app normally instead of selecting a different input. See docs/devices/haam-r4.md. -->
+         the Live TV app normally instead of selecting a different input. A wrong but registered ID
+         can open the app's tuner setup screen instead; that is not detected as a fallback condition.
+         Use a verified input ID, or leave this empty. See docs/devices/haam-r4.md. -->
     <string name="live_tv_input_id" translatable="false"></string>
 
     <!-- Tiles that open a screen of the app instead of its start screen: "package=action", sent to that package.
@@ -99,6 +101,12 @@
          filters keys, so long-pressing volume only steps once: set false and the service keeps running but
          stops filtering, which brings repeat back at the price of the remote buttons below doing nothing. -->
     <bool name="key_filter">true</bool>
+
+    <!-- With key_filter on, true makes HomeKeyService and InputKeyService stop filtering keys while a game
+         controller is connected, so games see its buttons (Steam Link with an Xbox controller on a TCL G07
+         did not). The price: the remote buttons below do nothing until the controller disconnects. A voice
+         remote that reports a joystick does not count. A theme can set it ("gamepad_passthrough"). -->
+    <bool name="gamepad_passthrough">false</bool>
 
     <!-- Vendor source numbers for the Inputs menu, "HW<n>=<number>" by the framework input id's last part
          (`tools/tv.py 'dumpsys tv_input'` lists them). A mapped input opens by sending input_action with the

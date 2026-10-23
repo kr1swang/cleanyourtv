@@ -394,16 +394,19 @@ def return_to_home(tv, component, repeats):
     if not other:
         print("Could not find another app to switch to; the return to Home is not measured.")
         return values
-    # The event log writes the activity as "am_on_resume_called: [0,pkg.Class,action]", so the
-    # class name (the part after the slash) is what identifies the launcher there.
+    # AM/WM resume events identify the activity by its full class name, even when the
+    # resolved component abbreviates it as pkg/.Class.
     class_name = component.split("/", 1)[1] if "/" in component else component
+    if class_name.startswith("."):
+        class_name = component.split("/", 1)[0] + class_name
     for _ in range(repeats):
         tv.shell(f"am start -W -n {other}")
         time.sleep(3)
         clear_log(tv)
         tv.shell("input keyevent 3")
         time.sleep(3)
-        out = tv.shell("logcat -d -b main -b events -v epoch | grep -e injectKeyEvent -e am_on_resume_called")
+        out = tv.shell("logcat -d -b main -b events -v epoch | grep -e injectKeyEvent "
+                       "-e am_on_resume_called -e wm_on_resume_called")
         key_at = resume_at = None
         for line in out.splitlines():
             # The log indents its lines, so the timestamp is not at the start of the line.
@@ -416,8 +419,9 @@ def return_to_home(tv, component, repeats):
                     key_at = float(stamp.group(1))
             # The LAST resume of the launcher after the key, not the first: the buffer can
             # still hold a resume from before the key was pressed.
-            if "am_on_resume_called" in line and class_name in line and stamp:
-                if key_at is None or float(stamp.group(1)) >= key_at:
+            resumed = re.search(r"\b(?:am|wm)_on_resume_called:\s*\[[^,]*,\s*([^,]+),", line)
+            if resumed and resumed.group(1).strip() == class_name and stamp and key_at is not None:
+                if float(stamp.group(1)) >= key_at:
                     resume_at = float(stamp.group(1))
         if key_at is not None and resume_at is not None:
             values.append(int((resume_at - key_at) * 1000))

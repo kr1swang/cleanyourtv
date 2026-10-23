@@ -27,6 +27,8 @@ public class InputKeyService extends AccessibilityService {
     private Map<Integer, String> holdAppScancodes = Collections.emptyMap();
     /** restore_key_services was on when the config was read: this helper is noted for ServiceRepair. */
     private boolean repairRecord;
+    /** Stops key filtering while a game controller is connected; null unless gamepad_passthrough and key_filter. */
+    private GamepadPassthrough gamepads;
 
     @Override
     protected void onServiceConnected() {
@@ -42,6 +44,11 @@ public class InputKeyService extends AccessibilityService {
         RemoteKeys.applyKeyFilter(this, config.keyFilter);
         holdAppKeys = RemoteKeys.parseHoldAppKeys(config.appKeys);
         holdAppScancodes = RemoteKeys.parseHoldAppScancodes(config.appKeys);
+        // gamepad_passthrough, off by default. Only with key_filter on: off, the service never filters keys.
+        if (config.gamepadPassthrough && config.keyFilter && gamepads == null) {
+            gamepads = new GamepadPassthrough(this);
+            gamepads.start();
+        }
     }
 
     private boolean isInputKey(int keyCode) {
@@ -72,6 +79,12 @@ public class InputKeyService extends AccessibilityService {
     public boolean onUnbind(Intent intent) {
         if (repairRecord) ServiceRepair.disconnected(this, getClass());
         return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        if (gamepads != null) gamepads.stop();
+        super.onDestroy();
     }
 
     @Override

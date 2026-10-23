@@ -75,6 +75,47 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("inside 150,60,191,91", text)
 
+    def test_a_masked_only_change_writes_an_empty_diff(self):
+        a, b = self.shot("a.png", "12:00"), self.shot("b.png", "12:01")
+        out = os.path.join(self.tmp.name, "diff.png")
+        for masks in (["--mask", "0,0,60,20"], ["--mask", "0,0,60,20", "--mask", "0,0,60,20"]):
+            with self.subTest(masks=masks):
+                code, text = self.run_tool([a, b, *masks, "--diff", out])
+                self.assertEqual(code, 0)
+                self.assertIn("identical", text)
+                with self.Image.open(out) as diff:
+                    self.assertEqual(set(diff.convert("RGB").getdata()), {(0, 0, 0)})
+
+    def test_diff_pixels_match_the_report_in_every_channel_and_at_the_threshold(self):
+        before = self.Image.new("RGB", (9, 4), "black")
+        after = before.copy()
+        for point, colour in (((1, 1), (255, 0, 0)), ((3, 1), (255, 255, 255)),
+                              ((4, 1), (9, 0, 0)), ((5, 1), (0, 9, 0)), ((6, 1), (0, 0, 9)),
+                              ((7, 1), (8, 8, 8)), ((8, 1), (7, 0, 0))):
+            after.putpixel(point, colour)
+        a, b, out = [os.path.join(self.tmp.name, name) for name in ("a.png", "b.png", "diff.png")]
+        before.save(a)
+        after.save(b)
+        code, text = self.run_tool([a, b, "--mask", "0,0,4,4", "--threshold", "8", "--diff", out])
+        self.assertEqual(code, 1)
+        self.assertIn("3 pixels differ by more than 8, inside 4,1,7,2", text)
+        with self.Image.open(out) as exported:
+            diff = exported.convert("RGB")
+        self.assertEqual(set(diff.getdata()), {(0, 0, 0), (255, 255, 255)})
+        self.assertEqual(diff.getbbox(), (4, 1, 7, 2))
+        self.assertEqual(sum(pixel != (0, 0, 0) for pixel in diff.getdata()), 3)
+        for point in ((4, 1), (5, 1), (6, 1)):
+            self.assertEqual(diff.getpixel(point), (255, 255, 255))
+
+    def test_compare_keeps_its_three_value_result_and_does_not_change_the_inputs(self):
+        before = self.Image.new("RGB", (8, 4), "black")
+        after = before.copy()
+        after.putpixel((1, 1), (255, 0, 0))
+        after.putpixel((5, 1), (0, 9, 0))
+        original = before.tobytes(), after.tobytes()
+        self.assertEqual(screendiff.compare(before, after, [(0, 0, 4, 4)], 8), (1, (5, 1, 6, 2), 9))
+        self.assertEqual((before.tobytes(), after.tobytes()), original)
+
     def test_compression_noise_under_the_threshold_is_ignored(self):
         a, b = self.shot("a.png"), self.shot("b.png", noise=3)
         self.assertEqual(self.run_tool([a, b])[0], 0)

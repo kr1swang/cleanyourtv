@@ -1,5 +1,5 @@
-# Windows version of theme.sh: push a theme folder (config.json and optionally wallpaper.jpg) to the
-# launcher on the TV and restart Home. See themes/README.md for the keys.
+# Windows version of theme.sh: push a theme folder (config.json, and optionally a wallpaper.jpg or a
+# wallpapers/ collection) to the launcher on the TV and restart Home. See themes/README.md for the keys.
 #
 # Usage: tools\theme.ps1 -TvHost 192.168.1.50 themes\aurora
 #        tools\theme.ps1 -TvHost 192.168.1.50 -Reset
@@ -49,8 +49,14 @@ function Stage($name) { "$tmp-$($name -replace '/', '-')" }
 function Put($name) { $t = Stage $name; "rm -f $dir/$name 2>/dev/null; { o=`$(content write --uri $uri/$name < $t 2>&1) && case `"`$o`" in *'Unsupported operation'*) false ;; esac; } || cp $t $dir/$name 2>/dev/null; rm -f $t" }
 function Drop($name) { "rm -f $dir/$name 2>/dev/null; content delete --uri $uri/$name 2>/dev/null" }
 
+# The collection a theme can push. A push empties it before writing the theme's own pictures, and -Reset has to
+# empty it too: the launcher's wallpaper picker lists that folder itself, and an on-TV pick of one of its
+# pictures is read back from it, so a reset that left the pictures behind still shows the theme it just removed.
+# Both paths use this one string (the same one theme.sh has).
+$clearWallpapers = "mkdir -p $dir/wallpapers 2>/dev/null; rm -f $dir/wallpapers/*.jpg $dir/wallpapers/*.jpeg $dir/wallpapers/*.png $dir/wallpapers/*.webp $dir/wallpapers/*.JPG $dir/wallpapers/*.JPEG $dir/wallpapers/*.PNG $dir/wallpapers/*.WEBP 2>/dev/null; content delete --uri $uri/wallpapers 2>/dev/null"
+
 if ($Reset) {
-    & $py -I tv.py "mkdir -p $dir 2>/dev/null; $(Drop 'config.json'); $(Drop 'wallpaper.jpg'); printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision'); $restart; echo reset"
+    & $py -I tv.py "mkdir -p $dir 2>/dev/null; $(Drop 'config.json'); $(Drop 'wallpaper.jpg'); $(Drop 'wallpapers/captions.txt'); $clearWallpapers; printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision'); $restart; echo reset"
     exit 0
 }
 if (-not $Theme) { throw 'usage: theme.ps1 <theme folder> | -Reset' }
@@ -63,7 +69,7 @@ try { Get-Content $config -Raw | ConvertFrom-Json | Out-Null } catch { throw "$c
 & $py -I tv.py (Put 'config.json')
 $wall = Join-Path $Theme 'wallpaper.jpg'
 if (Test-Path $wall) { & $py -I b64push.py $wall "$tmp-wallpaper.jpg"; & $py -I tv.py (Put 'wallpaper.jpg') } else { & $py -I tv.py (Drop 'wallpaper.jpg') | Out-Null }
-& $py -I tv.py "mkdir -p $dir/wallpapers 2>/dev/null; rm -f $dir/wallpapers/*.jpg $dir/wallpapers/*.jpeg $dir/wallpapers/*.png $dir/wallpapers/*.webp $dir/wallpapers/*.JPG $dir/wallpapers/*.JPEG $dir/wallpapers/*.PNG $dir/wallpapers/*.WEBP 2>/dev/null; content delete --uri $uri/wallpapers 2>/dev/null" | Out-Null
+& $py -I tv.py $clearWallpapers | Out-Null
 $wallpapers = Join-Path $Theme 'wallpapers'
 if (Test-Path $wallpapers -PathType Container) {
     Get-ChildItem $wallpapers -File | Where-Object { $_.Extension -match '^\.(jpg|jpeg|png|webp)$' } | ForEach-Object {

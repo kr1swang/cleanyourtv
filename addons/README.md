@@ -32,10 +32,10 @@ and the spec is [`docs/specs/card.md`](../docs/specs/card.md). The launcher find
 TV owner once, and shows it as a tile with the add-on's label, caption and glow colour. Nothing else
 connects the two.
 
-Build one (JDK 17, Android SDK 34, as for the launcher):
+Build one (JDK 17, Android SDK 34, as for the launcher), from the repo root:
 
 ```bash
-cd addons/<name> && ./gradlew assembleRelease
+cd addons/<name> && ./gradlew assembleRelease && cd ../..
 TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py --push addons/<name>/app/build/outputs/apk/release/app-release.apk /data/local/tmp/addon.apk
 TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/tmp/addon.apk; rm -f /data/local/tmp/addon.apk'
 ```
