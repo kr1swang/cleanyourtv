@@ -5,4 +5,6 @@
     <string name="control_sources">訊號來源</string>
     <string name="control_system">系統設定</string>
     <string name="control_network">網路設定</string>
+    <string name="tile_info_short">應用資訊</string>
+    <string name="tile_reorder_short">調整排序</string>
 </resources>

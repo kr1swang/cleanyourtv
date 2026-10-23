@@ -20,6 +20,22 @@ Main and child pages have no title and share 288dp-wide rows. Opening, Back/Home
 changes and the dim backdrop use 180ms transitions; reduced motion uses a 60ms fade without sliding.
 Dock expansion and collapse use 360ms scrolling. The clock remains visible behind the control center.
 
+Holding OK on an app opens Reorder followed by App info, with the supplied outline icons. These actions share the
+control center's colors, Outfit type, rounded rows and focused shadow. The menu stays centered on
+the app, opens above it unless there is insufficient space, and fits its content with a minimum visible width equal
+to the focused card. Rows have an 8dp gap, with 8dp between their visible edge and the app. Reorder finishes after placing that app once. The upstream Remove from Home action
+is still available when the app library is enabled.
+The menu dims Home by the same 50% as the control center. The selected app, its visible name and
+cached shadow are drawn above that dim layer; Dock labels remain hidden. The layer fades over 180ms
+and is removed on dismissal. Reopening during the fade reuses the same layer and current opacity.
+It draws the existing tile directly, without capturing the screen or
+allocating a full-screen bitmap.
+The expanded-grid shade is reduced during this transition so the two shades together stay at 50%.
+
+Opacity uses four levels: the theme's 30% Dock, 50% full-screen dim layers, 75% unselected rows and
+confirmation/download surfaces, and 100% selected rows. Control-center dialogs, module-card prompts
+and the app library also use the shared 50% dim amount. Borders and shadows are separate accents.
+
 Background choices use single-line cards: the focus fill identifies the remote target, while a
 check marks the selected profile. Size and download status follow the name.
 The overlay uses no blur, background capture, local ADB, polling or extra dependencies.

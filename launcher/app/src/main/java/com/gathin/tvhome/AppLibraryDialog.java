@@ -195,7 +195,7 @@ final class AppLibraryDialog {
         if (container.getLayoutParams() instanceof WindowManager.LayoutParams) {
             WindowManager.LayoutParams params = (WindowManager.LayoutParams) container.getLayoutParams();
             params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
-            params.dimAmount = 0.55f;
+            params.dimAmount = PanelStyle.BACKDROP_DIM;
             activity.getWindowManager().updateViewLayout(container, params);
         }
         panel.setAlpha(0f);

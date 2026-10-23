@@ -3,11 +3,8 @@ package com.gathin.tvhome;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.StateListDrawable;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -20,8 +17,8 @@ import android.widget.TextView;
 /** Home-owned overlay. No activity transition, blur, bitmap capture or idle work. */
 final class ControlCenter {
     private static final long TRANSITION_MS = 180;
-    private static final float BACKDROP_DIM = 0.15f;
     final Activity activity;
+    private final PanelStyle style;
     final LinearLayout rows;
     private final Dialog dialog;
     private final LinearLayout body;
@@ -35,6 +32,7 @@ final class ControlCenter {
 
     ControlCenter(Activity activity, boolean reducedMotion, Runnable onClosed) {
         this.activity = activity;
+        style = new PanelStyle(activity);
         this.reducedMotion = reducedMotion;
         dialog = new Dialog(activity) {
             @Override public void cancel() { ControlCenter.this.close(true); }
@@ -103,7 +101,7 @@ final class ControlCenter {
         // transition against the ScrollView's 4dp inset; the body has 16dp of room.
         body.setAlpha(0);
         body.setTranslationX(reducedMotion ? 0 : dp(replacing && onBack == null ? -12 : 12));
-        animatePanel(1, 0, BACKDROP_DIM, null);
+        animatePanel(1, 0, PanelStyle.BACKDROP_DIM, null);
     }
 
     /** One animation clock drives the panel and system-composited backdrop together. */
@@ -151,15 +149,15 @@ final class ControlCenter {
         row.setPadding(dp(18), 0, dp(18), 0);
         row.setFocusable(true);
         row.setClickable(true);
-        row.setBackground(background());
+        row.setBackground(style.background());
         row.setOnFocusChangeListener((v, focused) -> v.setElevation(focused ? dp(6) : 0));
-        TextView mark = text(18, false);
+        TextView mark = style.text(18, false);
         mark.setId(android.R.id.icon);
         mark.setGravity(Gravity.CENTER);
         mark.setDuplicateParentStateEnabled(true);
         row.addView(mark, new LinearLayout.LayoutParams(dp(26), -2));
         setRowIcon(row, icon);
-        TextView name = text(16, false);
+        TextView name = style.text(16, false);
         name.setId(android.R.id.text1);
         name.setText(label);
         name.setDuplicateParentStateEnabled(true);
@@ -167,7 +165,7 @@ final class ControlCenter {
         n.setMarginStart(dp(10));
         n.setMarginEnd(dp(8));
         row.addView(name, n);
-        TextView status = text(12, true);
+        TextView status = style.text(12, true);
         status.setId(android.R.id.text2);
         status.setText(detail);
         status.setDuplicateParentStateEnabled(true);
@@ -191,7 +189,7 @@ final class ControlCenter {
         android.graphics.drawable.Drawable image = icon == 0 ? null : activity.getDrawable(icon).mutate();
         if (image != null) image.setBounds(0, 0, dp(20), dp(20));
         mark.setCompoundDrawables(image, null, null, null);
-        mark.setCompoundDrawableTintList(colors(false));
+        mark.setCompoundDrawableTintList(style.colors(false));
     }
 
     void confirm(int heading, String message, int accept, Runnable action) {
@@ -204,18 +202,18 @@ final class ControlCenter {
 
     void style(AlertDialog alert) {
         alert.show();
-        alert.getWindow().setBackgroundDrawable(shape(0xF02A303C));
-        alert.getWindow().setDimAmount(0.2f);
+        alert.getWindow().setBackgroundDrawable(style.shape(PanelStyle.surfaceColor(0x2A303C)));
+        alert.getWindow().setDimAmount(PanelStyle.BACKDROP_DIM);
         // Match the panel typography without adding another dialog framework.
         type(alert.getWindow().getDecorView());
         for (int which : new int[] {AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEUTRAL}) {
             android.widget.Button button = alert.getButton(which);
             if (button == null || button.getVisibility() != View.VISIBLE) continue;
             // Nested corners: 24dp dialog radius minus the 12dp outer inset.
-            button.setBackground(background(12));
+            button.setBackground(style.background(12));
             View buttonBar = (View) button.getParent();
             buttonBar.setPadding(dp(12), dp(8), dp(12), dp(12));
-            button.setTextColor(colors(false));
+            button.setTextColor(style.colors(false));
             button.setAllCaps(false);
             button.setPadding(dp(18), 0, dp(18), 0);
             button.setMinWidth(dp(100));
@@ -234,44 +232,6 @@ final class ControlCenter {
             android.view.ViewGroup group = (android.view.ViewGroup) v;
             for (int i = 0; i < group.getChildCount(); i++) type(group.getChildAt(i));
         }
-    }
-
-    private TextView text(int size, boolean secondary) {
-        TextView t = new TextView(activity);
-        t.setTextSize(size);
-        t.setTextColor(colors(secondary));
-        t.setTypeface(activity.getResources().getFont(R.font.outfit_medium));
-        t.setSingleLine(true);
-        t.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        return t;
-    }
-
-    private ColorStateList colors(boolean secondary) {
-        return new ColorStateList(new int[][] {new int[] {android.R.attr.state_focused}, new int[0]},
-                new int[] {secondary ? 0xFF444950 : 0xFF151920, secondary ? 0xFFBAC1CD : Color.WHITE});
-    }
-
-    private StateListDrawable background() {
-        return background(20);
-    }
-
-    private StateListDrawable background(int radius) {
-        StateListDrawable d = new StateListDrawable();
-        d.addState(new int[] {android.R.attr.state_focused}, shape(0xF5F4F5F8, radius));
-        d.addState(new int[0], shape(0xC0323845, radius));
-        return d;
-    }
-
-    private GradientDrawable shape(int color) {
-        return shape(color, 24);
-    }
-
-    private GradientDrawable shape(int color, int radius) {
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[] {color, color});
-        d.setCornerRadius(dp(radius));
-        d.setStroke(dp(1), 0x38FFFFFF);
-        return d;
     }
 
     int dp(int n) { return Math.round(n * activity.getResources().getDisplayMetrics().density); }

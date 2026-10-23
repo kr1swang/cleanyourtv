@@ -161,6 +161,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private RecyclerView grid;
     private DockGridTransition dockTransition;
     private FrameLayout root;
+    private View backdropShade;
+    private TileMenuBackdrop tileMenuBackdrop;
     private WallpaperPlayer wallpaperPlayer;
     private View ambient;
     private ControlCenter controlCenter;
@@ -481,9 +483,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // The centered TightTextClock belongs to our full-height grid layout.
         if (dockRow && findViewById(R.id.clock) instanceof TightTextClock) {
             // A single translucent fill above the wallpaper, below all foreground UI.
-            View backdropShade = new View(this);
-            // Keep the custom 45% scrim behind the expanded app grid.
-            backdropShade.setBackgroundColor(0x73222228);
+            backdropShade = new View(this);
+            backdropShade.setBackgroundColor(PanelStyle.BACKDROP_ALPHA << 24);
             backdropShade.forceHasOverlappingRendering(false);
             backdropShade.setAlpha(0f);
             backdropShade.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -3046,7 +3047,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
-     * Hold OK on a tile: a glass menu next to it. Move starts reorder mode with this tile already picked up;
+     * Hold OK on a tile: control-center styled actions next to it. Move starts reorder mode with this tile already picked up;
      * Remove from Home takes the shortcut off (only with the app library on, where one press adds it back);
      * App info opens the TV's page for the app, which is what holding OK used to do.
      */
@@ -3057,12 +3058,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String pkg = adapter.packageAt(position);
         // Empty dock slots and the Default-home tile carry the launcher's own package: no menu for them.
         if (key == null || pkg == null || pkg.equals(getPackageName())) return;
-        View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
-        LinearLayout rows = panel.findViewById(R.id.rows);
+        PanelStyle style = new PanelStyle(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(style.dp(12), style.dp(8), style.dp(12), style.dp(8));
+        panel.setClipChildren(false);
+        panel.setClipToPadding(false);
+        LinearLayout rows = panel;
         PopupWindow popup = glassPopup(panel, ViewGroup.LayoutParams.WRAP_CONTENT);
-        addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(new Intent(
-                Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))));
-        if (position < adapter.movableCount()) addSettingsMenuRow(rows, popup, R.string.tile_move, () -> {
+        if (position < adapter.movableCount()) addTileMenuRow(rows, popup, style, R.drawable.ic_control_move, R.string.tile_reorder_short, () -> {
             if (!beginReorder()) return;
             int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
             if (at < 0) {
@@ -3072,36 +3076,42 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             focusTile(at);
             pickUp(at);
         });
-        if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
+        addTileMenuRow(rows, popup, style, R.drawable.ic_control_info, R.string.tile_info_short, () -> open(new Intent(
+                Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg))));
+        if (appLibraryEnabled) addTileMenuRow(rows, popup, style, 0, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
         });
-        // These rows have no icons or status: size to the text with just the row's own padding.
-        for (int i = 0; i < rows.getChildCount(); i++) {
-            TextView title = rows.getChildAt(i).findViewById(R.id.title);
-            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) title.getLayoutParams();
-            params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-            params.weight = 0;
-            params.setMarginStart(0);
-            params.setMarginEnd(0);
-            title.setLayoutParams(params);
-        }
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int cardWidth = Math.round(card.getWidth() * card.getScaleX());
-        int width = Math.min(root.getWidth(), Math.max(cardWidth, panel.getMeasuredWidth()));
+        // Long press temporarily shrinks the card. Size to its resting focus scale, not that press frame.
+        int minWidth = Math.round(card.getWidth() * adapter.focusScale())
+                + panel.getPaddingLeft() + panel.getPaddingRight();
+        int width = Math.min(root.getWidth(), Math.max(minWidth, panel.getMeasuredWidth()));
         popup.setWidth(width);
-        // Dock tiles sit near the bottom of the screen: open the menu above the tile when it would not fit below.
+        panel.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.UNSPECIFIED);
+        // Prefer above the tile; use below only when there is not enough room above.
         int[] at = new int[2];
         card.getLocationInWindow(at);
-        int gap = (int) (10 * density), height = panel.getMeasuredHeight();
-        int below = at[1] + Math.round(card.getHeight() * card.getScaleY()) + gap;
-        boolean above = below + height > root.getHeight();
+        int cardHeight = Math.round(card.getHeight() * adapter.focusScale());
+        int cardTop = at[1] + (Math.round(card.getHeight() * card.getScaleY()) - cardHeight) / 2;
+        // The panel's 8dp vertical padding provides the visible gap to the card.
+        int gap = 0, height = panel.getMeasuredHeight();
+        int below = cardTop + cardHeight + gap;
+        boolean above = cardTop - gap >= height;
         int left = Math.max(0, Math.min(root.getWidth() - width, at[0] + (cardWidth - width) / 2));
         panel.setAlpha(0f);
         panel.setPivotY(above ? height : 0);
         panel.setScaleY(0.92f);
         panel.setTranslationY((above ? 8 : -8) * density);
-        popup.showAtLocation(root, Gravity.NO_GRAVITY, left, above ? Math.max(0, at[1] - gap - height) : below);
+        if (tileMenuBackdrop == null) tileMenuBackdrop = new TileMenuBackdrop(root, backdropShade, reducedMotion);
+        tileMenuBackdrop.show((View) card.getParent());
+        popup.setOnDismissListener(() -> {
+            tileMenuBackdrop.dismiss();
+            if (openPopup == popup) openPopup = null;
+        });
+        popup.showAtLocation(root, Gravity.NO_GRAVITY, left, above ? Math.max(0, cardTop - gap - height) : below);
         panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(reducedMotion ? Motion.REDUCED_MS : 220)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
         rows.getChildAt(0).requestFocus();
@@ -3113,6 +3123,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         row.findViewById(R.id.dot).setVisibility(View.GONE);
         row.findViewById(R.id.status).setVisibility(View.GONE);
         ((TextView) row.findViewById(R.id.title)).setText(title);
+        bindMenuAction(row, popup, action);
+        rows.addView(row);
+    }
+
+    private void addTileMenuRow(LinearLayout rows, PopupWindow popup, PanelStyle style,
+            int icon, int title, Runnable action) {
+        bindMenuAction(style.addActionRow(rows, icon, title), popup, action);
+    }
+
+    private void bindMenuAction(View row, PopupWindow popup, Runnable action) {
         row.setOnClickListener(v -> {
             popup.dismiss();
             action.run();
@@ -3133,7 +3153,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             return true;
         });
-        rows.addView(row);
     }
 
     /**
@@ -3178,7 +3197,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (w != null) {
             w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
             w.setLayout((int) (440 * density), ViewGroup.LayoutParams.WRAP_CONTENT);
-            w.setDimAmount(0.6f);
+            w.setDimAmount(PanelStyle.BACKDROP_DIM);
         }
         // One decision per prompt: the buttons and Back (cancel) all end here.
         final boolean[] decided = {false};

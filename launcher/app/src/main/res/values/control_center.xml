@@ -5,4 +5,6 @@
     <string name="control_sources">Inputs</string>
     <string name="control_system">System settings</string>
     <string name="control_network">Network settings</string>
+    <string name="tile_info_short">App info</string>
+    <string name="tile_reorder_short">Reorder</string>
 </resources>
