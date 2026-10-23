@@ -80,6 +80,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -95,6 +96,36 @@ import java.util.Set;
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
  */
 public class MainActivity extends Activity implements AppAdapter.TileListener {
+
+    // Accessibility key callbacks run on the main thread. Only a resumed Home can handle them locally.
+    private static WeakReference<MainActivity> resumedHome = new WeakReference<>(null);
+
+    static boolean returnToVisibleHome() {
+        MainActivity home = resumedHome.get();
+        if (home == null || home.isFinishing() || home.isDestroyed()) return false;
+        home.resetHomeWithAnimation();
+        return true;
+    }
+
+    private void resetHomeWithAnimation() {
+        homeFocusPending = false;
+        libraryFocusPending = false;
+        controlReturnPending = false;
+        cancelPendingFocusScroll();
+        endReorder();
+        if (cardPrompt != null) cardPrompt.dismiss();
+        if (appLibrary != null) appLibrary.close();
+        if (openPopup != null) openPopup.dismiss();
+        lastFocused = 0;
+        lastFocusedKey = adapter.getItemCount() > 0 ? adapter.keyAt(0) : null;
+        restartIdleClock();
+        if (controlCenter != null && controlCenter.isShowing()) {
+            // Its normal dismissal callback restores focus after the panel has faded out.
+            controlCenter.close(true);
+        } else {
+            focusTile(0);
+        }
+    }
 
     private static final int LAUNCHER_SETTINGS_REQUEST = 42;
     /** Sent by QuickSettingsActivity: open Launcher settings from here so Home rebuilds when they close. */
@@ -137,6 +168,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private WallpaperPlayer wallpaperPlayer;
     private GlassView glass;
     private View ambient;
+    private ControlCenter controlCenter;
+    private boolean controlReturnPending;
     private VideoWallpaper videoWallpaper;
     private java.util.concurrent.Future<?> wallpaperDownload;
     private boolean allowDefaultWallpaper, downloadedWallpaperReady;
@@ -398,19 +431,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // black under it is a second full-screen fill on every frame for nothing. The starting window still uses
         // the theme's background, so launch looks the same.
         getWindow().setBackgroundDrawable(null);
-        wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
-        wallpaperSelection = WallpaperLibrary.choice(this);
-        // Remember the source, not file existence: a deleted library poster must be fetched on return.
-        allowDefaultWallpaper = cfg.wallpaperEnabled && (cfg.wallpapers.isEmpty()
-                || (cfg.wallpaper != null
-                    && WallpaperLibrary.directory(this).equals(cfg.wallpaper.getParentFile())));
-        // An explicit on-TV wallpaper choice takes precedence over the theme's video.
-        if (cfg.wallpaperEnabled && (getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
-                .getString(Config.WALLPAPER_CHOICE_KEY, null) == null || WallpaperLibrary.isSelected(this))) {
-            videoWallpaper = VideoWallpaper.attach(this, root, wallpaperPlayer.poster(),
-                    cfg.animations && !cfg.reducedMotion);
-        }
-        if (videoWallpaper == null) wallpaperPlayer.separateSurface(cfg.backgroundColor);
+        attachWallpaper(cfg);
         sky = findViewById(R.id.sky);
         sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
         glass = findViewById(R.id.glass);
@@ -814,19 +835,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openLauncherSettingsIfAsked(intent)) return;
         if (openInputsIfAsked(intent)) return;
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
+        if (!stopped) {
+            resetHomeWithAnimation();
+            return;
+        }
+        controlReturnPending = false;
+        if (controlCenter != null) controlCenter.close(false);
         homeFocusPending = true;
         libraryFocusPending = false;
         cancelPendingFocusScroll();
         grid.scrollToPosition(0);
         lastFocused = 0;
         lastFocusedKey = adapter.getItemCount() > 0 ? adapter.keyAt(0) : null;
-        if (stopped) {
-            tileRefresh.onHomeAgain();
-        } else {
-            homeFocusPending = false;
-            // Already visible: reset focus without replaying the entrance animation.
-            grid.post(() -> focusTile(0));
-        }
+        tileRefresh.onHomeAgain();
         // Otherwise onResume restores focus after any pending package refresh or memory trim.
     }
 
@@ -846,7 +867,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         wallpaperDownload = WallpaperLibrary.prefetch(this, allowDefaultWallpaper, () -> {
             if (isFinishing() || isDestroyed()) return;
             downloadedWallpaperReady = true;
-            if (hasWindowFocus()) recreate();
+            if (hasWindowFocus()) refreshWallpaper();
         });
     }
 
@@ -854,10 +875,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onResume() {
         super.onResume();
         // A physical Home press can return without finishing the settings activity.
-        if (downloadedWallpaperReady || !java.util.Objects.equals(wallpaperSelection, WallpaperLibrary.choice(this))) {
-            recreate();
-            return;
-        }
+        refreshWallpaper();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -912,6 +930,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 handler.postDelayed(this::playPetalShower, 450);
             }
         }
+        resumedHome = new WeakReference<>(this);
     }
 
     /** Launcher settings' change count (Config.SETTINGS_REVISION_KEY); onResume rebuilds Home when it moved. */
@@ -1072,6 +1091,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        if (resumedHome.get() == this) resumedHome.clear();
         if (dockTransition != null) dockTransition.stop();
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
@@ -1093,6 +1113,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         super.onStop();
+        // A Home intent briefly pauses us without hiding the window: let its close animation finish.
+        controlReturnPending = false;
+        if (controlCenter != null) controlCenter.close(false);
         started = false;
         if (wallpaperDownload != null) { wallpaperDownload.cancel(true); wallpaperDownload = null; }
         // singleTask Home intents may pause/resume without hiding the video.
@@ -1130,6 +1153,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
+            finishControlCenter();
             startPendingSettingsReorder();
             if (libraryFocusPending && appLibrary == null) focusLibrary();
             showCardPrompt();
@@ -2110,7 +2134,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return true; // The clock is display-only.
+            if (position < COLUMNS) {
+                showControlCenter(0);
+                return true;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
@@ -2548,23 +2575,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Hides the Inputs pill when it would have nothing to list: streaming boxes have no HDMI-in, AV or tuner. */
     private void updateInputsButton() {
         if (!topButtonsVisible) return;
-        if (!showInputsPill) {
-            btnInputs.setVisibility(View.GONE);
-            return;
-        }
-        boolean any = liveTvIntent() != null || !sourcePanelService.isEmpty()
-                || (coocaaSources && !CoocaaSources.list(this).isEmpty());
-        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
-        if (!any && tim != null) {
-            for (TvInputInfo info : tim.getTvInputList()) {
-                // Inputs hidden in Settings > Inputs are left out of the menu, so they don't count here either.
-                if (info.isPassthroughInput() && !info.isHidden(this)) {
-                    any = true;
-                    break;
-                }
-            }
-        }
-        btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
+        btnInputs.setVisibility(showInputsPill && hasInputSources() ? View.VISIBLE : View.GONE);
     }
 
     /** boot_to_live_tv: the first time Home comes up after the TV starts, open the Live TV app instead. Once per
@@ -2593,6 +2604,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The TV's own source-selection panel, for TVs that have no TvInputManager (TCL Android TV 9): a
      *  service, or an activity on sets whose panel is a dialog (BYINTEK U4's QuickSourceActivity). */
     private void openSourcePanel() {
+        // Vendor panels can be services: Home may stay resumed, so close our overlay explicitly.
+        if (controlCenter != null) controlCenter.close(false);
         Intent i = new Intent(sourcePanelAction);
         ComponentName c = ComponentName.unflattenFromString(sourcePanelService);
         if (c != null) i.setComponent(c);
@@ -2679,13 +2692,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Dropdown menu under the Inputs pill: HDMI ports (with connection state), AV and Live TV. */
     private void showInputs() {
-        // A configured source panel and no Live TV row to offer next to it: the panel is the whole menu.
-        // The BYINTEK U4 needs this, as its TvInputManager lists three HDMI ports and an AV input it doesn't have.
-        List<CoocaaSources.Source> coocaa = coocaaSources ? CoocaaSources.list(this) : Collections.emptyList();
-        if (coocaa.isEmpty() && !sourcePanelService.isEmpty() && liveTvIntent() == null) {
-            openSourcePanel();
-            return;
-        }
         // top_menu: the pill is gone, so the list hangs under the gear, growing inward from the right.
         // Read the switch, not the pill: show_inputs_pill=false hides the pill too, and there the list
         // keeps its usual place.
@@ -2698,6 +2704,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int width = Math.max(anchor.getWidth(), (int) (150 * density));
         final PopupWindow popup = glassPopup(panel, width);
 
+        if (!populateInputs(rows, popup)) {
+            if (openPopup == popup) openPopup = null;
+            return;
+        }
+
+        // Fit the widest row: TVs that report a status on every port (Sony) would otherwise squeeze the names out.
+        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        popup.setWidth(Math.max(width, Math.min(panel.getMeasuredWidth(), (int) (360 * density))));
+
+        int alignment = getResources().getBoolean(R.bool.rtl_menu_bar) != underGear ? Gravity.END : Gravity.START;
+        dropIn(popup, panel, anchor, alignment);
+        rows.getChildAt(0).requestFocus();
+    }
+
+    private boolean populateInputs(LinearLayout rows, PopupWindow popup) {
+        // A configured source panel and no Live TV row to offer next to it: the panel is the whole menu.
+        // The BYINTEK U4 needs this, as its TvInputManager lists three HDMI ports and an AV input it doesn't have.
+        List<CoocaaSources.Source> coocaa = coocaaSources ? CoocaaSources.list(this) : Collections.emptyList();
+        if (coocaa.isEmpty() && !sourcePanelService.isEmpty() && liveTvIntent() == null) {
+            openSourcePanel();
+            return false;
+        }
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         boolean sawNonHdmi = false;
         String tunerId = null;
@@ -2811,7 +2839,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // Nothing to list where there is no TvInputManager: the TV's own source panel switches inputs.
         if (rows.getChildCount() == 0 && !sourcePanelService.isEmpty()) {
-            addInputRow(rows, popup, R.drawable.ic_input, getString(R.string.inputs), -1, this::openSourcePanel);
+            addInputRow(rows, popup, popup == null ? R.drawable.ic_control_cable : R.drawable.ic_input,
+                    getString(R.string.inputs), -1, this::openSourcePanel);
         }
         Intent liveTv = liveTvIntent();
         if (liveTv != null && tunerId != null) {
@@ -2837,17 +2866,121 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             addInputRow(rows, popup, R.drawable.ic_livetv, getString(R.string.live_tv), -1, () -> open(liveTvIntent));
         }
         if (rows.getChildCount() == 0) {
-            Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
-            return;
+            if (popup != null) Toast.makeText(this, R.string.no_inputs, Toast.LENGTH_SHORT).show();
+            return false;
         }
 
-        // Fit the widest row: TVs that report a status on every port (Sony) would otherwise squeeze the names out.
-        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max(width, Math.min(panel.getMeasuredWidth(), (int) (360 * density))));
+        return true;
+    }
 
-        int alignment = getResources().getBoolean(R.bool.rtl_menu_bar) != underGear ? Gravity.END : Gravity.START;
-        dropIn(popup, panel, anchor, alignment);
-        rows.getChildAt(0).requestFocus();
+    /** Match the Inputs menu's available routes without opening a vendor source panel. */
+    private boolean hasInputSources() {
+        if (!sourcePanelService.isEmpty() || liveTvIntent() != null) return true;
+        TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
+        if (tim != null) {
+            for (TvInputInfo input : tim.getTvInputList()) {
+                if (input.isPassthroughInput() && !input.isHidden(this)
+                        && !Integer.valueOf(-1).equals(mappedSource(input.getId()))) return true;
+            }
+        }
+        return coocaaSources && !CoocaaSources.list(this).isEmpty();
+    }
+
+    /** One Home-owned window for the center and its selection lists. */
+    private void showControlCenter(int selectedRow) {
+        if (controlCenter == null || !controlCenter.isShowing()) {
+            controlCenter = new ControlCenter(this, reducedMotion, () -> {
+                controlReturnPending = true;
+                root.post(this::finishControlCenter);
+            });
+            controlCenter.show();
+        }
+        controlCenter.page(null);
+        boolean hasSources = hasInputSources();
+        if (hasSources) controlCenter.row(R.drawable.ic_control_cable, getString(R.string.control_sources), "", () -> {
+            controlCenter.page(() -> showControlCenter(0));
+            boolean listed = populateInputs(controlCenter.rows, null);
+            if (!controlCenter.isShowing()) return; // The vendor panel opened instead.
+            if (!listed) {
+                controlCenter.row(R.drawable.ic_control_cable, getString(R.string.no_inputs), "",
+                        () -> showControlCenter(0));
+            }
+            controlCenter.focus(0);
+        });
+        controlCenter.row(R.drawable.ic_control_settings, getString(R.string.control_system), "", () -> {
+            controlCenter.close(false);
+            open(systemIntent(Settings.ACTION_SETTINGS));
+        });
+        controlCenter.row(R.drawable.ic_control_wifi, getString(R.string.control_network), "", () -> {
+            controlCenter.close(false);
+            open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
+        });
+        controlCenter.row(R.drawable.ic_control_image, getString(R.string.bg_library), "", () -> {
+            controlCenter.page(() -> showControlCenter(3));
+            new WallpaperPicker(controlCenter, this::refreshWallpaper);
+        });
+        controlCenter.row(R.drawable.ic_reset_order, getString(R.string.control_reset_order), "", () ->
+                controlCenter.confirm(R.string.control_reset_order, getString(R.string.control_reset_confirm),
+                        R.string.control_reset_order, () -> {
+                            resetAppOrder();
+                            controlCenter.focus(hasSources ? 4 : 3);
+                        }));
+        controlCenter.focus(Math.max(0, selectedRow - (hasSources ? 0 : 1)));
+    }
+
+    /** Replace only the background; the grid, focus and open panel stay attached. */
+    private void refreshWallpaper() {
+        if (!downloadedWallpaperReady && java.util.Objects.equals(
+                wallpaperSelection, WallpaperLibrary.choice(this))) return;
+        Config cfg = Config.load(this);
+        if (videoWallpaper != null) {
+            videoWallpaper.pausePlayback();
+            root.removeView(videoWallpaper);
+            videoWallpaper = null;
+        }
+        wallpaperPlayer.detach();
+        root.setBackgroundColor(cfg.backgroundColor);
+        attachWallpaper(cfg);
+        downloadedWallpaperReady = false;
+        sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
+        if (started) {
+            if (videoWallpaper != null) videoWallpaper.resumePlayback();
+            else wallpaperPlayer.start();
+        }
+    }
+
+    private void attachWallpaper(Config cfg) {
+        wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
+        wallpaperSelection = WallpaperLibrary.choice(this);
+        // Remember the source, not file existence: a deleted library poster must be fetched on return.
+        allowDefaultWallpaper = cfg.wallpaperEnabled && (cfg.wallpapers.isEmpty()
+                || (cfg.wallpaper != null
+                    && WallpaperLibrary.directory(this).equals(cfg.wallpaper.getParentFile())));
+        // An explicit on-TV wallpaper choice takes precedence over the theme's video.
+        if (cfg.wallpaperEnabled && (getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
+                .getString(Config.WALLPAPER_CHOICE_KEY, null) == null || WallpaperLibrary.isSelected(this))) {
+            videoWallpaper = VideoWallpaper.attach(this, root, wallpaperPlayer.poster(),
+                    cfg.animations && !cfg.reducedMotion);
+        }
+        if (videoWallpaper == null) wallpaperPlayer.separateSurface(cfg.backgroundColor);
+    }
+
+    private void finishControlCenter() {
+        if (!controlReturnPending || isFinishing() || isDestroyed() || !hasWindowFocus()) return;
+        controlReturnPending = false;
+        refreshWallpaper();
+        focusTile(lastFocused);
+    }
+
+    private void resetAppOrder() {
+        // An empty order restores both the theme's dock and the default grid sorting.
+        Order defaults = new Order(Order.dockKey(dockApps), Collections.emptyList());
+        if (!Order.save(Order.file(this), defaults)) {
+            Toast.makeText(this, R.string.reorder_not_saved, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        adapter.setSavedOrder(Order.ranks(defaults, dockApps), Order.docked(defaults, dockApps));
+        reloadApps(false);
     }
 
     private PopupWindow glassPopup(View panel, int width) {
@@ -2884,6 +3017,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
+        if (popup == null) {
+            if (iconRes == R.drawable.ic_input) iconRes = R.drawable.ic_control_hdmi;
+            else if (iconRes == R.drawable.ic_livetv) iconRes = R.drawable.ic_control_tv;
+            String detail = state == TvInputManager.INPUT_STATE_CONNECTED ? getString(R.string.connected)
+                    : state == TvInputManager.INPUT_STATE_DISCONNECTED ? getString(R.string.not_connected) : "";
+            controlCenter.row(iconRes, title, detail, () -> {
+                controlCenter.close(false);
+                action.run();
+            });
+            return;
+        }
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
         ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
         ((TextView) row.findViewById(R.id.title)).setText(title);
@@ -2983,16 +3127,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
             focusTile(at);
             pickUp(at);
-        });
-        addSettingsMenuRow(rows, popup, R.string.tile_reset_order, () -> {
-            // An empty order restores both the theme's dock and the default grid sorting.
-            Order defaults = new Order(Order.dockKey(dockApps), Collections.emptyList());
-            if (!Order.save(Order.file(this), defaults)) {
-                Toast.makeText(this, R.string.reorder_not_saved, Toast.LENGTH_SHORT).show();
-                return;
-            }
-            adapter.setSavedOrder(Order.ranks(defaults, dockApps), Order.docked(defaults, dockApps));
-            reloadApps(false);
         });
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);

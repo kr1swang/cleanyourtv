@@ -150,9 +150,6 @@
                 android:resource="@xml/home_key_service" />
         </service>
 
-        <activity android:name=".WallpaperSettingsActivity" android:exported="false"
-            android:screenOrientation="landscape" />
-
         <!-- Chromecast Home/app keys; keep Google TV and its Cast dependencies enabled. -->
         <service
             android:name=".YouTubeKeyService"

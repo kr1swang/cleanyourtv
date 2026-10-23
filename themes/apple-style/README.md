@@ -6,7 +6,20 @@ The APK bundles the six-column Dock defaults in `config.json` and the pinned ass
 Release filenames use `wallpaper_FHD` and `wallpaper_4K`, with `_30fps` or `_60fps` for movies.
 Release, downloader and cache filenames share the same FHD / 4K naming.
 
-Open the flower **Background settings** card. Golden Gate offers static 1080p, static 4K,
+Press **Up** on a Dock app to open the control center, then choose **Background settings**.
+The center also offers Inputs, System settings, Network settings and Reset order.
+Inputs reuse the existing TV/CEC and vendor fallbacks. Reset order requires confirmation and
+restores the theme Dock and default app ordering without changing the background.
+Back returns through the lists to the previously focused Dock app; Home closes the overlay.
+The former flower card and standalone download settings page have been removed.
+
+Background choices use single-line cards: the focus fill identifies the remote target, while a
+check marks the selected profile. Size and download status follow the name.
+The overlay uses no blur, background capture, local ADB, polling or extra dependencies.
+Opening it does not pause Home; applying a different background rebuilds Home only when leaving
+the center.
+
+Golden Gate offers static 1080p, static 4K,
 1080p/30 fps, 1080p/60 fps, 4K/30 fps and 4K/60 fps. The picker shows download size, progress and
 cached versions. A video profile also downloads its resolution's preview. The two frame rates share
 that preview. All six files were uploaded to the new Release, including the original 60 fps files.

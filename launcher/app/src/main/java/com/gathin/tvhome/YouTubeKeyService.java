@@ -39,9 +39,9 @@ public class YouTubeKeyService extends AccessibilityService {
     @Override
     protected boolean onKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_HOME) {
-            // Keep CATEGORY_HOME: MainActivity uses it to reset the Dock without recreating itself.
+            // Avoid a pause/resume cycle when Home is already visible, so its transitions keep running.
             if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
-                openHome();
+                if (!MainActivity.returnToVisibleHome()) openHome();
                 Log.i(TAG, "Home opened from HOME key");
             }
             return true;

@@ -1,0 +1,8 @@
+<resources>
+    <string name="control_center">Control center</string>
+    <string name="control_reset_order">Reset order</string>
+    <string name="control_reset_confirm">Restore the default Dock and app order? Your background will not change.</string>
+    <string name="control_sources">Inputs</string>
+    <string name="control_system">System settings</string>
+    <string name="control_network">Network settings</string>
+</resources>

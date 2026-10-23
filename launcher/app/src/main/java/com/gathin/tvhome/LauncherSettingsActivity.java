@@ -94,8 +94,6 @@ public final class LauncherSettingsActivity extends Activity {
             reverseRow(rowChoices);
             reverseRow(dockChoices);
         }
-        findViewById(R.id.backgroundDownloads).setOnClickListener(v ->
-                startActivityForResult(new Intent(this, WallpaperSettingsActivity.class), 20));
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
         animationsChoice = findViewById(R.id.animationsChoice);

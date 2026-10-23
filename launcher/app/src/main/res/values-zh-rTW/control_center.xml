@@ -1,0 +1,8 @@
+<resources>
+    <string name="control_center">控制中心</string>
+    <string name="control_reset_order">重置排序</string>
+    <string name="control_reset_confirm">恢復預設 Dock 與 App 排序？背景設定不受影響。</string>
+    <string name="control_sources">訊號來源</string>
+    <string name="control_system">系統設定</string>
+    <string name="control_network">網路設定</string>
+</resources>

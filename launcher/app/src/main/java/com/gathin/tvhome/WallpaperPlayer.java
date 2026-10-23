@@ -165,6 +165,16 @@ final class WallpaperPlayer {
         decoder.shutdownNow();
     }
 
+    /** Remove only this player's views when Home replaces its background in place. */
+    void detach() {
+        close();
+        image.animate().cancel();
+        if (surface != null) root.removeView(surface);
+        root.removeView(image);
+        if (caption != null) root.removeView(caption);
+        image.setImageDrawable(null);
+    }
+
     void update() {
         if (!active || closed || loading || files.isEmpty()) return;
         String previous = preferences.getString("image", "");
