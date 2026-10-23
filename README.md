@@ -53,7 +53,12 @@ before touching anything you might use.
 
 ## Quick start
 
-You need a computer on the same Wi-Fi as the TV and a coding assistant with shell access.
+| You have | Do this |
+|---|---|
+| **A computer** | Use the prompt with a coding assistant: the three steps below. |
+| **Only an Android phone** | Use the community-built [Clean Your TV app](https://cleanyour.tv/app) by [@udhaykumarbala](https://github.com/udhaykumarbala): connect, analyse, clean, in about five minutes. No laptop, no coding agent. |
+
+With a computer, you need it on the same Wi-Fi as the TV and a coding assistant with shell access.
 
 Any of these work: Claude Code (on [0G Private Computer](https://pc.0g.ai) or an [Anthropic plan](https://claude.com/pricing)), [Codex](https://github.com/openai/codex) or [Gemini CLI](https://github.com/google-gemini/gemini-cli).
 
@@ -696,6 +701,15 @@ three that matter most:
 - 🔁 **On Google TV the setup wizard** (`com.google.android.tungsten.setupwraith`) can take Home and crash-loop the system after the stock launcher is disabled. Disable it too, and list it in your `debloat.txt` so restore brings it back. But check `dumpsys wifi | grep -o 'cname=[^ ]*'` first: if the Wi-Fi network was saved during setup it belongs to setupwraith, and disabling it deletes the network (re-join it in Settings first; `tools/disable.sh` skips setupwraith until you do). On Google's own Chromecast and on the Google TV Streamer it also costs phone casting, see [Troubleshooting](docs/TROUBLESHOOTING.md). Stuck already? `tools/tv.py 'pm enable --user 0 com.google.android.apps.tv.launcherx'`.
 
 ## Questions people ask
+
+<details>
+<summary><b>I don't code and don't have a laptop. Can I still do this?</b></summary>
+
+Yes. [@udhaykumarbala](https://github.com/udhaykumarbala) built a free, open-source [phone app](https://cleanyour.tv/app)
+for Android that does the same cleanup over Wi-Fi: it connects to the TV, shows a plan first, saves a restore
+point, and only switches apps off, so everything can be put back. It's community-built.
+
+</details>
 
 <details>
 <summary><b>Is this safe? Can it brick the TV?</b></summary>
