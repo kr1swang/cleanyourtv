@@ -53,7 +53,7 @@ jobs:
           path: .maintainer-bot
           key: maintainer-bot-ledger-${{ steps.day.outputs.day }}-${{ github.run_id }}
           restore-keys: maintainer-bot-ledger-${{ steps.day.outputs.day }}-
-      - uses: Gathin23/maintainer-bot@75610de1d7c6d389e6a49aa85cce31b866184bdd # maintainer-bot v4, pinned
+      - uses: Gathin23/maintainer-bot@c940c6826eaf52dd8ad7e68c7867fe4ebe153fa1 # maintainer-bot v4.1.1, pinned
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           og-pc-api-key: ${{ secrets.OG_PC_API_KEY }}

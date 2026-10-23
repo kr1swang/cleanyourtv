@@ -1,12 +1,38 @@
 package com.gathin.tvhome;
 
 import org.junit.Test;
+import java.text.Collator;
+import java.util.Locale;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import static org.junit.Assert.*;
 
 public class LibraryAppsTest {
+    @Test public void hidingKeepsTheNextAppOrThePreviousAppAtTheEnd() {
+        assertEquals(1, LibraryApps.nextAfterRemoval(0, 5));
+        assertEquals(3, LibraryApps.nextAfterRemoval(2, 5));
+        assertEquals(3, LibraryApps.nextAfterRemoval(4, 5));
+        assertEquals(-1, LibraryApps.nextAfterRemoval(0, 1));
+        assertEquals(-1, LibraryApps.nextAfterRemoval(0, 0));
+        assertEquals(1, LibraryApps.nextAfterRemoval(-1, 3));
+        assertEquals(1, LibraryApps.nextAfterRemoval(9, 3));
+    }
+
+    @Test public void checkedAppsComeFirstAndEachGroupCanUseLabelOrder() {
+        assertTrue(LibraryApps.compareHomeGroup(true, false) < 0);
+        assertTrue(LibraryApps.compareHomeGroup(false, true) > 0);
+        assertEquals(0, LibraryApps.compareHomeGroup(true, true));
+        assertEquals(0, LibraryApps.compareHomeGroup(false, false));
+        Collator alphabet = Collator.getInstance(Locale.ENGLISH);
+        assertTrue(LibraryApps.compareCatalog(true, "Zeta", "pkg.zeta",
+                false, "Alpha", "pkg.alpha", alphabet) < 0);
+        assertTrue(LibraryApps.compareCatalog(true, "Alpha", "pkg.alpha",
+                true, "Zeta", "pkg.zeta", alphabet) < 0);
+        assertTrue(LibraryApps.compareCatalog(false, "Alpha", "pkg.alpha",
+                false, "Zeta", "pkg.zeta", alphabet) < 0);
+    }
+
     private static final long DAY = 24L * 60 * 60 * 1000;
 
     @Test public void missingShortcutsComeBeforeHomeAppsEvenWhenTheHomeAppIsNewer() {

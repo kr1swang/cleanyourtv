@@ -8,8 +8,8 @@ visibly shorter. Slices whose name matches --highlight are drawn in magenta, and
     tools/flamechart.py traces/before traces/after --highlight '^(activityResume|RV OnBindView)$' \\
         --title 'Back to Home: Home press to first frame' --out chart.png
 
-BEFORE and AFTER are .pftrace files or folders; for a folder the median run is drawn (by the time to the
-first frame, or for nav traces by the median frame time). Needs the optional packages in
+BEFORE and AFTER are .pftrace files or folders; for a folder the median run is drawn, by the first of
+time to first frame, median frame time and median RenderThread draw that every run has. Needs the optional packages in
 tools/requirements-perf.txt. Read tools/flamechart.md first.
 """
 import argparse
@@ -82,19 +82,28 @@ def highlighted(rows, rx, t0, t1):
     return total / MS, hit
 
 
+# What a folder's median run is chosen by: the first of these that every run in the set has.
+MEDIAN_BASES = (("first frame", "time to first frame"), ("frame median", "median frame time"),
+                ("draw median", "median RenderThread draw"))
+
+
 def median_run(paths, package, open_trace):
-    """The run whose time to the first frame (or nav frame time) is the median of the set."""
+    """(path, basis): the middle run of the set by a measure every run has, and that measure's name.
+
+    One trace is drawn as it is (basis None). A set with no measure common to every run is refused:
+    picking one of its runs and calling it the median would be wrong (#951). Nav traces from TVs without
+    FrameTimeline have no frame time, only RenderThread draw time (#953).
+    """
     if len(paths) == 1:
-        return paths[0]
-    scored = []
-    for path, metrics in zip(paths, (m for _, m in trace_report.measure(paths, package, open_trace))):
-        score = metrics.get("first frame", metrics.get("frame median"))
-        if score is not None:
-            scored.append((score, path))
-    if not scored:
-        return paths[0]
-    scored.sort()
-    return scored[(len(scored) - 1) // 2][1]
+        return paths[0], None
+    measured = trace_report.measure(paths, package, open_trace)
+    for key, label in MEDIAN_BASES:
+        scores = [metrics.get(key) for _, metrics in measured]
+        if all(score is not None for score in scores):
+            ranked = sorted(zip(scores, paths))
+            return ranked[(len(ranked) - 1) // 2][1], label
+    raise ValueError("no measure every run has (time to first frame, frame time or draw time); "
+                     "pass a single trace to draw it as it is")
 
 
 def colour(name):
@@ -224,7 +233,10 @@ def main(argv=None):
         paths = trace_report.expand([item])
         if not paths:
             sys.exit(f"no .pftrace files in {item}")
-        path = median_run(paths, args.package, open_trace)
+        try:
+            path, basis = median_run(paths, args.package, open_trace)
+        except ValueError as e:
+            sys.exit(f"{item}: {e}")
         nav = trace_report.scenario_of(path) == "nav"
         q, close = open_trace(path)
         try:
@@ -234,7 +246,7 @@ def main(argv=None):
             sys.exit(f"{path}: {e}")
         finally:
             close()
-        note = f"median of {len(paths)} runs ({os.path.basename(path)})" if len(paths) > 1 else os.path.basename(path)
+        note = f"median of {len(paths)} runs by {basis} ({os.path.basename(path)})" if basis else os.path.basename(path)
         panels.append({"label": labels[i] if i < len(labels) else f"Run {i + 1}", "note": note,
                        "t0": t0, "t1": t1, "lanes": data})
     size = draw(panels, args.rx, args.title, args.subtitle, args.out, args.width)

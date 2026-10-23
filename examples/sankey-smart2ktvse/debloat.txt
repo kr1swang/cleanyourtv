@@ -38,7 +38,7 @@ com.whaletv.web.app_runtime    # Web app runtime
 com.android.adservices.api     # Android ad services
 
 # Unknown services
-com.mirakulo.astrotv.service   # Unknown service (safe to disable)
+com.mirakulo.astrotv.service   # Ginga interactive TV for ISDB-Tb broadcasts; disabling only turns broadcast interactivity off
 
 # System updaters (disable to prevent bloat from returning)
 com.droidlogic.updater         # OTA updater

@@ -72,7 +72,7 @@ share their TV's list afterwards, follow [Add a TV list](#add-a-tv-list) below.
 | `launcher/` | The reference launcher, package `com.gathin.tvhome`: plain Java, AndroidX RecyclerView and DynamicAnimation, `minSdk` 26, no `INTERNET` permission. |
 | `themes/` | One folder per theme: `config.json`, a required `screenshot.jpg`, optional wallpapers. Keys are documented in `themes/README.md`. |
 | `addons/` | Optional module-card apps, each its own Gradle project, never built into the launcher. |
-| `tools/` | The ADB client and the scripts: `tv.py`, `b64push.py`, `relay.py` (guide: `tools/relay.md`), `disable.sh`, `restore.sh`, `recovery.py`, `check.py`, `privacy.py`, `theme.sh`, `adb-closed.py`, `bench.py`, `trace.py` and `trace_report.py` (guide: `tools/trace.md`, optional `tools/requirements-perf.txt`), `flamechart.py` (guide: `tools/flamechart.md`), `race_calendar.py`. Shell scripts have PowerShell twins (`disable.ps1` and the like). `readme_stats.py`, `readme_featured.py` and `readme_card.py` draw the README card. Each script's usage is in its first lines: read it before running it. |
+| `tools/` | The ADB client and the scripts: `tv.py`, `b64push.py`, `relay.py` (guide: `tools/relay.md`), `disable.sh`, `restore.sh`, `recovery.py`, `check.py`, `privacy.py`, `theme.sh`, `adb-closed.py`, `bench.py`, `trace.py` and `trace_report.py` (guide: `tools/trace.md`, optional `tools/requirements-perf.txt`), `flamechart.py` (guide: `tools/flamechart.md`), `screendiff.py` (guide: `tools/screendiff.md`), `race_calendar.py`. Shell scripts have PowerShell twins (`disable.ps1` and the like). `readme_stats.py`, `readme_featured.py` and `readme_card.py` draw the README card. Each script's usage is in its first lines: read it before running it. |
 | `tests/` | Python `unittest` suite: list format, README tables, press counts, themes, add-ons, the Home guard and the tools against fake TVs. |
 | `.github/workflows/` | `ci.yml` (tests, launcher build, APK size gate), `addons.yml`, `maintainer-bot.yml`. |
 | `.github/maintainer/MAINTAINER.md` | The review policy the maintainer and the PR bot apply. |
@@ -174,6 +174,8 @@ The core takes a switch only if it changes nothing until a theme or `config.xml`
 7. Keep it small: a switch should cost a few hundred bytes to about 1 KB of APK. Build and check the size
    gate; the gate is hard.
 8. Verify on a real TV with the switch on and off, D-pad from every edge, and attach screenshots.
+9. If you can, run the regression check in [`docs/workflows/perf-ab.md`](docs/workflows/perf-ab.md) with the
+   switch on: a baseline before you start, your build after, and the numbers in the PR. It's optional, but welcome.
 
 Anything TV-specific goes in `config.xml` or a theme, not in code. A bug fix that corrects wrong behaviour needs
 no switch. No new dependencies in `launcher/app/build.gradle` without an issue first.
@@ -239,8 +241,8 @@ no switch. No new dependencies in `launcher/app/build.gradle` without an issue f
 Multi-step methods in `docs/workflows/`. Read the one that fits before you start; each opens with when to
 use it and links the tool guides it needs.
 
-- [`perf-ab.md`](docs/workflows/perf-ab.md): measure performance improvements or regressions from a launcher
-  change, with traces, a report and flame charts.
+- [`perf-ab.md`](docs/workflows/perf-ab.md): an optional check of a launcher change for performance regressions with
+  `tools/bench.py`, and measure an improvement or a failed check with traces, a report and flame charts.
 
 ## Before opening a PR
 
@@ -253,7 +255,8 @@ use it and links the tool guides it needs.
 | One topic per PR | A TV list never rides inside a launcher feature PR. A device's list plus small fixes for that same device can be one PR. |
 | Tested on | Say which TV, Android version and firmware you tested on, in the PR template's "Tested on" line. |
 | Real TV | Launcher changes are verified on a real TV, not only the emulator: `tools/tv.py --screenshot shots/after.png DPAD_DOWN`. D-pad from every edge (Up, Down, Left, Right). A button handled by an accessibility helper needs a press on the real remote, and a force-stop of the launcher switches the helpers off (`docs/TROUBLESHOOTING.md`). |
-| Screenshots | Every visual change has a screenshot from the TV in the PR description. A performance claim has numbers, for example from `tools/bench.py`. |
+| Screenshots | Every visual change has a screenshot from the TV in the PR description. |
+| Performance | A performance claim shows `tools/bench.py` before and after, plus trace numbers. For any other launcher change the regression check in [`docs/workflows/perf-ab.md`](docs/workflows/perf-ab.md) is optional but welcome. |
 | Stray files | No files that nothing links to: screenshots belong in the PR description, not the tree. |
 
 ## Hard rules

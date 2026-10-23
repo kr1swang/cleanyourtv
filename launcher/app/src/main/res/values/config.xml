@@ -210,6 +210,10 @@
     <bool name="icon_only_buttons">false</bool>
     <!-- The Inputs pill as a round icon button too (the label moves to the talkback description). -->
     <bool name="icon_only_inputs">false</bool>
+    <!-- true colours the Wi-Fi pill's icon green while the TV is online and leaves it white while it is not (dark on
+         the focused pill either way), so the connection shows at a glance, also as an icon-only button. Can also be
+         set with "wifi_status_color": true in a theme's config.json. -->
+    <bool name="wifi_status_color">false</bool>
     <!-- The app library as a round button in the top bar, beside Settings (app_library must be on too). -->
     <bool name="library_button">false</bool>
     <!-- With icon_only_buttons: keep the network name on the Wi-Fi pill up to this width in dp, cut with an ellipsis.
@@ -232,6 +236,13 @@
          pictures in wallpapers/ ("01-dusk.jpg<TAB>Dusk over the peaks", one per line). A picture without a line
          shows no name. Can also be set with "wallpaper_captions": true in a theme's config.json. -->
     <bool name="wallpaper_captions">false</bool>
+    <!-- Rotating wallpapers grouped by the time of day, as JSON: {"morning": [file names], "evening": [...],
+         "night": [...]}. While set, the rotation picks only from the group that fits now: morning from sunrise to
+         noon, evening until half an hour after sunset, night the rest, with the sun at latitude and longitude (07:00
+         and 18:30 without them). It moves to the new group as soon as the time of day changes. A missing or empty
+         group falls back to the whole collection; empty rotates through every picture. A theme can set
+         "wallpaper_moods" as an object. -->
+    <string name="wallpaper_moods" translatable="false"></string>
     <!-- Hold OK on a tile opens a small menu: Move (picks the tile up for reordering), Remove from Home (only with
          app_library) and App info. false keeps the old behaviour: holding OK opens the app's App info page.
          Can also be set with "tile_menu": true in a theme's config.json. -->
@@ -259,6 +270,9 @@
 
     <!-- Installed launchable apps, including ordinary Android apps. Also settable in config.json. -->
     <bool name="app_library">false</bool>
+    <!-- Optional direct Home picker in the app library: OK toggles the checkmark, checked apps first.
+         Off by default; a theme can set "app_library_selection": true (also needs app_library). -->
+    <bool name="app_library_selection">false</bool>
 
     <!-- Apps pre-seeded into the App library's "added" set at startup (config.xml library_apps, or a theme's
          config.json). They show on Home as if the owner had added them in the App library UI, and stay
@@ -305,6 +319,19 @@
          dots, the focus glow takes the app's colour and the dock band turns translucent. false keeps the plain
          shelf. Can also be set with "cinematic_home": true in a theme's config.json. -->
     <bool name="cinematic_home">false</bool>
+    <!-- With cinematic_home, false leaves out the dock position dots under the app's name, for a quieter shelf. Can
+         also be set with "cinematic_dots": false in a theme's config.json. -->
+    <bool name="cinematic_dots">true</bool>
+    <!-- With cinematic_home, true keeps the focus highlight white on the dock instead of the focused app's colour,
+         for wallpapers and banners that clash with it; app_glow still colours every tile. Can also be set with
+         "cinematic_white_focus": true in a theme's config.json. -->
+    <bool name="cinematic_white_focus">false</bool>
+    <!-- With cinematic_home, how much of a wallpaper the shelf covers: cinematic_scrim is the strength of the dark
+         scrim that keeps the name readable (0 to 100 percent, 100 as before) and cinematic_art the opacity of the
+         app's softened artwork (0 to 100, 50 as before; 0 leaves the wallpaper uncovered). Lower values let a
+         theme's wallpaper show through. A theme can set "cinematic_scrim" and "cinematic_art". -->
+    <integer name="cinematic_scrim">100</integer>
+    <integer name="cinematic_art">50</integer>
 
     <!-- The glow behind the dock in the focused app's colour (red for YouTube, blue for Prime Video). false keeps
          only background_color or the wallpaper behind everything. Can also be set with "ambient_glow": false in a
@@ -313,6 +340,10 @@
     <!-- The focus highlight glows in the focused app's colour on every tile, as the cinematic shelf does for the
          dock, without cinematic_home. Can also be set with "app_glow": true in a theme's config.json. -->
     <bool name="app_glow">false</bool>
+    <!-- The rows fade out as they scroll up under the clock, instead of being cut off at a hard line (TopFade).
+         The grid then draws into a hardware layer, about 6 MB of graphics memory at 1080p, so it is off by default.
+         Can also be set with "fade_rows": true in a theme's config.json. -->
+    <bool name="fade_rows">false</bool>
     <!-- Minutes Home may sit untouched before it shows the clock screensaver (ClockActivity); 0 turns it off.
          Unlike the system screensaver this never starts over live TV or an app, which matters on TVs whose
          Live TV window does not keep the screen on (CVTE): there the system screensaver would start in the

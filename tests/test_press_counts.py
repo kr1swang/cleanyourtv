@@ -25,9 +25,11 @@ TOC_ENTRY = re.compile(r"\[([^\]]+)\]\(#[^)]+\)&nbsp;(\d+)")
 
 
 def sections():
-    """(heading, rows) for every '## ' section, in file order."""
+    """(heading, rows) for every article section, in file order. The Videos section at the end is not articles."""
     out, current = [], None
     for line in PRESS.read_text(encoding="utf-8").split("\n"):
+        if line.strip() == "## Videos":
+            break
         if line.startswith("## "):
             current = (line[3:].strip(), [])
             out.append(current)

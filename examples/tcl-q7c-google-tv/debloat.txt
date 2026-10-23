@@ -8,6 +8,8 @@
 # batches with a screenshot after each. The first 35 survived a reboot, none came back (three self-installed
 # apps disabled alongside them are not listed here). launcherx and setupwraith were disabled afterwards, once the
 # new launcher was installed. YouTube, Live TV and the HDMI input list checked.
+# Second unit: TCL 65Q7D Pro, Greece, same build (AU02), on Wi-Fi, one day from 22 October 2026: this list minus
+# AirPlay and com.tcl.UpdatePeripheral (kept), plus mediashell; Wireless debugging only. See README.
 #
 # Apply:   FORCE_SETUPWRAITH=1 TV_HOST=<tv ip> tools/disable.sh examples/tcl-q7c-google-tv/debloat.txt
 #          FORCE_SETUPWRAITH=1 only on Ethernet with no saved Wi-Fi: disable.sh otherwise skips setupwraith because

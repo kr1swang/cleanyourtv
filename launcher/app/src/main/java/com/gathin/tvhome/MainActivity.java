@@ -15,6 +15,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ChangedPackages;
+import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -154,8 +155,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean appGlow;
     /** config.xml glow_style: the shape setAmbient paints the glow mask in. */
     private String glowStyle;
+    /** config.xml cinematic_white_focus: the cinematic shelf keeps the white highlight. */
+    private boolean cinematicWhiteFocus;
     private ImageView heroArt;
-    private static final float HERO_ART_ALPHA = 0.5f;
+    /** config.xml cinematic_dots: false leaves the dock position dots out of the cinematic shelf. */
+    private boolean heroDotsShown = true;
+    /** The artwork's opacity behind the cinematic shelf (config.xml cinematic_art); 0 leaves it out. */
+    private float heroArtAlpha = 0.5f;
     /** Softened artwork per app (HeroArt, about 5 KB each), made the first time its dock tile is focused. */
     private final Map<String, Bitmap> heroArtCache = new HashMap<>();
     /** The app whose artwork heroArt shows, so focusing it again only fades it back in. */
@@ -273,6 +279,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Tile menu's "Add to dock": the app waiting for a dock place in edit-dock mode, or null. */
     private String dockEditAppKey;
     private AppLibraryDialog appLibrary;
+    private boolean appLibrarySelection;
     private boolean libraryFocusPending;
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
@@ -355,6 +362,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
+        appLibrarySelection = cfg.appLibrarySelection;
         // restore_key_services: after a force stop, put back the remote's accessibility helpers that Android took
         // off the list (needs WRITE_SECURE_SETTINGS, granted by build-and-install with RESTORE_KEY_SERVICES=1).
         if (cfg.restoreKeyServices) ServiceRepair.restore(this);
@@ -424,7 +432,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroArt = findViewById(R.id.heroArt);
         cinematic = cfg.cinematicHome;
         glowStyle = cfg.glowStyle;
-        if (cinematic) setUpCinematicShelf();
+        heroDotsShown = cfg.cinematicDots;
+        cinematicWhiteFocus = cfg.cinematicWhiteFocus;
+        heroArtAlpha = cfg.cinematicArt / 100f;
+        if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
         if (!cfg.dockTitle) hero.setVisibility(View.GONE);
@@ -532,6 +543,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding));
+        if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
             grid.setLayoutAnimation(new LayoutAnimationController(
@@ -642,6 +654,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         iconOnlyButtons = cfg.iconOnlyButtons;
         topMenu = cfg.topMenu;
         wifiIconOnly = iconOnlyButtons && cfg.wifiLabelWidth <= 0;
+        if (cfg.wifiStatusColor) {
+            wifiPlainTint = btnWifi.getCompoundDrawableTintList();
+            wifiOnlineTint = getColorStateList(R.color.pill_icon_online);
+        }
         if (cfg.topMenu) {
             // One gear: Inputs and Wi-Fi move into its dropdown. The Wi-Fi pill stays hidden but keeps its
             // label up to date, which the menu's Wi-Fi row shows.
@@ -753,24 +769,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * VIEW_INPUTS, forwarded by InputsRequestActivity while handle_view_inputs is on: open the Inputs menu once
      * the pill is on screen. The intent is replaced so a later recreate() does not
      * open it again. Nothing to do when the TV has no inputs to list (the pill is hidden then).
+     * top_menu hides the pill, so the list hangs under the gear there, as in showInputs().
      */
     private boolean openInputsIfAsked(Intent intent) {
         if (intent == null || !ACTION_VIEW_INPUTS.equals(intent.getAction())) return false;
         setIntent(new Intent(Intent.ACTION_MAIN));
-        if (btnInputs.getVisibility() != View.VISIBLE) return true;
-        if (btnInputs.isLaidOut()) {
-            btnInputs.requestFocus();
+        View anchor = topMenu ? findViewById(R.id.btnSettings) : btnInputs;
+        if (anchor.getVisibility() != View.VISIBLE) return true;
+        if (anchor.isLaidOut()) {
+            anchor.requestFocus();
             showInputs();
             return true;
         }
-        // Cold start: the popup anchors to the pill, so wait for the first layout.
-        btnInputs.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+        // Cold start: the popup anchors to the pill (or the gear), so wait for the first layout.
+        anchor.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
-                btnInputs.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                btnInputs.post(() -> {
-                    if (isFinishing() || btnInputs.getVisibility() != View.VISIBLE) return;
-                    btnInputs.requestFocus();
+                anchor.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                anchor.post(() -> {
+                    if (isFinishing() || anchor.getVisibility() != View.VISIBLE) return;
+                    anchor.requestFocus();
                     showInputs();
                 });
             }
@@ -1204,6 +1222,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         }
         int pos = focusedTilePosition();
+        View focus = getCurrentFocus();
+        if (ok && focus != null && focus.getId() == R.id.btnLibrary) {
+            // The App library pill sits in the grid but is no tile: OK ends the mode (saving the order) and opens it.
+            if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                endReorder();
+                onLibraryRequested();
+            }
+            return true;
+        }
         if (ok && grid.hasFocus()) {
             // RecyclerView can briefly report NO_POSITION during a move or rebind. Still consume
             // OK on the grid: falling through would let the focused card open its app in reorder mode.
@@ -1485,7 +1512,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openPopup != null) openPopup.dismiss();
         libraryFocusPending = false;
         libraryFromTopBar = false;
-        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, adapter::containsPackage, () -> reloadApps(false), () -> {
+        appLibrary = new AppLibraryDialog(this, animations, reducedMotion, appLibrarySelection, adapter::containsPackage, () -> reloadApps(false), () -> {
             appLibrary = null;
             openPopup = null;
             if (libraryFromTopBar) {
@@ -1556,7 +1583,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int color = ambientGlow ? adapter.ambientColorAt(position) : ambientColor;
         float y = dockTopInRoot - 14 * density - 26 * density - hero.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
-        if (cinematic) showHeroArt(position);
+        if (cinematic && heroArtAlpha > 0f) showHeroArt(position);
 
         if (!animations || reducedMotion) {
             // Snap the shelf instead of sliding and fading it: each of those frames repaints the
@@ -1619,17 +1646,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     // ---- cinematic shelf -------------------------------------------------------------------------
 
-    /** The parts that never change: a larger name, the meta line and the dots, the artwork and the scrim. */
-    private void setUpCinematicShelf() {
+    /**
+     * The parts that never change: a larger name, the meta line and the dots, the artwork and the scrim, at
+     * scrimPercent of its strength (cinematic_scrim). cinematic_art 0 leaves the artwork out, 0 percent the scrim.
+     */
+    private void setUpCinematicShelf(int scrimPercent) {
         heroName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 68f);
         heroName.setLetterSpacing(-0.025f);
         heroMeta.setVisibility(View.INVISIBLE);   // keeps its height, so the name does not jump when it fills in
-        heroDots.setVisibility(View.VISIBLE);
-        heroArt.setVisibility(View.VISIBLE);
+        heroDots.setVisibility(heroDotsShown ? View.VISIBLE : View.GONE);
+        heroArt.setVisibility(heroArtAlpha > 0f ? View.VISIBLE : View.GONE);
         // One stretched bitmap: apply its alpha while drawing instead of through an offscreen buffer.
         heroArt.forceHasOverlappingRendering(false);
+        if (scrimPercent <= 0) return;   // cinematic_scrim 0: no scrim at all
         View scrim = findViewById(R.id.heroScrim);
-        scrim.setBackground(scrimDrawable());
+        Drawable shade = scrimDrawable();
+        // On the bitmap's paint, not the view: a view's alpha would draw the full screen through an offscreen buffer.
+        shade.setAlpha(scrimPercent * 255 / 100);
+        scrim.setBackground(shade);
         scrim.setVisibility(View.VISIBLE);
     }
 
@@ -1678,13 +1712,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         heroArt.animate().alpha(0f).setDuration(140).withEndAction(() -> {
             heroArt.setImageBitmap(next);
-            heroArt.animate().alpha(HERO_ART_ALPHA).setDuration(420).start();
+            heroArt.animate().alpha(heroArtAlpha).setDuration(420).start();
         }).start();
     }
 
     private void fadeHeroArt(int ms) {
-        if (!animations) heroArt.setAlpha(HERO_ART_ALPHA);
-        else heroArt.animate().alpha(HERO_ART_ALPHA).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
+        if (!animations) heroArt.setAlpha(heroArtAlpha);
+        else heroArt.animate().alpha(heroArtAlpha).setDuration(reducedMotion ? Math.min(ms, Motion.REDUCED_MS) : ms).start();
     }
 
     /** "Last opened yesterday, 9:40 PM", the time in white; nothing (but the same height) when it was never seen. */
@@ -1705,6 +1739,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** One dot per dock app, the focused one drawn long and white. Hebrew docks start on the right, so do the dots. */
     private void updateHeroDots(int position) {
+        if (!heroDotsShown) return;
         int count = Math.min(adapter.dockFilled(), COLUMNS);
         heroDots.setVisibility(count > 1 ? View.VISIBLE : View.INVISIBLE);
         if (heroDots.getChildCount() != count) {
@@ -2224,14 +2259,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (greeting.getVisibility() != View.VISIBLE) return;
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
         int res;
-        // Indonesian day parts run on different hours than English:
-        // Pagi 00-10, Siang 10-15, Sore 15-18, Malam 18-24.
-        // The app's own locale (per-app language on Android 13+), under either code Android uses for Indonesian.
-        String lang = getResources().getConfiguration().getLocales().get(0).getLanguage();
+        // Locale-specific day parts (app language on Android 13+).
+        // Indonesian: Pagi 00-10, Siang 10-15, Sore 15-18, Malam 18-24.
+        // Spain (es-ES) and Catalan: "Buenas tardes" into the evening; "Buenas noches" from 21.
+        // Latin American Spanish (es-MX, es-AR, …) keeps the default hours: evening strings are also
+        // «Buenas noches», and there «Buenas noches» from ~17 matches local use better than Spain's 21.
+        Locale locale = getResources().getConfiguration().getLocales().get(0);
+        String lang = locale.getLanguage();
+        String country = locale.getCountry();
         if ("in".equals(lang) || "id".equals(lang)) {
             if (hour < 10) res = R.string.good_morning;
             else if (hour < 15) res = R.string.good_afternoon;
             else if (hour < 18) res = R.string.good_evening;
+            else res = R.string.good_night;
+        } else if (("es".equals(lang) && "ES".equals(country)) || "ca".equals(lang)) {
+            if (hour < 6) res = R.string.good_night;
+            else if (hour < 12) res = R.string.good_morning;
+            else if (hour < 21) res = R.string.good_afternoon;
             else res = R.string.good_night;
         } else {
             if (hour < 5) res = R.string.good_night;
@@ -2405,6 +2449,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 wifiIcon = icon;
                 btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
             }
+            ColorStateList tint = online ? wifiOnlineTint : wifiPlainTint;
+            if (wifiOnlineTint != null && btnWifi.getCompoundDrawableTintList() != tint) {
+                btnWifi.setCompoundDrawableTintList(tint);
+            }
         }
     }
 
@@ -2415,6 +2463,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean launcherSettingsButton;
     /** icon_only_buttons without wifi_label_width: the Wi-Fi pill shows no network name. */
     private boolean wifiIconOnly;
+    /** config.xml wifi_status_color: the Wi-Fi icon's green while online and its usual pill colours; null while off. */
+    private ColorStateList wifiOnlineTint, wifiPlainTint;
     /** The app library button in the top bar (library_button). */
     private View btnLibraryTop;
     /** The open library came from that button: closing it returns there instead of scrolling to the grid's end. */

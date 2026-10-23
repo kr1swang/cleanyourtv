@@ -1,13 +1,22 @@
 """addons/ stays separate from the launcher: the core build never includes it, launcher/ never refers to it,
 and every add-on folder follows the rules in addons/README.md."""
 import re
+import sys
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_themes import MAX_SCREENSHOT, jpeg_size  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 ADDONS = ROOT / "addons"
 LAUNCHER = ROOT / "launcher"
 TEXT = {".gradle", ".kts", ".java", ".kt", ".xml", ".properties", ".sh", ".ps1", ".pro", ".md"}
+
+
+# Add-ons merged before screenshots were required. This list only shrinks: once one gets a
+# screenshot.jpg, take it off here.
+SCREENSHOT_WANTED = {"capacity-stats", "frigate-glance", "photo-prints", "photo-screensaver"}
 
 
 def addon_dirs():
@@ -48,6 +57,30 @@ class AddonFolderTest(unittest.TestCase):
                 self.assertRegex(readme.read_text(encoding="utf-8"), r"(?im)^#+\s*permissions",
                                  "the README lists its permissions under a Permissions heading")
                 self.assertIn(f"]({folder.name}/)", index, "addons/README.md needs a row linking this add-on")
+
+    def test_every_addon_has_a_screenshot(self):
+        index = (ADDONS / "README.md").read_text(encoding="utf-8") if ADDONS.is_dir() else ""
+        for folder in addon_dirs():
+            with self.subTest(addon=folder.name):
+                shot = folder / "screenshot.jpg"
+                if folder.name in SCREENSHOT_WANTED:
+                    self.assertFalse(shot.is_file(), "it has a screenshot now: take it off SCREENSHOT_WANTED")
+                    continue
+                self.assertTrue(shot.is_file(),
+                                "no screenshot.jpg: add one of the add-on on a real TV, see addons/README.md")
+                data = shot.read_bytes()
+                self.assertLessEqual(len(data), MAX_SCREENSHOT, "screenshot.jpg is over 300 KB")
+                size = jpeg_size(data)
+                self.assertIsNotNone(size, "screenshot.jpg is not a JPEG")
+                width, height = size
+                self.assertEqual(width * 9, height * 16, f"screenshot.jpg is {width}x{height}, not 16:9")
+                self.assertLessEqual(width, 1920, "screenshot.jpg is wider than 1920; 1280x720 is enough")
+                row = next((l for l in index.split("\n") if f"]({folder.name}/)" in l), "")
+                self.assertIn(f"{folder.name}/screenshot.jpg", row, "the addons/README.md row does not show the screenshot")
+
+    def test_wanted_list_names_real_addons(self):
+        names = {p.name for p in addon_dirs()}
+        self.assertEqual(SCREENSHOT_WANTED - names, set(), "SCREENSHOT_WANTED names a folder that is gone")
 
 
 if __name__ == "__main__":

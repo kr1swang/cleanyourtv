@@ -18,6 +18,11 @@
 # Kept on purpose: org.droidtv.amazonalexa (Alexa power on/off), com.google.android.apps.mediashell
 # (Chromecast), org.droidtv.oad and com.easy.oad (firmware updates), org.droidtv.eum (see the
 # philips-50pus8517 list: xtv retries forever without it and the sources drawer dies).
+#
+# Second unit (same model, firmware STT2.230526.001, Norway, on Ethernet): the whole list applied, with
+# Prime Video, Assistant and Alexa off by choice. After one reboot every entry stayed disabled except
+# com.google.android.tvrecommendations, which came back enabled (batch 4). Left as is rather than disabled
+# again after each boot.
 
 # Batch 1: telemetry and retail demo
 org.droidtv.candeebug                     # "DAC" analytics uploader
@@ -52,3 +57,4 @@ com.phorus.playfi.softap                  # DTS Play-Fi soft access point
 # kill the live launcher. It is also the only handler for the notification side panel
 # (OPEN_NOTIFICATIONS_PANEL, TOGGLE_NOTIFICATION_HANDLER_PANEL) on this firmware: that panel goes too.
 com.google.android.tvrecommendations      # "Android TV Core Services": recommendation rows, notification panel
+#                                         # second unit: re-enabled by the firmware at the next boot

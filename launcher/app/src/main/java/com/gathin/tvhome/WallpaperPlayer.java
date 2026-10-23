@@ -17,11 +17,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -51,6 +55,12 @@ final class WallpaperPlayer {
     /** wallpaper_captions: the shown picture's name from wallpapers/captions.txt; null when off or there are none. */
     private final TextView caption;
     private final Map<String, String> names;
+    /** wallpaper_moods: the collection's groups by time of day; empty rotates through all of it. */
+    private final Map<String, Set<String>> moods;
+    /** config.xml latitude and longitude for the sun's times, and today's {sunrise, sunset} once worked out. */
+    private final String latitude, longitude;
+    private LocalDate sunDay;
+    private int[] sun;
 
     WallpaperPlayer(Context context, FrameLayout root, Config config) {
         this.root = root;
@@ -61,6 +71,9 @@ final class WallpaperPlayer {
         dimColor = config.wallpaperDim > 0 ? (config.wallpaperDim * 255 / 100) << 24 : 0;
         order = config.wallpaperOrder;
         preferences = context.getSharedPreferences("wallpaper_rotation", Context.MODE_PRIVATE);
+        moods = config.wallpaperMoods;
+        latitude = moods.isEmpty() ? "" : context.getString(R.string.latitude);
+        longitude = moods.isEmpty() ? "" : context.getString(R.string.longitude);
         // Playback state belongs to one collection. Changing the collection starts from its first
         // picture instead of resuming a filename that belonged to the previous one.
         String collection = collectionKey(files);
@@ -91,8 +104,9 @@ final class WallpaperPlayer {
      */
     private void showFirst() {
         String previous = preferences.getString("image", "");
-        File first = WallpaperRotation.find(files, previous);
-        if (first == null) first = WallpaperRotation.pick(files, previous, order, random);
+        List<File> playable = playable();
+        File first = WallpaperRotation.find(playable, previous);
+        if (first == null) first = WallpaperRotation.pick(playable, previous, order, random);
         while (first != null) {
             Bitmap bitmap = decode(first);
             if (bitmap != null) {
@@ -108,7 +122,8 @@ final class WallpaperPlayer {
                 return;
             }
             files.remove(first);   // unreadable or over 4K: try another, or keep the plain colour
-            first = WallpaperRotation.pick(files, previous, order, random);
+            playable = playable();
+            first = WallpaperRotation.pick(playable, previous, order, random);
         }
     }
 
@@ -133,6 +148,17 @@ final class WallpaperPlayer {
         active = false;
     }
 
+    /** The pictures the rotation picks from now: wallpaper_moods' group for the time of day, or the whole collection. */
+    private List<File> playable() {
+        if (moods.isEmpty()) return files;
+        LocalDateTime now = LocalDateTime.now();
+        if (!now.toLocalDate().equals(sunDay)) {
+            sunDay = now.toLocalDate();
+            sun = WallpaperMood.sun(sunDay, latitude, longitude, ZoneId.systemDefault());
+        }
+        return WallpaperMood.select(files, moods, WallpaperMood.timeOfDay(now.getHour() * 60 + now.getMinute(), sun[0], sun[1]));
+    }
+
     void close() {
         active = false;
         closed = true;
@@ -142,10 +168,12 @@ final class WallpaperPlayer {
     void update() {
         if (!active || closed || loading || files.isEmpty()) return;
         String previous = preferences.getString("image", "");
-        File selected = WallpaperRotation.find(files, previous);
+        // A picture outside the time of day's group (the group changed) is replaced at once, not after the interval.
+        List<File> playable = playable();
+        File selected = WallpaperRotation.find(playable, previous);
         long changed = preferences.getLong("changed", 0);
         if (selected == null || WallpaperRotation.due(changed, System.currentTimeMillis(), interval)) {
-            selected = WallpaperRotation.pick(files, previous, order, random);
+            selected = WallpaperRotation.pick(playable, previous, order, random);
         }
         if (selected == null || selected.getName().equals(displayed)) return;
         File next = selected;

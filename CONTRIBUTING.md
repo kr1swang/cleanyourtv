@@ -10,9 +10,9 @@ The launcher stays small on purpose, so pick the smallest home that fits:
 
 | Your idea | Where it goes |
 |---|---|
-| A TV model, a fix, a translation, a small switch that is off by default | A pull request here (sections 1 to 3 below) |
+| A TV model, a fix, a translation, a small switch that is off by default | A pull request here (sections 1 to 3 below); a new switch with a screenshot in [`docs/switches.md`](docs/switches.md) |
 | A new look: colours, wallpaper, dock, columns | [`themes/`](themes/README.md), with a screenshot from a real TV |
-| A widget or tile that can be its own small app | [`addons/`](addons/README.md), as a module card; it never touches `launcher/` |
+| A widget or tile that can be its own small app | [`addons/`](addons/README.md), as a module card with a screenshot from a real TV; it never touches `launcher/` |
 | A whole new launcher, a heavy restyle, a port to another platform | Your own repo, plus one row in [`SHOWCASE.md`](SHOWCASE.md) (section 4) |
 
 Everything merged into `themes/` and `addons/` shows up on [cleanyour.tv/addons](https://cleanyour.tv/addons).

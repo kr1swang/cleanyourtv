@@ -88,16 +88,36 @@ class WindowTest(unittest.TestCase):
 
 
 class MedianRunTest(unittest.TestCase):
+    def median(self, runs):
+        """median_run over runs = {name: metrics}, with trace_report.measure answering from the dict."""
+        measure = lambda paths, package, open_trace: [(p, runs[p]) for p in paths]
+        with mock.patch.object(flamechart.trace_report, "measure", measure):
+            return flamechart.median_run(list(runs), PKG, None)
+
     def test_the_median_run_is_drawn_not_the_best(self):
-        scores = {"a": 90, "b": 300, "c": 80, "d": 95, "e": 85}
-        measure = lambda paths, package, open_trace: [(p, {"first frame": scores[p]}) for p in paths]
-        original = flamechart.trace_report.measure
-        flamechart.trace_report.measure = measure
-        try:
-            self.assertEqual(flamechart.median_run(list("abcde"), PKG, None), "a")
-            self.assertEqual(flamechart.median_run(list("abce"), PKG, None), "e")     # 80 85 90 300: the lower middle
-        finally:
-            flamechart.trace_report.measure = original
+        runs = {k: {"first frame": v} for k, v in {"a": 90, "b": 300, "c": 80, "d": 95, "e": 85}.items()}
+        self.assertEqual(self.median(runs), ("a", "time to first frame"))
+        del runs["d"]
+        self.assertEqual(self.median(runs)[0], "e")      # 80 85 90 300: the lower middle
+
+    def test_nav_without_frame_timeline_uses_draw_time(self):
+        # #951's report: older Android has no FrameTimeline, so #953 leaves frame time out; the first file
+        # used to be drawn and called the median.
+        draws = {"nav-1": 300, "nav-2": 90, "nav-3": 80, "nav-4": 95, "nav-5": 85}
+        runs = {k: {"frames": 20, "draw median": v} for k, v in draws.items()}
+        self.assertEqual(self.median(runs), ("nav-2", "median RenderThread draw"))
+
+    def test_a_measure_only_some_runs_have_is_not_mixed_with_another(self):
+        runs = {"a": {"frame median": 30, "draw median": 9}, "b": {"draw median": 7},
+                "c": {"frame median": 10, "draw median": 8}}
+        self.assertEqual(self.median(runs), ("c", "median RenderThread draw"))
+
+    def test_a_set_without_a_shared_measure_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.median({"a": {"frames": 3}, "b": {"frames": 4}})
+
+    def test_one_trace_is_drawn_as_it_is(self):
+        self.assertEqual(flamechart.median_run(["only"], PKG, None), ("only", None))
 
 
 class ArgumentTest(unittest.TestCase):

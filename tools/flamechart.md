@@ -15,7 +15,7 @@ tools/venv/bin/python tools/flamechart.py traces/before traces/after \
 
 | Option | Default | Notes |
 |---|---|---|
-| `TRACE ...` | | Before, then after (up to 4). A folder draws its median run (by time to first frame, or median frame time for `nav`), named in the panel. |
+| `TRACE ...` | | Before, then after (up to 4). A folder draws its median run, by the first of time to first frame, median frame time and median RenderThread draw that every run has; the panel names the run and the measure. A folder with none of them in every run is refused. |
 | `--highlight REGEX` | `^(activityResume\|RV OnBindView)$` | Slice names to draw magenta and total. Children of a match count once. |
 | `--window` | `first-frame` | `first-frame`: launcher start to first frame drawn. `start:MS`: a fixed span from the start. `all`: the whole recording (always for `nav`). |
 | `--threads` | `main,RenderThread` | Lanes, by thread name in the launcher's process. |

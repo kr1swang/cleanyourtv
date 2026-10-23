@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.Collator;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -123,6 +124,26 @@ final class LibraryApps {
             if (missing.test(candidate)) return candidate;
         }
         return current + 1 < count ? current + 1 : Math.max(0, current - 1);
+    }
+
+    /** Checked Home apps first, then apps hidden from Home; the caller sorts each group by label. */
+    static int compareHomeGroup(boolean homeA, boolean homeB) {
+        return Boolean.compare(homeB, homeA);
+    }
+
+    /** Keep the next neighbour when a shortcut moves away, or the previous one at the end. */
+    static int nextAfterRemoval(int current, int count) {
+        if (count <= 1) return -1;
+        current = Math.max(0, Math.min(current, count - 1));
+        return current + 1 < count ? current + 1 : current - 1;
+    }
+
+    static int compareCatalog(boolean homeA, String labelA, String packageA,
+                              boolean homeB, String labelB, String packageB, Collator collator) {
+        int group = compareHomeGroup(homeA, homeB);
+        if (group != 0) return group;
+        int label = collator.compare(labelA, labelB);
+        return label != 0 ? label : packageA.compareTo(packageB);
     }
 
     static Set<String> change(Set<String> saved, String pkg, boolean added) {

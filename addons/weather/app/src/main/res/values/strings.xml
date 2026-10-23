@@ -3,6 +3,8 @@
     <string name="app_name">Weather</string>
 
     <string name="feels_like">Feels like %1$d°</string>
+    <string name="humidity">Humidity %1$d%%</string>
+    <string name="wind">Wind %1$d km/h</string>
     <string name="high_low">%1$d° / %2$d°</string>
     <string name="aqi_line">Air quality %1$d · %2$s</string>
     <string name="updated">Updated %1$s · Open-Meteo</string>

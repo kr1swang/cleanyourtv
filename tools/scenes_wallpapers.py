@@ -10,6 +10,9 @@ themes/scenes/wallpapers/ holds them as 1920x1080 JPEG, each under 300 KB as the
 Chrome screenshot of the SVG (a 1280x720 window at device scale 1.5), blended 1.8% with Pillow grain
 (Image.effect_noise, sigma 4) so the gradients do not band on an 8-bit panel, and saved at quality 86. The grain is
 random, so a new render looks the same but is not byte-identical.
+
+A new scene also needs its name in themes/scenes/wallpapers/captions.txt (`<file><TAB><name>`), which is what
+wallpaper_captions shows under the top-right pills; tests/test_scenes_captions.py fails until it has one.
 """
 import math
 import os

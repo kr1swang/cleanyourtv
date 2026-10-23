@@ -8,6 +8,7 @@ import android.os.Environment;
 import android.util.Log;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
@@ -20,9 +21,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The launcher's settings: res/values/config.xml, packaged theme defaults, then an optional overlay from
@@ -124,6 +127,8 @@ final class Config {
     final boolean showStats;
     /** App library pill after the last Home row (config.xml app_library). */
     final boolean appLibrary;
+    /** OK directly toggles Home membership in the library (app_library_selection). */
+    final boolean appLibrarySelection;
     /** Background colour behind everything, #RRGGBB; black unless a theme says otherwise. */
     final int backgroundColor;
     /** Time-of-day backdrop, 0 to 100 (config.xml, sky_intensity); 0 keeps the plain background. */
@@ -170,12 +175,26 @@ final class Config {
     final boolean ambientGlow;
     /** The focus highlight in the focused app's colour on every tile (config.xml, app_glow), as cinematic_home does for the dock. */
     final boolean appGlow;
+    /** The rows fade out under the clock instead of being cut off (config.xml, fade_rows); TopFade. */
+    final boolean fadeRows;
     /** Minutes Home may sit untouched before the clock screensaver (config.xml, home_idle_clock_minutes); 0 is off. */
     final int homeIdleClockMinutes;
     /** The dock band as light frosted glass like the pills (config.xml, dock_glass); false keeps the solid band. */
     final boolean dockGlass;
     /** The dock band's padding equals the gap between its tiles (config.xml, dock_even_padding); false keeps the fixed padding. */
     final boolean dockEvenPadding;
+    /** The dock position dots under the cinematic shelf's name (config.xml, cinematic_dots); false leaves them out. */
+    final boolean cinematicDots;
+    /** The cinematic shelf keeps the white focus highlight instead of the app's colour (config.xml, cinematic_white_focus). */
+    final boolean cinematicWhiteFocus;
+    /** The Wi-Fi pill's icon green while the TV is online (config.xml, wifi_status_color); false keeps it white. */
+    final boolean wifiStatusColor;
+    /** Opacity of the app's artwork behind the cinematic shelf, 0 to 100 (config.xml, cinematic_art); 50 as before. */
+    final int cinematicArt;
+    /** Strength of the cinematic shelf's dark scrim, 0 to 100 percent (config.xml, cinematic_scrim); 100 as before. */
+    final int cinematicScrim;
+    /** A rotating collection's groups by time of day, as file names (config.xml, wallpaper_moods); empty rotates through all of it. */
+    final Map<String, Set<String>> wallpaperMoods;
     /** Shape of the glow behind the focused app (config.xml, glow_style): {@link #GLOW_RADIAL} or {@link #GLOW_HORIZON}. */
     final String glowStyle;
 
@@ -193,13 +212,14 @@ final class Config {
                    String sourcePanelExtra, boolean coocaaSources, String inputAction,
                    String inputUriScheme, int columns, int rowsBelowDock, boolean animations, boolean advancedEffects,
                    boolean shamsiDate, String greetingName, boolean moduleCards, boolean reducedMotion, boolean bootToLiveTv, boolean dockTitle, boolean dockRow, boolean topMenu, boolean launcherSettingsButton, boolean reorderButton, boolean showNetworkPill, boolean showInputsPill, boolean iconOnlyButtons, boolean iconOnlyInputs, boolean libraryButton, int wifiLabelWidth, boolean alwaysShowNames, boolean wallpaperTrueColor, boolean focusOvershoot, String vpnApp,
-                   boolean showHomeSettingsShortcut, boolean showStats, boolean appLibrary, int backgroundColor, int skyIntensity,
+                   boolean showHomeSettingsShortcut, boolean showStats, boolean appLibrary, boolean appLibrarySelection, int backgroundColor, int skyIntensity,
                    int[] settingsKeycodes, boolean settingsKeyPanel, boolean restoreKeyServices, boolean wallpaperEnabled, File wallpaper, List<File> wallpapers,
                    int wallpaperRotationMinutes, int wallpaperDim, int dockOpacity, String wallpaperOrder, boolean overlayApplied,
                    Festival festival, int[] inputKeycodes, List<String> appKeys, String stockHomeRedirect,
-                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, int homeIdleClockMinutes,
+                   List<RaceWeekend.Race> raceCalendar, boolean cinematicHome, boolean ambientGlow, boolean appGlow, boolean fadeRows, int homeIdleClockMinutes,
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
-                   boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding) {
+                   boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
+                   Map<String, Set<String>> wallpaperMoods) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -249,6 +269,7 @@ final class Config {
         this.showHomeSettingsShortcut = showHomeSettingsShortcut;
         this.showStats = showStats;
         this.appLibrary = appLibrary;
+        this.appLibrarySelection = appLibrarySelection;
         this.backgroundColor = backgroundColor;
         this.skyIntensity = skyIntensity;
         this.settingsKeycodes = settingsKeycodes;
@@ -267,9 +288,16 @@ final class Config {
         this.cinematicHome = cinematicHome;
         this.ambientGlow = ambientGlow;
         this.appGlow = appGlow;
+        this.fadeRows = fadeRows;
         this.homeIdleClockMinutes = homeIdleClockMinutes;
         this.dockGlass = dockGlass;
         this.dockEvenPadding = dockEvenPadding;
+        this.cinematicDots = cinematicDots;
+        this.cinematicWhiteFocus = cinematicWhiteFocus;
+        this.wifiStatusColor = wifiStatusColor;
+        this.cinematicArt = cinematicArt;
+        this.cinematicScrim = cinematicScrim;
+        this.wallpaperMoods = wallpaperMoods;
         this.glowStyle = glowStyle(glowStyle);
         this.wallpaperCaptions = wallpaperCaptions;
     }
@@ -331,6 +359,7 @@ final class Config {
         boolean homeSettings = res.getBoolean(R.bool.show_home_settings_shortcut);
         boolean showStats = res.getBoolean(R.bool.show_stats);
         boolean library = res.getBoolean(R.bool.app_library);
+        boolean librarySelection = res.getBoolean(R.bool.app_library_selection);
         int background = 0xFF000000;
         int skyIntensity = res.getInteger(R.integer.sky_intensity);
         int[] settingsKeycodes = res.getIntArray(R.array.settings_key_keycodes);
@@ -343,10 +372,17 @@ final class Config {
         boolean cinematic = res.getBoolean(R.bool.cinematic_home);
         boolean ambientGlow = res.getBoolean(R.bool.ambient_glow);
         boolean appGlow = res.getBoolean(R.bool.app_glow);
+        boolean fadeRows = res.getBoolean(R.bool.fade_rows);
         int idleClockMinutes = res.getInteger(R.integer.home_idle_clock_minutes);
         boolean keyFilter = res.getBoolean(R.bool.key_filter);
         boolean dockGlass = res.getBoolean(R.bool.dock_glass);
         boolean dockEvenPadding = res.getBoolean(R.bool.dock_even_padding);
+        boolean cinematicDots = res.getBoolean(R.bool.cinematic_dots);
+        boolean cinematicWhiteFocus = res.getBoolean(R.bool.cinematic_white_focus);
+        boolean wifiStatusColor = res.getBoolean(R.bool.wifi_status_color);
+        int cinematicArt = res.getInteger(R.integer.cinematic_art);
+        int cinematicScrim = res.getInteger(R.integer.cinematic_scrim);
+        Map<String, Set<String>> wallpaperMoods = moods(res.getString(R.string.wallpaper_moods));
         String glowStyle = res.getString(R.string.glow_style);
         boolean applied = false;
 
@@ -401,6 +437,7 @@ final class Config {
             homeSettings = bool(json, "show_home_settings_shortcut", homeSettings);
             showStats = bool(json, "show_stats", showStats);
             library = bool(json, "app_library", library);
+            librarySelection = bool(json, "app_library_selection", librarySelection);
             background = color(json, "background_color", background);
             skyIntensity = integer(json, "sky_intensity", skyIntensity, 0, 100);
             settingsKeycodes = intArray(json, "settings_key_keycodes", settingsKeycodes);
@@ -413,10 +450,18 @@ final class Config {
             cinematic = bool(json, "cinematic_home", cinematic);
             ambientGlow = bool(json, "ambient_glow", ambientGlow);
             appGlow = bool(json, "app_glow", appGlow);
+            fadeRows = bool(json, "fade_rows", fadeRows);
             idleClockMinutes = integer(json, "home_idle_clock_minutes", idleClockMinutes, 0, 1440);
             keyFilter = bool(json, "key_filter", keyFilter);
             dockGlass = bool(json, "dock_glass", dockGlass);
             dockEvenPadding = bool(json, "dock_even_padding", dockEvenPadding);
+            cinematicDots = bool(json, "cinematic_dots", cinematicDots);
+            cinematicWhiteFocus = bool(json, "cinematic_white_focus", cinematicWhiteFocus);
+            wifiStatusColor = bool(json, "wifi_status_color", wifiStatusColor);
+            cinematicArt = integer(json, "cinematic_art", cinematicArt, 0, 100);
+            cinematicScrim = integer(json, "cinematic_scrim", cinematicScrim, 0, 100);
+            JSONObject moods = json.optJSONObject("wallpaper_moods");
+            if (moods != null) wallpaperMoods = moods(moods);
             glowStyle = string(json, "glow_style", glowStyle);
         }
         // A theme push or reset invalidates choices made on the TV. On first use, remember the
@@ -478,11 +523,11 @@ final class Config {
                 packageMap(appBanners), panelService,
                 panelAction, panelExtra, coocaaSources, inputAction, inputUriScheme,
                 Math.max(1, columns), Math.max(0, rowsBelow), animations, advancedEffects,
-                shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill, iconOnlyButtons, iconOnlyInputs, libraryButton, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot, vpn, homeSettings, showStats, library, background,
+                shamsi, greetingName, moduleCards, reducedMotion, bootToLiveTv, dockTitle, dockRow, topMenu, launcherSettingsButton, reorderButton, showNetworkPill, showInputsPill, iconOnlyButtons, iconOnlyInputs, libraryButton, wifiLabelWidth, alwaysShowNames, wallpaperTrueColor, focusOvershoot, vpn, homeSettings, showStats, library, librarySelection, background,
                 Math.max(0, Math.min(100, skyIntensity)), settingsKeycodes, settingsKeyPanel, restoreKeyServices, wallpaperEnabled, wallpaper,
                 wallpapers, rotationMinutes, wallpaperDim, dockOpacity, wallpaperOrder, applied,
-                festival, inputKeycodes, appKeys, stockHomeRedirect, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow,
-                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, tileMenu, dockEvenPadding);
+                festival, inputKeycodes, appKeys, stockHomeRedirect, json == null ? Collections.emptyList() : raceCalendar(json), cinematic, ambientGlow, appGlow, fadeRows,
+                Math.max(0, idleClockMinutes), keyFilter, dockGlass, glowStyle, wallpaperCaptions, handleViewInputs, tileMenu, dockEvenPadding, cinematicDots, cinematicWhiteFocus, wifiStatusColor, cinematicScrim, cinematicArt, wallpaperMoods);
     }
 
     /**
@@ -612,6 +657,32 @@ final class Config {
             Log.w(TAG, "ignoring " + file + ": " + e.getMessage());
             return null;
         }
+    }
+
+    /** wallpaper_moods as JSON text (config.xml); empty or unreadable is no groups. */
+    private static Map<String, Set<String>> moods(String text) {
+        if (text.trim().isEmpty()) return Collections.emptyMap();
+        try {
+            return moods(new JSONObject(text));
+        } catch (JSONException e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    /** {"night": ["03-moon-lake.jpg", ...], ...}: each mood's picture names; other keys and names are left out. */
+    private static Map<String, Set<String>> moods(JSONObject o) {
+        Map<String, Set<String>> groups = new HashMap<>();
+        for (String mood : WallpaperMood.ALL) {
+            JSONArray names = o.optJSONArray(mood);
+            if (names == null) continue;
+            Set<String> group = new HashSet<>();
+            for (int i = 0; i < names.length(); i++) {
+                String name = names.optString(i, "").trim();
+                if (ThemeFiles.collectionImage(name)) group.add(name);
+            }
+            if (!group.isEmpty()) groups.put(mood, Collections.unmodifiableSet(group));
+        }
+        return Collections.unmodifiableMap(groups);
     }
 
     private static String string(JSONObject o, String key, String fallback) {

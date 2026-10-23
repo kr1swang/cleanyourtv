@@ -35,6 +35,27 @@
 # com.mitv.milinkservice and com.graymatrix.did (ZEE5) are not installed there; disable.sh skips them.
 # Nothing came back on after a reboot.
 #
+# Third TV, MiTV-MOOR4 (also venom, Android 11, same firmware RTM5.220609.003.2674, 1.8 GB RAM; 22 Oct 2026):
+# the list went on in four batches with a screenshot between them, and all of it was still disabled after a
+# reboot, with these differences:
+#   - com.xiaomi.mitv.manualhelp, com.mitv.milinkservice and com.graymatrix.did are not installed.
+#   - com.xiaomi.mitv.smartshare and com.xiaomi.wfdsinkhelperservice kept (Mi Cast / Miracast in use);
+#     com.google.android.youtube.tvmusic disabled as well, by choice.
+#   - setupwraith owned the Wi-Fi network saved during first setup (`dumpsys wifi | grep -o 'cname=[^ ]*'`),
+#     so disable.sh skipped it. Forgetting the network and joining it again in Settings > Network & Internet
+#     moved it to com.android.tv.settings; ADB came straight back and setupwraith then went off without the
+#     TV leaving Wi-Fi.
+#   - Remote with the launcher (HOME_KEY_SERVICE=1 INPUT_KEY_SERVICE=1, 190:com.google.android.youtube.tv in
+#     app_keys): Settings, Input, YouTube and Netflix buttons worked; held Volume stepped once per press.
+#   - Continue watching: with com.gathin.tvhome as Home, content://android.media.tv/watch_next_program,
+#     preview_program and channel all came back empty, even after half an episode in Netflix (which holds
+#     WRITE_EPG_DATA), so the stock home's Continue watching row is not in the local TV provider here and a
+#     third-party launcher has nothing to show for it. This TV went back to launcherx for that row (pm enable,
+#     set-home-activity .home.HomeActivity, com.gathin.tvhome disabled) with the rest of the list still
+#     applied: the stock home works, its Mi Home tab is gone and held-key repeat is back.
+#   - Private DNS dns.adguard-dns.com works; the streaming apps above still play.
+#   First-day report, like the one above.
+#
 # Remote buttons once launcherx is disabled (that second TV; `dumpsys window policy` lists who gets
 # each global key, logcat shows what happens):
 #   Settings   KEYCODE_SETTINGS (176) goes to com.xiaomi.android.tvsetup.partnercustomizer, whose
@@ -100,3 +121,18 @@ com.google.android.play.games          # Play Games
 # Trade-off: setupwraith is the first-run setup wizard. Everyday use is unaffected, but re-enable it
 # before a factory reset - tools/restore.sh does that for you while this line is in the list.
 com.google.android.tungsten.setupwraith   # setup wizard; blocks a third-party launcher from Home
+
+# ---------------------------------------------------------------------------------------------
+# Optional: unused system leftovers (added 22 Oct 2026, firmware RTM5.220609.003.2674). Disabled on a
+# MiTV-MOOR2 with the launcher owning Home; after a reboot all five stayed disabled and Home, the
+# remote's keys, the Inputs menu (HDMI 1-3, AV, Live TV) and Settings still worked. One day so far.
+# None of them runs a process at idle. Three report TV_INPUT_HARDWARE only because they share
+# android.uid.system; `pm query-services -a android.media.tv.TvInputService` lists only
+# com.mediatek.tvinput and com.mediatek.tv.service, so the inputs are not involved.
+# Keep com.android.settings.intelligence: it is the search box inside Settings.
+# Opt-in: uncomment the lines below to disable them (none runs at idle, so there is little to gain).
+# com.android.dynsystem                  # DSU: boots a temporary GSI image (developer feature)
+# com.android.soundpicker                # ringtone picker
+# com.android.wallpaperbackup            # wallpaper backup agent
+# com.google.android.onetimeinitializer  # one-off task after first setup, runs at boot
+# com.mstar.android.tv.disclaimercustomization   # legal screen of the first-run setup wizard only
