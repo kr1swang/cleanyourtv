@@ -481,6 +481,16 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
   workaround not working. An app started in the foreground is unaffected, and the side effect, that
   the home-screen channels only refresh while Stremio is open, costs nothing once the recommendation
   rows are disabled anyway.
+- **Every package in a batch is enabled again after the reboot that follows it**, seen on a Hisense
+  HiSmartTV A4 (xiaoyushan, Android TV 11, `RTT2.221108.001` / `00.00.01.18`). It looks like firmware
+  that resets the list at every boot, but it is the timing of the reboot. Android writes package state
+  to disk about ten seconds after a change (AOSP's `WRITE_SETTINGS_DELAY`). A `tools/tv.py reboot`
+  sent straight after `tools/disable.sh` came before that write, so the TV booted with the old state.
+  `dumpsys package <name>` showed `enabled=0` (default) for every package, and `pm list packages -d`
+  was empty. The same package disabled, given 12 seconds, then rebooted stayed at `enabled=3`
+  (disabled-user), and so did every batch applied that way. Wait 15 seconds after the last `pm` command
+  before rebooting, the same wait the tested lists already describe between batches. It is the
+  package-state counterpart of the lazy app-ops write above.
 - **A firmware update quietly undoes the cleanup.** The update installs over the cleaned-up system, so
   every listed package is enabled again, Home goes back to the stock launcher and new preloads
   appear that no list mentions. `tools/venv/bin/python -I tools/check.py <list>` reports the first

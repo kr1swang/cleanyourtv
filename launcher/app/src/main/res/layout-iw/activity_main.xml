@@ -235,12 +235,16 @@
                         android:gravity="center_horizontal"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:singleLine="true"
+                        android:maxLines="1"
+                        android:autoSizeTextType="uniform"
+                        android:autoSizeMinTextSize="9sp"
+                        android:autoSizeMaxTextSize="12sp"
+                        android:autoSizeStepGranularity="1sp"
                         android:ellipsize="end"
                         android:textColor="#8CFFFFFF"
                         android:textSize="12sp"
                         android:fontFamily="@string/font_medium"
-                        android:letterSpacing="0.22"
+                        android:letterSpacing="0"
                         android:textAllCaps="true" />
 
                     <LinearLayout

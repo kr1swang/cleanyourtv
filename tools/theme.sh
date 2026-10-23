@@ -72,7 +72,7 @@ if [ "${1:-}" = --reset ]; then
 fi
 THEME="${THEME_ARG:?usage: theme.sh <theme folder> | --reset}"
 [ -f "$THEME/config.json" ] || { echo "no config.json in $THEME" >&2; exit 1; }
-"$PY" -I -c 'import json,sys; json.load(open(sys.argv[1]))' "$THEME/config.json" 2>/dev/null \
+"$PY" -I -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8-sig"))' "$THEME/config.json" 2>/dev/null \
   || { echo "$THEME/config.json is not valid JSON" >&2; exit 1; }
 
 tv "mkdir -p $DIR" >/dev/null 2>&1 || true
