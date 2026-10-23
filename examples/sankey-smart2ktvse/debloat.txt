@@ -22,7 +22,7 @@ com.zeasn.tokenapp             # Token management
 com.zeasn.hotelmodelservice    # Hotel mode (not needed for home use)
 com.zeasn.deviceportal.asdprovider.certified  # Device portal
 com.zeasn.tv.cast              # Casting bloat (not the system cast)
-com.zeasn.livetv               # Live TV service - SKIPPED during disable (needed for HDMI inputs)
+# com.zeasn.livetv             # Live TV service: keep it. Disabling it gives "No Signal" on every input (HDMI included)
 com.zeasn.whaleos.settings     # Whale OS settings overlay
 
 # Factory/test apps
