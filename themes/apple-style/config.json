@@ -1,4 +1,9 @@
 {
+  "ambient_glow": false,
+  "app_keys": [
+    "KEYCODE_BUTTON_3:com.google.android.youtube.tv",
+    "KEYCODE_BUTTON_4:com.netflix.ninja"
+  ],
   "columns": 6,
   "dock_apps": [
     "com.google.android.youtube.tv",
@@ -8,10 +13,10 @@
     "com.limelight",
     "com.android.vending"
   ],
-  "wallpaper_true_color": true,
-  "ambient_glow": false,
-  "dock_opacity": 30,
   "dock_even_padding": true,
+  "dock_opacity": 30,
+  "fade_rows": true,
+  "stock_home_redirect": "com.google.android.apps.tv.launcherx",
   "tile_menu": true,
-  "fade_rows": true
+  "wallpaper_true_color": true
 }

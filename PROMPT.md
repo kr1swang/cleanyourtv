@@ -184,8 +184,8 @@ Launcher
   wallpaper unless I have requested video; for video, follow the deployment rules below.
 
 Custom deployment profiles
-- The preferred route is Launcher settings → Background downloads. Offer six profiles: static 1080p,
-  static 4K, 1080p/30fps, 1080p/60fps, 4K/30fps and 4K/60fps. Reuse a supplied preference.
+- The preferred route is Up from a Dock app → Control center → Background settings. Offer six profiles:
+  FHD Static, FHD 30fps, FHD 60fps, 4K Static, 4K 30fps and 4K 60fps. Reuse a supplied preference.
   Detect the physical output resolution when suggesting a profile; do not silently lower resolution or FPS.
 - This fork has INTERNET permission solely for background assets. Its APK bundles config.json and the
   pinned wallpaper-catalog.properties, not images or movies. The catalog specifies release URLs, sizes
@@ -196,10 +196,11 @@ Custom deployment profiles
   its matching preview. Downloads run off the UI thread and apply only after all assets are verified.
 - Downloaded media stays in app-private persistent storage across normal APK upgrades. Leaving the
   background picker cancels its download. Interrupted temporary files are removed before the next job.
-  Clear unused downloads preserves the active image/video pair. Clearing app data removes downloads
+  Clear unused files preserves the active image/video pair. Clearing app data removes downloads
   and selections, but retains the APK's six-column and Dock defaults; the default preview needs network again.
 - Preserve Cast, voice search, update packages, the Home/app-key service and existing device settings.
   A background selection must not replace external config or alter unrelated keys.
+  Applying a profile replaces only the background layer, retaining the grid and control-center focus.
 - For offline/manual deployment, use tools/fetch-wallpapers.py --profile fhd-static, 4k-static,
   fhd-30, fhd-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
   Push the chosen image as wallpaper.png; merge only video_wallpaper into the device's config.
@@ -219,17 +220,21 @@ Other-device compatibility
 - Inspect HOME handlers and OEM restrictions on this device before takeover. Do not blindly disable
   `com.google.android.apps.tv.launcherx` or `com.google.android.tungsten.setupwraith`. Preserve Cast's
   dependencies as described above, and keep a working route to the stock launcher.
-- The custom `YouTubeKeyService` handles `HOME`, `BUTTON_3` and `BUTTON_4` in one accessibility service,
-  opening the custom Home screen, YouTube and Netflix. Keep the existing service component name
+- The custom `YouTubeKeyService` extends upstream `HomeKeyService`. The bundled theme's `app_keys`
+  map `BUTTON_3` and `BUTTON_4` to YouTube and Netflix; `stock_home_redirect` identifies Google TV.
+  Reuse upstream app-key handling, stock-home detection and service repair. Keep the service component name
   so upgrades preserve its accessibility setting. Do not automatically enable it on other devices.
   Chromecast firmware can consume the first Home press while waking from sleep. The service also
-  redirects the exact stock `launcherx.home.HomeActivity` window while the screen is interactive;
-  it does not redirect the whole package or poll the foreground app. This fallback may briefly show
+  redirects resolved stock HOME activity windows while the screen is interactive;
+  it does not redirect every activity in that package or poll the foreground app. This fallback may briefly show
   stock Home. Test physical Home from sleep and Cast while asleep as well as normal awake navigation.
-  On service connection it also opens custom Home once per `Settings.Global.BOOT_COUNT` when the
-  screen is interactive, because stock Home can appear before accessibility binds. The handled boot
-  is stored in `remote_keys` preferences so service reconnects do not interrupt apps. First activation
-  or clearing launcher data also resets that record. This is a post-boot redirect, not a replacement
+  On the first service connection within three minutes of boot, upstream opens a brief probe activity
+  once per `Settings.Global.BOOT_COUNT`. The window event after the probe redirects only stock Home,
+  leaving another app or HDMI input alone. The record is `boot/probe_boot`; reconnecting does not repeat
+  it during that boot. Clearing app data removes the record and service-repair state; verify accessibility
+  authorization again. The custom Home override consumes short and long presses immediately. While
+  Home is visible, it animates panel closing and Dock collapse without restarting the wallpaper.
+  This is a post-boot redirect, not a replacement
   of the firmware's HOME resolver; stock Home may briefly appear. Verify a real reboot without
   pressing Home, and verify a service reconnect while another app is open.
   On the tested Chromecast, disabling only launcherx while leaving setupwraith enabled makes the
@@ -241,8 +246,9 @@ Other-device compatibility
 - Check which requested Dock packages are installed. Missing apps can be replaced by other grid apps
   under the default fill behavior; report the resulting order rather than claiming the exact six apps
   are present. Ask before installing replacement apps or changing the requested order.
-- The custom layout has no upper-right Inputs/Settings buttons. On built-in TVs, verify that Settings,
-  HDMI/source selection and live TV remain accessible through the remote or app grid. Check the actual
+- The custom layout has no upper-right Inputs/Settings buttons. Open the control center with Up from
+  the Dock. Input sources is hidden when no input route is available. On built-in TVs, verify Settings,
+  HDMI/source selection and live TV through the control center and remote. Check the actual
   display for overscan, clipped focus shadows, text scaling and four/six-column navigation.
 
 Verify

@@ -1,4 +1,4 @@
-# Custom background library
+# Apple-style launcher
 
 The APK bundles the six-column Dock defaults in `config.json` and the pinned asset catalog in
 `wallpaper-catalog.properties`. Images and movies are downloaded from
@@ -7,17 +7,24 @@ Release filenames use `wallpaper_FHD` and `wallpaper_4K`, with `_30fps` or `_60f
 Release, downloader and cache filenames share the same FHD / 4K naming.
 
 Press **Up** on a Dock app to open the control center, then choose **Background settings**.
-The center also offers Inputs, System settings, Network settings and Reset order.
-Inputs reuse the existing TV/CEC and vendor fallbacks. Reset order requires confirmation and
+The center also offers Input sources, System settings, Network settings and Reset order.
+Input sources appear only when an input route is available, such as a visible passthrough input,
+Live TV or a configured vendor panel. This does not mean an HDMI cable has a live signal.
+Sources reuse the existing TV/CEC and vendor fallbacks. Reset order requires confirmation and
 restores the theme Dock and default app ordering without changing the background.
-Back returns through the lists to the previously focused Dock app; Home closes the overlay.
+Back returns through the lists to the previously focused Dock app. With the custom key helper enabled,
+Home closes the overlay, collapses the grid and selects the first Dock app without restarting Home.
 The former flower card and standalone download settings page have been removed.
+
+Main and child pages have no title and share 288dp-wide rows. Opening, Back/Home closing, child-page
+changes and the dim backdrop use 180ms transitions; reduced motion uses a 60ms fade without sliding.
+Dock expansion and collapse use 360ms scrolling. The clock remains visible behind the control center.
 
 Background choices use single-line cards: the focus fill identifies the remote target, while a
 check marks the selected profile. Size and download status follow the name.
 The overlay uses no blur, background capture, local ADB, polling or extra dependencies.
-Opening it does not pause Home; applying a different background rebuilds Home only when leaving
-the center.
+Opening it does not pause Home; applying a different background replaces only the background
+layer, preserving the grid and panel focus.
 
 Golden Gate offers static 1080p, static 4K,
 1080p/30 fps, 1080p/60 fps, 4K/30 fps and 4K/60 fps. The picker shows download size, progress and
@@ -50,7 +57,30 @@ allowed repository in `WallpaperCatalog.Asset` as well. The app now requests INT
 these downloads; upstream descriptions of a network-free launcher do not apply to this fork.
 
 The Dock uses upstream `dock_even_padding` for its spacing and concentric corners instead of custom
-fixed band dimensions. Its six columns, app order and 30% opacity stay in this theme.
+fixed band dimensions. Six columns, the YouTube → Netflix → Twitch → Spotify → Moonlight → Play Store
+order and 30% opacity are defaults in `config.json`, read through upstream configuration handling.
+There is no separate code enforcing those values; external config and saved on-TV choices can override
+them, and a saved app order takes priority until Reset order is used.
+
+The upstream Launcher settings activity remains available through its existing shortcuts. Its local
+wallpaper picker is separate from the control center's download catalog. A small display adapter shows
+downloaded profile names there instead of internal IDs. Keep that page when merging upstream.
+
+## Remote keys
+
+The installed `YouTubeKeyService` component extends upstream `HomeKeyService`, sharing its
+boot probe, stock-home detection, service repair and configurable app-key handling. The bundled
+`app_keys` map Chromecast BUTTON_3 to YouTube and BUTTON_4 to Netflix; `stock_home_redirect`
+names Google TV. External config can override these for another remote or launcher.
+The helper must still be enabled by the owner; these settings alone do not enable a service.
+Clearing app data removes saved service-repair records too. Bundled key mappings remain, but they do
+not restore Android accessibility authorization; check that the helper is enabled and bound afterward.
+
+The custom override consumes Home immediately. While Home is visible, it closes the control center
+and returns focus to the first Dock app with animations, without restarting the wallpaper.
+Unlike upstream's short-press redirect, holding Home is also consumed by this helper.
+At boot, upstream probes once during the first three minutes and redirects only when a stock Home
+window is observed, leaving another app or an HDMI input alone. No launcher or Cast package is disabled.
 
 ## Manual or offline deployment
 

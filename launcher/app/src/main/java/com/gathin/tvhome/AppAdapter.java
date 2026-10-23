@@ -552,11 +552,10 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return emptySlots > 0;
     }
 
-    /** Settings shortcuts stay after the movable apps. */
+    /** Tiles that can be moved: everything but the "Default home" tile, which always stays last. */
     int movableCount() {
         int n = items.size();
-        while (n > 0 && items.get(n - 1).kind == Entry.HOME_SETTINGS) n--;
-        return n;
+        return n > 0 && items.get(n - 1).kind == Entry.HOME_SETTINGS ? n - 1 : n;
     }
 
     /** Keys of the movable tiles in their current order, for Order (empty dock slots are not tiles). */
