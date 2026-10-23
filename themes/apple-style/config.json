@@ -12,5 +12,6 @@
   "ambient_glow": false,
   "dock_opacity": 30,
   "dock_even_padding": true,
-  "tile_menu": true
+  "tile_menu": true,
+  "fade_rows": true
 }

@@ -109,7 +109,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         if (evenPadding) {
             // The same padding on all four sides, so the band's corners are concentric with the tiles' everywhere.
             int inner = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
-            float room = Math.min(rect.top, Math.min(rect.left, parent.getWidth() - rect.right)) - density;
+            // Vertical scrolling clips the band; it must not shrink its padding or corners.
+            float room = Math.min(rect.left, parent.getWidth() - rect.right) - density;
             float even = evenPaddingPx(inner, dockSize, cardWidth, room);
             rect.inset(-even, -even);
             radius = radiusPx(radius, even);
