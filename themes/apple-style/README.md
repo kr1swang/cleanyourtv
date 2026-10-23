@@ -25,12 +25,18 @@ control center's colors, Outfit type, rounded rows and focused shadow. The menu 
 the app, opens above it unless there is insufficient space, and fits its content with a minimum visible width equal
 to the focused card. Rows have an 8dp gap, with 8dp between their visible edge and the app. Reorder finishes after placing that app once. The upstream Remove from Home action
 is still available when the app library is enabled.
+During reorder, only the carried tile and its name slide from the previous position over 180ms.
+Rapid direction changes continue from the current visual position; placing the tile ends the motion.
+With animations disabled or reduced motion enabled, placement is immediate. Moving within a row reuses the bound
+tiles; crossing the Dock edge updates only the two tiles whose height/name visibility changes.
 The menu dims Home by the same 50% as the control center. The selected app, its visible name and
 cached shadow are drawn above that dim layer; Dock labels remain hidden. The layer fades over 180ms
 and is removed on dismissal. Reopening during the fade reuses the same layer and current opacity.
 It draws the existing tile directly, without capturing the screen or
 allocating a full-screen bitmap.
 The expanded-grid shade is reduced during this transition so the two shades together stay at 50%.
+The grid uses an off-screen hardware layer only while its top-edge fade is visible; at rest,
+card animations do not redraw a full-screen fade texture.
 
 Opacity uses four levels: the theme's 30% Dock, 50% full-screen dim layers, 75% unselected rows and
 confirmation/download surfaces, and 100% selected rows. Control-center dialogs, module-card prompts

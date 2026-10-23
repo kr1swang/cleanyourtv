@@ -160,6 +160,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private AppAdapter adapter;
     private RecyclerView grid;
     private DockGridTransition dockTransition;
+    private ReorderMotion reorderMotion;
     private FrameLayout root;
     private View backdropShade;
     private TileMenuBackdrop tileMenuBackdrop;
@@ -533,6 +534,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
         grid.setHasFixedSize(true);
         grid.setItemAnimator(null);
+        if (animations && !reducedMotion) reorderMotion = new ReorderMotion(grid);
         // Tiles that scroll out while one is carried come back from the view cache without a rebind; set their
         // dimming again whenever one attaches, so none stays dim after the drop.
         grid.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
@@ -1365,6 +1367,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Ends the mode and saves the order if it changed since the mode started. */
     private void endReorder() {
         if (!reordering) return;
+        if (reorderMotion != null) reorderMotion.stop();
         dockEditing = false;
         dockEditSlot = -1;
         dockEditAppKey = null;
@@ -1413,6 +1416,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else if (from + COLUMNS < n) to = from + COLUMNS;
         else to = from / COLUMNS < (n - 1) / COLUMNS ? n - 1 : from;
         if (to < 0 || to >= n || to == from) return;
+        if (reorderMotion != null) reorderMotion.capture(adapter.getItemId(from));
         keepScroll(() -> adapter.move(from, to));
         // The owner carries this tile: where it lands decides whether it is in the dock, not dock_apps (#499).
         if (to < COLUMNS) dockInSession.add(movingKey);

@@ -573,10 +573,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (from == to || from < 0 || to < 0 || from >= movableCount() || to >= movableCount()) return;
         items.add(to, items.remove(from));
         notifyItemMoved(from, to);
-        // The dock row hides names by position: rebind the tiles whose side of the dock edge changed.
-        if (from < dockSize || to < dockSize) {
-            int lo = Math.min(from, to), hi = Math.max(from, to);
-            notifyItemRangeChanged(lo, hi - lo + 1);
+        // Stable ids carry the existing content with each tile. Only two tiles change their
+        // height/name visibility when a move crosses the dock edge; same-row moves need no bind.
+        if ((from < dockSize) != (to < dockSize)) {
+            notifyItemChanged(to);
+            notifyItemChanged(from < dockSize ? dockSize - 1 : dockSize);
         }
     }
 

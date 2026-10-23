@@ -31,8 +31,21 @@ final class TopFade extends RecyclerView.ItemDecoration {
     }
 
     static void attach(RecyclerView grid, float length) {
-        grid.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         grid.addItemDecoration(new TopFade(length));
+        // At rest nothing is erased: avoid redrawing a full-screen texture for every tile animation.
+        // onScrolled also runs after layout changes the visible range, before the next draw.
+        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView view, int dx, int dy) {
+                updateLayer(view, length);
+            }
+        });
+        updateLayer(grid, length);
+    }
+
+    private static void updateLayer(RecyclerView grid, float length) {
+        int type = height(grid.computeVerticalScrollOffset(), length) > 0f
+                ? View.LAYER_TYPE_HARDWARE : View.LAYER_TYPE_NONE;
+        if (grid.getLayerType() != type) grid.setLayerType(type, null);
     }
 
     /** How tall the fade is after scrolling {@code scrolled} pixels: nothing at rest, then up to {@code length}. */
