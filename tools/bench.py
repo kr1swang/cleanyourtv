@@ -377,7 +377,10 @@ def cold_start(tv, component, repeats):
             time.sleep(2)
             tv.shell(f"am force-stop {package}")
             time.sleep(3)
-            out = tv.shell(f"am start -W -n {component}")
+            # An explicit component alone creates a regular task. Start the HOME task,
+            # so the next Home press cannot create a second launcher instance.
+            out = tv.shell(f"am start -W -a android.intent.action.MAIN "
+                           f"-c android.intent.category.HOME -n {component}")
             match = re.search(r"WaitTime:\s*(\d+)", out)
             if match:
                 values.append(int(match.group(1)))

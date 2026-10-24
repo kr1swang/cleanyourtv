@@ -3,7 +3,13 @@
 Update LOGOS / MORE, then: python3 tools/readme_featured.py Fredoka.ttf docs/featured.png
 and rebuild the card with tools/readme_card.py. Logos come from docs/press/."""
 import sys
-from PIL import Image, ImageDraw, ImageFont
+
+# See readme_stats.py: Pillow lives in the optional requirements file, so name it rather than crash.
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    sys.exit("readme_featured.py needs Pillow: tools/venv/bin/pip install -r tools/requirements-perf.txt")
+
 FONT, OUT = sys.argv[1], sys.argv[2]
 LOGOS = ["techcrunch", "techradar", "tomsguide", "mashable", "androidauthority", "xda", "flatpanelshd", "itsfoss",
          "phandroid", "gigazine", "xataka", "winfuture", "frandroid", "macitynet", "techaeris", "techpp"]

@@ -57,6 +57,14 @@ Things that bit us or contributors, so they don't bite you. Commands use `tools/
   is on: the router keeps the computer from reaching it. Add a temporary firewall rule from your
   computer to the TV on tcp/5555 only, and remove it again when you close ADB. Opening the whole
   segment, or moving the TV onto the main network for good, undoes the reason it was separate.
+- **Nothing on the network answers while a VPN runs on the computer**, not even the router: `ping`
+  prints `General failure` on Windows and port 5555 times out, although the TV is on the same Wi-Fi and
+  `arp -a` lists it. Seen with Proton VPN's free plan on Windows 11, working on a Sankey SMART_TV (CVTE,
+  HiSilicon Hi3751V350, Android 12). The VPN client's firewall blocks the local network; marking the
+  Wi-Fi as a private network does not change that. Turn on the client's local-network option and
+  reconnect: Windscribe has Allow LAN traffic (Preferences > Connection) on its free plan, Proton VPN's
+  Allow LAN connections is for paid plans only. Or disconnect the VPN for the session. Turn the option
+  off again afterwards if you use public Wi-Fi.
 - **Windows PowerShell 5.1 adds a byte-order mark** to text piped into a program, which turned the
   first batch command into gibberish. `tv.py` now strips it, and the `.ps1` scripts pipe clean UTF-8.
 - **"Allow USB debugging?" comes back** although `adb devices` already works: `tv.py` used its own
@@ -705,8 +713,11 @@ they do not map, so they are not consuming the volume key. The same was reported
 alone (#944), where the empty list was not tried because it also unhooks the buttons the helpers were
 installed for. An onn 4K Streaming Box (`YOC`, Google TV 14, `URO4.260304.011.B1.15051976`) does the same with
 `HomeKeyService` alone; there `key_filter` false (config.xml or a theme) brought the repeat back with the helper
-still bound, so a helper kept for something other than keys need not cost it. Check the state first, do not
-rewrite it blind:
+still bound, so a helper kept for something other than keys need not cost it. A Hisense 75U75N (`hengshan`,
+Google TV 12, `STT2.230310.002`) with a CEC soundbar does it with `HomeKeyService` alone, and its log shows where
+the repeat goes: the filter hands volume keys to the window policy first, Hisense's policy sends the CEC step and
+consumes the key, so no helper sees it and nothing repeats (the G09 note has the log). Check the state first, do
+not rewrite it blind:
 
 ```sh
 tools/tv.py 'settings get secure enabled_accessibility_services'

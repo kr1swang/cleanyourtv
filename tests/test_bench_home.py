@@ -125,5 +125,29 @@ class ReturnToHomeTest(unittest.TestCase):
         self.assertEqual(values, [0])
 
 
+class ColdStartHomeTest(unittest.TestCase):
+    def test_each_cold_start_targets_the_home_task_and_keeps_wait_time(self):
+        for component in (COMPONENT, "com.example.home/.Launcher"):
+            with self.subTest(component=component):
+                tv = mock.Mock()
+                tv.package_of.return_value = component.split("/")[0]
+                launch = ("am start -W -a android.intent.action.MAIN "
+                          f"-c android.intent.category.HOME -n {component}")
+                waits = iter(("WaitTime: 410", "WaitTime: 430"))
+                tv.shell.side_effect = lambda command: next(waits) if command == launch else ""
+                with mock.patch.object(bench, "other_app", return_value=OTHER), \
+                        mock.patch.object(bench, "accessibility_services", return_value=[]), \
+                        mock.patch.object(bench, "restore_accessibility") as restore, \
+                        mock.patch.object(bench.time, "sleep"):
+                    values = bench.cold_start(tv, component, 2)
+                self.assertEqual(values, [410, 430])
+                self.assertEqual(tv.shell.call_args_list, [
+                    mock.call(f"am start -W -n {OTHER}"),
+                    mock.call(f"am force-stop {component.split('/')[0]}"),
+                    mock.call(launch),
+                ] * 2)
+                restore.assert_called_once_with(tv, component.split("/")[0], [])
+
+
 if __name__ == "__main__":
     unittest.main()

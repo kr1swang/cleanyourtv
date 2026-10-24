@@ -14,6 +14,8 @@
 # 24 of this list (voice, Chromecast, AirPlay, Miracast, Netflix, the USB player, T-Solo, hearing test and soundbar
 # updater kept), plus com.google.android.youtube.tvmusic. launcherx and setupwraith stay ENABLED so Chromecast keeps
 # its credentials; Home goes to the new launcher through stock_home_redirect instead. Survived two reboots. See README.
+# Fourth unit: TCL 65T8C, same build (AU02), on Wi-Fi, from 23 October 2026: AirPlay, Prime Video and mediashell kept,
+# more TCL extras and the TCL keyboard off (Gboard set first); Wireless debugging only. See README.
 #
 # Apply:   FORCE_SETUPWRAITH=1 TV_HOST=<tv ip> tools/disable.sh examples/tcl-q7c-google-tv/debloat.txt
 #          FORCE_SETUPWRAITH=1 only on Ethernet with no saved Wi-Fi: disable.sh otherwise skips setupwraith because

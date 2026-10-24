@@ -343,3 +343,42 @@ Mirroring. That is the router, not the debloat: nothing AirPlay-related was disa
 - One set, one session, two reboots. Nothing here has been lived with for several days.
 - HDMI inputs and the tuner were not used after the list; Live TV opened.
 - Private DNS (`dns.adguard-dns.com`) validated and FPT Play loaded; no long playback test.
+
+## Fourth unit: 65T8C (Wi-Fi)
+
+One owner's session on 2026-10-23, following [`PROMPT.md`](../../PROMPT.md) on Linux with Google's platform-tools
+`adb` and launcher 2.6. Same build as the Q7C (`G08_4K_GB`, `UTT2.250416.001 AU02`, `ro.software.version_id`
+`V8-T653T01-LF1V643`, security patch `2025-12-05`), so `debloat.txt` here is the list to run. Packages were
+disabled by hand, one `pm disable-user` call each, in seven batches with a screenshot after each; the first 34
+were checked after one reboot. The owner then used the TV for a few days with nothing broken or re-enabled. Nothing
+was added to `debloat.txt` beyond a header line naming this unit; the deltas are below.
+
+| Field | Observed value |
+|---|---|
+| Retail model | `65T8C`, supplied by the owner; not exposed by `ro.product.model` (`Smart TV Pro`) |
+| `ro.hardware` / `ro.board.platform` | `mt5896` / `merak` |
+| Apps on the set | Middle East apps: OSN+, TOD, Shahid, Disney+ (`com.disneyplus.mea`), iQIYI |
+
+### What differed from the Q7C list
+
+- **Kept by choice:** AirPlay, Chromecast (mediashell), Prime Video and the game bar. The Q7C list disables AirPlay
+  and Prime Video.
+- **Also disabled, beyond the Q7C list:** `com.tcl.interactive`, `com.tcl.partnercustomizer`, `com.tcl.gallery`,
+  Shahid, Disney+ MEA, iQIYI, YouTube Music, and the TCL keyboard `com.tcl.inputmethod.international`. The TCL
+  keyboard is the default IME on this set: `ime enable` and
+  `ime set com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME` first, or nothing can type. Disabling `com.tcl.interactive` did not break the Input button here, unlike the Android 12
+  G08 list's warning.
+- **Kept:** `com.tcl.ttvs`, which carries the system update screens on this build.
+
+### Notes for this unit
+
+- **Wireless debugging only**, like the 65Q7D Pro: port 5555 was closed with USB debugging on. After a reboot,
+  Wireless debugging showed its IP address & port as "unavailable"; pairing still succeeded but every connect
+  answered `offline`. Toggling did not help; unplugging the TV at the wall did, and it came back on a new port.
+- **The saved Wi-Fi belonged to `android.uid.system`**, not setupwraith, so the wizard could be disabled without
+  losing Wi-Fi. With launcherx off and setupwraith on, `query-activities` listed setupwraith's `RecoveryActivity`
+  above the new launcher; `set-home-activity` plus disabling both made `mFocusedApp` the new launcher.
+- **Closing ADB:** with Wireless debugging off but USB debugging still on, port 5555 was open after a reboot and
+  advertised `_adb._tcp`. Switching USB debugging off and rebooting closed it (`tools/adb-closed.py`).
+- **Checked with the real remote:** Home, the app buttons, Input, Settings and holding volume all worked with the
+  new launcher and no key helpers enabled.

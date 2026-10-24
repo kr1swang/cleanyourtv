@@ -1,9 +1,14 @@
-"""Every `tools/restore.sh <list>.txt` in the repo names the list it replays, and that list is there.
+"""Every undo step in the repo names a file that is there: the list, and a folder's own script.
 
 restore.sh takes the same list that disable.sh ran against (#239): recovery.py reads it, checks every
 name against the record taken before the change and prints the batch. So the name in a page's undo
 step is what an owner types when the TV looks wrong. A name that is not there is refused before a
 single command reaches the TV, which is the worst moment to find out.
+
+The same goes for the install and restore scripts three list folders still ship from before the rule
+that a list folder holds none (AGENTS.md, "Hard rules"): a page that sends an owner to
+`examples/<folder>/restore.sh` names a file the folder has to have, and the TCL 55S470G header
+named one that was not there.
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
@@ -20,6 +25,11 @@ PRUNE = {".git", "venv", "node_modules", "build", ".gradle", "__pycache__"}
 SUFFIXES = (".md", ".txt", ".sh", ".ps1")
 # `tools/restore.sh examples/x/debloat.txt com.stock.launcher`, and the PowerShell twin.
 REFERENCE = re.compile(r"restore\.(?:sh|ps1)\s+([A-Za-z0-9_./<>-]*\.txt)")
+# A helper script inside a list folder, e.g. `examples/epson-ls800/restore.sh`. Three folders still
+# ship the install and restore scripts their submission came with (#265); a page or a list header
+# that sends an owner to one names a file the folder has to have.
+FOLDER_SCRIPT = re.compile(r"(examples/[A-Za-z0-9._-]+/(?:restore|disable|install|build-and-install)\."
+                           r"(?:sh|ps1))")
 
 # Every list a reader can run. A page outside examples/ that needs one names that file too.
 LIST_FOLDERS = ROOT / "examples"
@@ -30,18 +40,37 @@ def references(text):
     return [name for name in REFERENCE.findall(text) if "<" not in name and ">" not in name]
 
 
-def read_references(root):
-    """(file, name) for every restore.sh reference under root, as a reader would copy it."""
-    found = []
+def walk(root):
+    """(relative path, text) for every page, list and script under root, in a stable order."""
     for directory, subdirectories, files in os.walk(root):
         subdirectories[:] = sorted(d for d in subdirectories if d not in PRUNE)
         for name in sorted(files):
             if not name.endswith(SUFFIXES):
                 continue
             path = Path(directory) / name
-            text = path.read_text(encoding="utf-8", errors="replace")
-            for target in references(text):
-                found.append((path.relative_to(root), target))
+            yield path.relative_to(root), path.read_text(encoding="utf-8", errors="replace")
+
+
+def read_references(root):
+    """(file, name) for every restore.sh reference under root, as a reader would copy it."""
+    found = []
+    for path, text in walk(root):
+        for target in references(text):
+            found.append((path, target))
+    return found
+
+
+def script_references(text):
+    """The helper scripts inside a list folder a line names, placeholders left out."""
+    return [name for name in FOLDER_SCRIPT.findall(text) if "<" not in name and ">" not in name]
+
+
+def read_script_references(root):
+    """(file, name) for every `examples/<folder>/<script>` reference under root."""
+    found = []
+    for path, text in walk(root):
+        for target in script_references(text):
+            found.append((path, target))
     return found
 
 
@@ -64,6 +93,19 @@ class RestoreReferencesTest(unittest.TestCase):
                 wrong.append((own, name))
         self.assertEqual([], wrong, "a list's undo points somewhere else, so it replays another set "
                                     "of packages or nothing at all")
+
+    def test_a_folder_script_a_page_names_is_there(self):
+        # examples/epson-ls800, anker-nebula-d2426 and tcl-43c645 ship the install and restore scripts
+        # they came with, and their pages name them; the TCL 55S470G header named one its folder does
+        # not have, so an owner's first undo command was "No such file".
+        missing = [(str(path), name) for path, name in read_script_references(ROOT)
+                   if not (ROOT / name).is_file()]
+        self.assertEqual([], missing,
+                         "these lines hand the owner a script inside a list folder that is not in the "
+                         "repo, so the command fails before anything reaches the TV")
+        self.assertGreaterEqual(len(read_script_references(ROOT)), 4,
+                                "the folders that do ship such a script should be read; the scanner "
+                                "found fewer")
 
     # ---- the reader itself, so the two tests above cannot pass by reading nothing ---------------
 
@@ -112,6 +154,33 @@ class RestoreReferencesTest(unittest.TestCase):
             self.write(root, "tools/venv/lib/page.md",
                        "Undo: tools/restore.sh examples/gone/debloat.txt\n")
             self.assertEqual([], read_references(root))
+
+    def test_a_missing_folder_script_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write(root, "examples/kept/debloat.txt",
+                       "# Undo: TV_HOST=<tv ip> examples/kept/restore.sh\n")
+            self.assertEqual([(Path("examples/kept/debloat.txt"), "examples/kept/restore.sh")],
+                             read_script_references(root))
+            self.assertFalse((root / "examples/kept/restore.sh").is_file())
+
+    def test_a_folder_script_that_is_there_resolves(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write(root, "examples/kept/restore.sh", "#!/usr/bin/env bash\n")
+            self.write(root, "examples/kept/README.md",
+                       "TV_HOST=<tv ip> examples/kept/restore.sh   # undo\n")
+            found = read_script_references(root)
+            self.assertEqual([(Path("examples/kept/README.md"), "examples/kept/restore.sh")], found)
+            self.assertTrue((root / found[0][1]).is_file())
+
+    def test_a_placeholder_folder_script_is_not_a_reference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write(root, "README.md",
+                       "TV_HOST=<tv ip> examples/<your tv>/restore.sh\n"
+                       "A folder with a `restore.sh` of its own is not the rule here.\n")
+            self.assertEqual([], read_script_references(root))
 
 
 if __name__ == "__main__":

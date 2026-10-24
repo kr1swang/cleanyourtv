@@ -34,11 +34,49 @@ connects the two.
 
 Build one (JDK 17, Android SDK 34, as for the launcher), from the repo root:
 
+**macOS / Linux:**
+
 ```bash
 cd addons/<name> && ./gradlew assembleRelease && cd ../..
 TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py --push addons/<name>/app/build/outputs/apk/release/app-release.apk /data/local/tmp/addon.apk
 TV_HOST=<tv ip> tools/venv/bin/python -I tools/tv.py 'pm install -r /data/local/tmp/addon.apk; rm -f /data/local/tmp/addon.apk'
 ```
+
+**Windows (Command Prompt):**
+
+```bat
+set TV_HOST=<tv ip>
+cd addons\<name>
+gradlew.bat assembleRelease
+cd ..\..
+tools\venv\Scripts\python.exe -I tools\tv.py --push addons\<name>\app\build\outputs\apk\release\app-release.apk /data/local/tmp/addon.apk
+tools\venv\Scripts\python.exe -I tools\tv.py "pm install -r /data/local/tmp/addon.apk; rm -f /data/local/tmp/addon.apk"
+```
+
+<details>
+<summary><b>When something goes wrong with <code>gradlew.bat assembleRelease</code></b></summary>
+
+If the build fails with:
+
+```text
+FAILURE: Build failed with an exception.
+
+What went wrong:
+Could not determine the dependencies of task ':app:lintVitalReportRelease'.
+> SDK location not found. Define a valid SDK location with an ANDROID_HOME environment variable or by setting the sdk.dir path in your project's local properties file at 'C:\...\addons\<name>\local.properties'.
+```
+
+**Solution:**
+
+Create a `local.properties` file inside `addons/<name>/` pointing to your Android SDK installation path:
+
+```properties
+sdk.dir=C:/Users/<user name>/AppData/Local/Android/Sdk
+```
+
+*(Replace `<user name>` with your Windows user name. Use forward slashes: a backslash is an escape character in this file.)*
+
+</details>
 
 ## Rules
 

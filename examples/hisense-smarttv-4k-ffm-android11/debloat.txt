@@ -25,6 +25,23 @@
 # Left ON by choice here (deliberately not in this list): all streaming apps, voice assistant
 # (katniss / tv.assistant / hisense.alexa), casting and mirroring, and the firmware updaters
 # (hisense.tv.ota, hisense.remoteupgrade, vt.tv.usbota).
+#
+# Second unit (US, same device songshan and build RTT2.220118.001, one session plus standby and reboot
+# tests): com.hisense.storemode is not installed, com.hisense.evservice is (see the commented entry at the
+# end), and nothing on it came disabled from the factory. The owner also disabled katniss,
+# tv.assistant and hisense.alexa (no voice use); nothing else broke in that session. Notes from it:
+# - Standby (com.hisense.STR_SUSPEND) kills every third-party app except the one on screen
+#   ("PowerVtImp: kill 3rd app" in logcat), the launcher included, which takes its key helpers off. Install
+#   with restore_key_services on and -RestoreKeyServices / RESTORE_KEY_SERVICES=1 (docs/TROUBLESHOOTING.md,
+#   "Accessibility helper enabled but the remote button does nothing").
+# - Its remote differs from the SmartRC below: Disney+ is keycode 607 (scancode 418) and Peacock 608
+#   (scancode 421); YouTube 293, Prime Video 295 and the gear 83 (scancode 598) match. The firmware logs
+#   every press as "WindowManager: interceptKeyTq keycode=... scancode=...".
+# - HomeKeyService never bound on this unit (it stayed under "Binding services" in dumpsys accessibility,
+#   with nothing in logcat), so settings_key_keycodes did nothing. The gear works through InputKeyService
+#   instead: app_keys 83:com.android.tv.settings.
+# - With InputKeyService bound, holding volume moves it one step
+#   (docs/devices/tcl-55p71b-g09-key-repeat.md).
 
 # Retail / store demo
 com.hisense.storemode
@@ -53,3 +70,7 @@ com.google.android.tungsten.setupwraith
 # 295 (KEYCODE_MIRSET4), Disney+ is scancode 484 and SonyLIV is scancode 606. The gear is keycode 83
 # (KEYCODE_NOTIFICATION, so settings_key_keycodes) and Input is KEYCODE_TV_INPUT (178), which
 # InputKeyService handles natively. Netflix is handled by the firmware.
+
+# Second unit only: disabled for one session and one reboot (normal boot, Home and the key helper back), not
+# yet lived with for days. Hisense ACR ("Enhanced Viewing" content recognition), as on the huangshan FFM list.
+# com.hisense.evservice

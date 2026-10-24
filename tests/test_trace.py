@@ -81,7 +81,8 @@ class ScenarioTest(unittest.TestCase):
     def test_cold_stops_the_launcher_before_recording_and_starts_it_inside(self):
         setup, steps = trace.scenario("cold", LAUNCHER, OTHER)
         self.assertIn("am force-stop com.gathin.tvhome", setup)
-        self.assertEqual(steps[0], f"am start -W -n {LAUNCHER}")
+        self.assertEqual(steps[0], "am start -W -a android.intent.action.MAIN "
+                         f"-c android.intent.category.HOME -n {LAUNCHER}")
 
     def test_coldsys_leaves_the_restart_to_android(self):
         setup, steps = trace.scenario("coldsys", LAUNCHER, None)

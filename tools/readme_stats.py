@@ -3,9 +3,16 @@
 Update STATS, then: python3 tools/readme_stats.py Fredoka.ttf docs/stats.png
 and rebuild the card with tools/readme_card.py. Fredoka is the variable TTF from Google Fonts."""
 import sys
-from PIL import Image, ImageDraw, ImageFont
+
+# Pillow is not in tools/requirements.txt: it is only needed to redraw the README card, so point at the
+# optional file the way tools/flamechart.py does, instead of ending in a bare traceback.
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    sys.exit("readme_stats.py needs Pillow: tools/venv/bin/pip install -r tools/requirements-perf.txt")
+
 FONT, OUT = sys.argv[1], sys.argv[2]
-STATS = [("252", "TV MODELS"), ("74", "BRANDS"), ("25", "LANGUAGES"), ("474 KB", "LAUNCHER")]
+STATS = [("260", "TV MODELS"), ("77", "BRANDS"), ("25", "LANGUAGES"), ("477 KB", "LAUNCHER")]
 W, H = 1600, 240
 img = Image.new("RGB", (W, H), "#15181e"); d = ImageDraw.Draw(img)
 def f(size, wt):

@@ -1,10 +1,17 @@
-"""Stacks the README stat strip, the Featured in panel and the before/after TVs into one card (docs/card.png).
+"""Stacks the README stat strip, the Featured in panel and the before/after TVs into one card (docs/card.jpg),
+the file the front page displays.
 
 Run tools/readme_stats.py and tools/readme_featured.py first, then:
-python3 tools/readme_card.py Fredoka.ttf docs/card.png
+python3 tools/readme_card.py Fredoka.ttf docs/card.jpg
 """
 import sys
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+# See readme_stats.py: Pillow lives in the optional requirements file, so name it rather than crash.
+try:
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+except ImportError:
+    sys.exit("readme_card.py needs Pillow: tools/venv/bin/pip install -r tools/requirements-perf.txt")
+
 FONT, OUT = sys.argv[1], sys.argv[2]
 BG, LINE, DIM, GREEN = "#15181e", "#2c313a", "#aab3bd", "#cfffcf"
 W = 1600
