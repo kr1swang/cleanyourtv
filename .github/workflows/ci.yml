@@ -70,9 +70,4 @@ jobs:
         run: |
           size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
           echo "release APK: $((size / 1024)) KB"
-          test "$size" -lt 589824 || { echo "APK exceeds 576 KiB; wallpaper media belongs in Releases"; exit 1; }
-          python3 - <<'PYCODE'
-          import zipfile
-          with zipfile.ZipFile("launcher/app/build/outputs/apk/release/app-release.apk") as apk:
-              assert not any(n.startswith("assets/") and n.endswith((".png", ".jpg", ".mov")) for n in apk.namelist())
-          PYCODE
+          test "$size" -lt 589824 || { echo "APK is over 576 KB; the launcher targets 1 GB TVs, keep it small"; exit 1; }

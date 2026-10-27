@@ -21,7 +21,7 @@ comment out what your set does not have before applying it.
 - When restoring, pass it to `tools/restore.sh` as the second argument; when building/installing, pass `STOCK_LAUNCHER=com.google.android.apps.tv.launcherx` to `launcher/build-and-install.sh`.
 
 ## Live TV
-- **Live TV app/package:** `com.mediatek.wwtv.tvcenter`
+- **Live TV app/package:** `com.mediatek.wwtv.tvcenter`  
   Set this as `live_tv_package` and hide it in launcher config.xml if desired.
 
 ## Notes on debloat
