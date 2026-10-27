@@ -209,26 +209,13 @@ Launcher
   wallpaper unless I have requested video; for video, follow the deployment rules below.
 
 Custom deployment profiles
-- Choose backgrounds on the TV: Up from a Dock app → Control center → Background settings. Offer six profiles:
-  FHD Static, FHD 30fps, FHD 60fps, 4K Static, 4K 30fps and 4K 60fps. Reuse a supplied preference.
-  Detect the physical output resolution when suggesting a profile; do not silently lower resolution or FPS.
-- This fork has INTERNET permission solely for background assets. Its APK bundles config.json and the
-  pinned wallpaper-catalog.properties, not images or movies. The catalog specifies release URLs, sizes
-  and SHA-256 hashes. Do not follow "latest" or replace published assets in place.
-- A clean install or cleared app data first tries the FHD static background. A failed attempt keeps a plain
-  background; later foreground visits can retry after a two-minute cooldown. Existing external images
-  and explicit local/None choices take priority. UI selection downloads only the selected profile and
-  its matching preview. Downloads run off the UI thread and apply only after all assets are verified.
-- Downloaded media stays in app-private persistent storage across normal APK upgrades. Leaving the
-  background picker cancels its download. Interrupted temporary files are removed before the next job.
-  Clear unused files preserves the active image/video pair. Clearing app data removes downloads
-  and selections, but retains the APK's six-column and Dock defaults; the default preview needs network again.
-- Preserve Cast, voice search, update packages, the Home/app-key service and existing device settings.
-  A background selection must not replace external config or alter unrelated keys.
-  Applying a profile replaces only the background layer, retaining the grid and control-center focus.
-- Verify file checksums, available storage, Home launch, the selected decoder dimensions/FPS, returning
-  from apps, repeated Home, and phone Cast when a physical device is available. Without hardware, report
-  build and automated test results separately; do not claim actual FPS, memory savings or Cast compatibility.
+- Read [the Apple-style guide](themes/apple-style/README.md) before deploying this fork. It is the
+  reference for background choices, verified downloads, cache recovery and control-center behavior.
+- Choose backgrounds on the TV: Up from a Dock app → Control center → Background settings.
+  Reuse a supplied preference. Check physical output resolution when recommending a profile;
+  do not silently lower resolution or FPS. Do not overwrite unrelated settings when switching backgrounds.
+- Preserve Cast, voice search, update packages and the Home/app-key service. Verify on a physical device;
+  without hardware, report automated checks separately from unverified playback, performance and Cast.
 
 Other-device compatibility
 - Keep a stable signing key for future updates and record the package ID and certificate fingerprint.
@@ -239,29 +226,11 @@ Other-device compatibility
 - Inspect HOME handlers and OEM restrictions on this device before takeover. Do not blindly disable
   `com.google.android.apps.tv.launcherx` or `com.google.android.tungsten.setupwraith`. Preserve Cast's
   dependencies as described above, and keep a working route to the stock launcher.
-- The custom `YouTubeKeyService` extends upstream `HomeKeyService`. The bundled theme's `app_keys`
-  map `BUTTON_3` and `BUTTON_4` to YouTube and Netflix; `stock_home_redirect` identifies Google TV.
-  Reuse upstream app-key handling, stock-home detection and service repair. Keep the service component name
-  so upgrades preserve its accessibility setting. Do not automatically enable it on other devices.
-  Chromecast firmware can consume the first Home press while waking from sleep. The service also
-  redirects resolved stock HOME activity windows while the screen is interactive;
-  it does not redirect every activity in that package or poll the foreground app. This fallback may briefly show
-  stock Home. Test physical Home from sleep and Cast while asleep as well as normal awake navigation.
-  On the first service connection within three minutes of boot, upstream opens a brief probe activity
-  once per `Settings.Global.BOOT_COUNT`. The window event after the probe redirects only stock Home,
-  leaving another app or HDMI input alone. The record is `boot/probe_boot`; reconnecting does not repeat
-  it during that boot. Clearing app data removes the record and service-repair state; verify accessibility
-  authorization again. The custom Home override consumes short and long presses immediately. While
-  Home is visible, it animates panel closing and Dock collapse without restarting the wallpaper.
-  This is a post-boot redirect, not a replacement
-  of the firmware's HOME resolver; stock Home may briefly appear. Verify a real reboot without
-  pressing Home, and verify a service reconnect while another app is open.
-  On the tested Chromecast, disabling only launcherx while leaving setupwraith enabled makes the
-  system HOME resolve to `setupwraith/.RecoveryActivity`, which tries to open launcherx and logs
-  `Launcherx Activity is not found`. This configuration was rolled back; keep both packages enabled
-  with the key service. Cast was not tested in that configuration because the system Home path failed.
-  Test the real remote, identify the key, and prefer the existing configurable key service when suitable.
-  Preserve unrelated accessibility services and verify any enabled helper is bound after installation.
+- Follow [Remote keys](themes/apple-style/README.md#remote-keys) for the shared upstream service and
+  custom Home behavior. Preserve the installed service component name and unrelated accessibility
+  services. Do not automatically enable the helper on another device; identify its physical keys first.
+  Verify the helper is bound, physical Home and Cast from sleep, reboot without pressing Home, and
+  service reconnection while another app is open. Keep both Google TV launcher and setupwraith enabled.
 - Check which requested Dock packages are installed. Missing apps can be replaced by other grid apps
   under the default fill behavior; report the resulting order rather than claiming the exact six apps
   are present. Ask before installing replacement apps or changing the requested order.

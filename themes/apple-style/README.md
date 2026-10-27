@@ -107,6 +107,13 @@ Unlike upstream's short-press redirect, holding Home is also consumed by this he
 At boot, upstream probes once during the first three minutes and redirects only when a stock Home
 window is observed, leaving another app or an HDMI input alone. No launcher or Cast package is disabled.
 
+This redirect does not replace the firmware's Home resolver, so stock Home may briefly appear at boot.
+On the tested Chromecast, disabling launcherx alone left setupwraith's RecoveryActivity trying to open
+that disabled launcher. That configuration was rolled back before Cast testing; keep both enabled.
+Preserve the installed service component name so upgrades retain its accessibility setting. When
+changing the shared service, verify physical keys, wake from sleep, Cast while asleep, reboot without
+pressing Home and service reconnection while another app is open.
+
 ## Maintenance
 
 - Prefer upstream implementations when they cover the same behavior. Remove the superseded custom
