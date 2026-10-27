@@ -68,7 +68,7 @@ except ImportError:
 
 LOGOS = ["techcrunch", "techradar", "tomsguide", "mashable", "androidauthority", "xda", "flatpanelshd", "itsfoss",
          "phandroid", "gigazine", "xataka", "winfuture", "frandroid", "macitynet", "techaeris", "techpp"]
-MORE = "+181 more  ·  197 articles from 32 countries"
+MORE = "+249 more  ·  265 articles from 37 countries"
 W, LH, GAP, ROWGAP, PAD = 1600, 54, 40, 36, 80
 def f(size, wt):
     # A path that exists is not yet a font: Google Fonts serves Fredoka as a zip holding the variable
