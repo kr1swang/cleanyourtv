@@ -8,6 +8,10 @@ Release, downloader and cache filenames share the same FHD / 4K naming.
 
 Press **Up** on a Dock app to open the control center, then choose **Background settings**.
 The center also offers Input sources, System settings, Network settings and Reset order.
+The network row shares upstream network detection: Wi-Fi shows its SSID when available, Ethernet
+shows its own icon and label, and offline shows the globe-off icon with Network settings. Ethernet
+takes precedence when both are connected. Colors do not indicate internet validation. Clicking always
+opens network settings. System callbacks update the row only while the main control page is open.
 Input sources appear only when an input route is available, such as a visible passthrough input,
 Live TV or a configured vendor panel. This does not mean an HDMI cable has a live signal.
 Sources reuse the existing TV/CEC and vendor fallbacks. Reset order requires confirmation and

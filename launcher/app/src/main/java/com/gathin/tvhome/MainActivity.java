@@ -37,8 +37,6 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.net.Uri;
-import android.net.wifi.WifiInfo;
-import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -2553,50 +2551,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
     private void updateWifiLabel() {
         if (!topButtonsVisible) return;
-        String text = getString(R.string.wifi);
-        boolean vpn = false, online = false, validated = false;
-        int icon = R.drawable.ic_wifi;
-        // The diya's flame: 0 is out (offline), 1 to 4 follow the Wi-Fi signal, Ethernet burns steady at 4.
-        int flame = 0;
-        boolean steady = false;
-        try {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            boolean wifi = false, ethernet = false;
-            // All networks, not just the active one: with a VPN up the active network is the VPN itself.
-            for (Network net : cm != null ? cm.getAllNetworks() : new Network[0]) {
-                NetworkCapabilities caps = cm.getNetworkCapabilities(net);
-                if (caps == null) continue;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                    vpn = true;
-                    continue;
-                }
-                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue;
-                online = true;
-                // Android reached the internet through it; a captive portal stays unvalidated until login.
-                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) validated = true;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) ethernet = true;
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) wifi = true;
-            }
-            if (!online) {
-                text = getString(R.string.offline);
-                vpn = false;
-            } else if (ethernet) {
-                text = getString(R.string.ethernet);
-                icon = R.drawable.ic_ethernet;
-                flame = 4;
-                steady = true;
-            } else if (wifi) {
-                WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-                WifiInfo info = wm != null ? wm.getConnectionInfo() : null;
-                String ssid = info != null ? info.getSSID() : null;
-                flame = info != null ? Math.max(1, Math.min(4, WifiManager.calculateSignalLevel(info.getRssi(), 5))) : 3;
-                if (ssid != null) {
-                    ssid = ssid.replace("\"", "").trim();
-                    if (!ssid.isEmpty() && !ssid.contains("unknown") && !ssid.equals("0x")) text = ssid;
-                }
-            }
-        } catch (Exception ignored) {
-        }
+        NetworkStatus status = new NetworkStatus(this);
+        String text = status.text;
+        boolean vpn = status.vpn, online = status.online, validated = status.validated;
+        int icon = status.icon, flame = status.flame;
+        boolean steady = status.steady;
         // With a VPN app configured, a VPN that is down matters too: show a red "VPN off" capsule then.
         boolean vpnDown = !vpn && online && !vpnApp.isEmpty();
         if (vpnPill) updateVpnPill(vpn);
@@ -3180,10 +3139,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             controlCenter.close(false);
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
-        controlCenter.row(R.drawable.ic_control_wifi, getString(R.string.control_network), "", () -> {
+        View networkRow = controlCenter.row(R.drawable.ic_control_wifi, getString(R.string.control_network), "", () -> {
             controlCenter.close(false);
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
         });
+        observeControlNetwork(networkRow);
         controlCenter.row(R.drawable.ic_control_image, getString(R.string.bg_library), "", () -> {
             controlCenter.page(() -> showControlCenter(3));
             new WallpaperPicker(controlCenter, this::refreshWallpaper);
@@ -3195,6 +3155,36 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             controlCenter.focus(hasSources ? 4 : 3);
                         }));
         controlCenter.focus(Math.max(0, selectedRow - (hasSources ? 0 : 1)));
+    }
+
+    private void observeControlNetwork(View row) {
+        Runnable update = () -> {
+            NetworkStatus status = new NetworkStatus(this);
+            controlCenter.setRowIcon(row, !status.online ? R.drawable.ic_control_globe_off
+                    : status.icon == R.drawable.ic_ethernet ? R.drawable.ic_control_ethernet
+                    : R.drawable.ic_control_wifi);
+            TextView label = row.findViewById(android.R.id.text1);
+            label.setSingleLine(true);
+            label.setEllipsize(TextUtils.TruncateAt.END);
+            label.setText(status.online ? status.text : getString(R.string.control_network));
+        };
+        ConnectivityManager manager = getSystemService(ConnectivityManager.class);
+        ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(Network network) { handler.removeCallbacks(update); handler.post(update); }
+            @Override public void onLost(Network network) { handler.removeCallbacks(update); handler.post(update); }
+            @Override public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
+                handler.removeCallbacks(update); handler.post(update);
+            }
+        };
+        if (manager != null) {
+            manager.registerNetworkCallback(new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), callback, handler);
+            controlCenter.onLeave(() -> {
+                manager.unregisterNetworkCallback(callback);
+                handler.removeCallbacks(update);
+            });
+        }
+        update.run();
     }
 
     /** Replace only the background; the grid, focus and open panel stay attached. */
