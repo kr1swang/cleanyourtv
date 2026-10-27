@@ -182,6 +182,17 @@
             android:textFontWeight="500"
             android:includeFontPadding="false" />
 
+        <TextView
+            android:id="@+id/lunarDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:textColor="#CCFFFFFF"
+            android:textSize="15sp"
+            android:fontFamily="@string/font_medium"
+            android:includeFontPadding="false"
+            android:visibility="gone" />
+
         <com.gathin.tvhome.TightTextClock
             android:id="@+id/clock"
             android:layout_width="wrap_content"
@@ -262,6 +273,14 @@
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView
+                    android:id="@+id/btnVpn"
+                    style="@style/TopButton"
+                    android:visibility="gone"
+                    android:singleLine="true"
+                    android:text="@string/vpn"
+                    android:nextFocusDown="@+id/grid" />
+
+                <TextView
                     android:id="@+id/btnReorder"
                     style="@style/TopButtonIcon"
                     android:contentDescription="@string/reorder"
@@ -273,7 +292,7 @@
                     style="@style/TopButtonIcon"
                     android:visibility="gone"
                     android:contentDescription="@string/app_library"
-                    android:drawableStart="@drawable/ic_apps"
+                    android:drawableStart="@drawable/ic_apps_pill"
                     android:nextFocusDown="@+id/grid" />
 
                 <TextView

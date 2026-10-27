@@ -33,6 +33,8 @@ final class WallpaperSurface extends SurfaceView implements SurfaceHolder.Callba
         drawWallpaper();
     }
 
+    void releaseBitmap() { bitmap = null; }
+
     private void drawWallpaper() {
         if (bitmap == null || !getHolder().getSurface().isValid()) return;
         try {

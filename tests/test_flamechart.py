@@ -8,7 +8,9 @@ neither Perfetto's query engine nor a TV. Drawing needs Pillow, so that test ski
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
+import contextlib
 import importlib.util
+import io
 import os
 from pathlib import Path
 import re
@@ -127,6 +129,34 @@ class ArgumentTest(unittest.TestCase):
             with self.subTest(argv=argv), self.assertRaises(SystemExit):
                 with open(os.devnull, "w") as null, mock.patch("sys.stderr", null):
                     flamechart.parse(argv)
+
+    def parse_error(self, argv):
+        with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as caught:
+            flamechart.parse(argv)
+        self.assertEqual(caught.exception.code, 2)
+        return err.getvalue()
+
+    def test_an_out_that_cannot_be_written_is_refused_before_the_traces_are_opened(self):
+        # im.save() threw from draw(), after Perfetto's query engine had started and every trace had been
+        # read, so a typo in --out read as a chart that failed.
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "charts"
+            folder.mkdir()
+            for out, expected in ((str(folder), "is a folder"),
+                                  (str(folder / "chart"), "has no extension"),
+                                  (str(Path(tmp) / "nothere" / "chart.png"), "there is no folder")):
+                with self.subTest(out=out):
+                    self.assertIn(expected, self.parse_error(["a", "--out", out]))
+            through = Path(tmp) / "file.png"
+            through.write_text("not a folder")
+            self.assertIn("is a file, not a folder", self.parse_error(["a", "--out", str(through / "chart.png")]))
+            self.assertIn("--out is empty", self.parse_error(["a", "--out", ""]))
+
+    def test_a_png_in_a_folder_that_is_there_is_still_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "chart.png")
+            self.assertEqual(flamechart.parse(["a", "b", "--out", out]).out, out)
+            self.assertEqual(flamechart.parse(["a", "--out", "chart.png"]).out, "chart.png")   # the checkout
 
 
 @unittest.skipUnless(importlib.util.find_spec("PIL"), "drawing needs Pillow (tools/requirements-perf.txt)")

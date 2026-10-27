@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Present only in the upstream Hebrew header, not the centered custom clock. -->
+    <item name="clockDivider" type="id" />
+</resources>

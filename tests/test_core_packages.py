@@ -74,6 +74,8 @@ class CorePackagesTest(unittest.TestCase):
         self.assertEqual([], found, "core Android packages must stay enabled (#884)")
 
     def test_disable_sh_refuses_before_touching_the_tv(self):
+        if os.name != "posix" or not shutil.which("bash"):
+            raise unittest.SkipTest("disable.sh is a POSIX script; it needs bash")
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp) / "repo"
             tools = repo / "tools"

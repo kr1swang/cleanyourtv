@@ -139,7 +139,14 @@ final class ControlCenter {
     }
 
     void focus(int index) {
-        if (rows.getChildCount() > 0) rows.getChildAt(Math.min(index, rows.getChildCount() - 1)).requestFocus();
+        int count = rows.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View row = rows.getChildAt((Math.max(0, index) + i) % count);
+            if (row.getVisibility() == View.VISIBLE && row.isFocusable()) {
+                row.requestFocus();
+                return;
+            }
+        }
     }
 
     View row(int icon, String label, String detail, Runnable action) {
@@ -173,13 +180,20 @@ final class ControlCenter {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(40));
         lp.bottomMargin = dp(12);
         rows.addView(row, lp);
-        row.setOnClickListener(v -> { if (!closing) action.run(); });
+        if (action != null) row.setOnClickListener(v -> { if (!closing) action.run(); });
         row.setOnKeyListener((v, key, event) -> {
             // Keep navigation within this list; do not let focus escape to Home.
             if (key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT) return true;
             int at = rows.indexOfChild(v);
-            return (key == KeyEvent.KEYCODE_DPAD_UP && at == 0)
-                    || (key == KeyEvent.KEYCODE_DPAD_DOWN && at == rows.getChildCount() - 1);
+            if (key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) {
+                int step = key == KeyEvent.KEYCODE_DPAD_UP ? -1 : 1;
+                for (int i = at + step; i >= 0 && i < rows.getChildCount(); i += step) {
+                    View next = rows.getChildAt(i);
+                    if (next.getVisibility() == View.VISIBLE && next.isFocusable()) return false;
+                }
+                return true;
+            }
+            return false;
         });
         return row;
     }

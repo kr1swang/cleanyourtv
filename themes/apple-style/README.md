@@ -71,6 +71,9 @@ preferences remain intact. A static profile disables legacy external video. A vi
 fixed resolution/FPS; it never silently switches to another rendition. It starts from the beginning,
 releases the decoder when Home stops, and keeps the verified preview as a fallback. The Home/YouTube/
 Netflix service and Google Cast packages are not changed by this feature.
+When hidden Home receives a low-memory trim, upstream's memory policy releases the wallpaper too.
+The custom static surface drops its bitmap reference with the ImageView; a video preview released
+by the same trim is loaded again when Home returns. Ordinary app switches keep the cached preview.
 
 The catalog is versioned with the APK, not fetched from an unpinned latest Release. To add a background,
 add its title, six profile entries and immutable asset URLs/sizes/hashes. The picker groups entries by

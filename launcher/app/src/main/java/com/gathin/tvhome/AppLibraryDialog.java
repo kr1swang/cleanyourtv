@@ -12,10 +12,8 @@ import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -82,6 +80,8 @@ final class AppLibraryDialog {
     private final LinearLayout panel;
     private final boolean reducedMotion;
     private final boolean selectionMode;
+    /** library_ok_opens without app_library_selection: OK opens every app, Add to Home is in the hold menu. */
+    private final boolean okOpens;
     private final boolean animations;
     private final boolean rtl;
     private TextView instructions;
@@ -143,12 +143,13 @@ final class AppLibraryDialog {
         if (popup.isShowing()) popup.update(width, height);
     }
 
-    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, Predicate<String> onHome, Runnable changed, Runnable dismissed) {
+    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, Runnable changed, Runnable dismissed) {
         this.activity = activity;
         this.animations = animations;
         this.rtl = activity.getResources().getBoolean(R.bool.rtl_app_grid);
         this.reducedMotion = reducedMotion;
         this.selectionMode = selectionMode;
+        this.okOpens = okOpens && !selectionMode;
         this.onHome = onHome;
         this.changed = changed;
         this.dismissed = dismissed;
@@ -339,7 +340,7 @@ final class AppLibraryDialog {
     private String hint(boolean home) {
         if (selectionMode) return activity.getString(android.R.string.ok) + ": "
                 + activity.getString(home ? R.string.library_remove_shortcut : R.string.library_add_home);
-        return activity.getString(home ? R.string.library_hint_open : R.string.library_hint_add);
+        return activity.getString(home || okOpens ? R.string.library_hint_open : R.string.library_hint_add);
     }
 
     private void showCatalog() {
@@ -526,10 +527,11 @@ final class AppLibraryDialog {
         boolean home = onHome.test(pkg);
         addAction(rows, home ? R.string.library_remove_shortcut : R.string.library_add_home,
                 () -> changeHome(app, !home));
-        addAction(rows, R.string.library_app_info, () -> {
+        Intent info = SystemSettings.appInfo(activity, pkg);
+        if (info != null) addAction(rows, R.string.library_app_info, () -> {
             close();
             try {
-                activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + pkg)));
+                activity.startActivity(info);
             } catch (ActivityNotFoundException | SecurityException e) {
                 Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
             }
@@ -638,7 +640,7 @@ final class AppLibraryDialog {
             boolean home = onHome.test(pkg);
             boolean recent = !selectionMode && LibraryApps.recent(installTimes.getOrDefault(pkg, 0L), catalogTime);
             status.setText(home ? R.string.library_on_home : recent ? R.string.library_recent : R.string.library_add_home);
-            status.setVisibility(View.VISIBLE);
+            status.setVisibility(home || !okOpens ? View.VISIBLE : View.INVISIBLE);
             holder.itemView.setBackground(surface(home ? 0x1475BBA4 : 0x0CFFFFFF, 18));
             View check = holder.itemView.findViewById(R.id.dot);
             check.getLayoutParams().width = dp(home ? 18 : 8);
@@ -647,9 +649,9 @@ final class AppLibraryDialog {
             else check.setBackground(surface(0xFF70D9A0, 8));
             check.setVisibility(home || recent ? View.VISIBLE : View.GONE);
             holder.itemView.setOnClickListener(v -> {
-                if (selectionMode) changeHome(app, !onHome.test(pkg));
-                else if (onHome.test(pkg)) open(app);
-                else changeHome(app, true);
+                boolean onHomeNow = onHome.test(pkg);
+                if (LibraryApps.okOpens(selectionMode, okOpens, onHomeNow)) open(app);
+                else changeHome(app, !onHomeNow);
             });
             holder.itemView.setOnLongClickListener(selectionMode ? null : v -> { showActions(app, v); return true; });
             holder.itemView.setOnFocusChangeListener((v, focused) -> {

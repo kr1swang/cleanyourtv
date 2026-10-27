@@ -176,6 +176,14 @@ final class Dimming {
         return a << 24 | r << 16 | g << 8 | b;
     }
 
+    /** Android draws a window that lets touches through at most this opaque (InputManager's default). */
+    static final int MAX_PASS_THROUGH_ALPHA = Math.round(0.8f * 255);
+
+    /** True when the layer must keep touches to be drawn as dark as its colour says. */
+    static boolean keepsTouches(int color) {
+        return (color >>> 24) > MAX_PASS_THROUGH_ALPHA;
+    }
+
     /**
      * Minutes from minute until the level can next change by itself: the next start or end of the night window.
      * -1 when nothing changes on its own (dimming off, or night mode not scheduled, or an empty window).

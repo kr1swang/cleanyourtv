@@ -154,6 +154,14 @@ public class DimmingTest {
     }
 
     @Test
+    public void onlyLayersDarkerThanAndroidsPassThroughCapKeepTouches() {
+        assertFalse(Dimming.keepsTouches(Dimming.color(new Dimming.Level(70, 0, false))));
+        assertFalse("80 % dark is still drawn as such", Dimming.keepsTouches(Dimming.color(new Dimming.Level(20, 0, false))));
+        assertTrue(Dimming.keepsTouches(Dimming.color(new Dimming.Level(10, 0, false))));
+        assertTrue("warmth adds to the darkness", Dimming.keepsTouches(Dimming.color(new Dimming.Level(25, 100, true))));
+    }
+
+    @Test
     public void windowPastMidnight() {
         int start = 21 * 60, end = 7 * 60;
         assertFalse(Dimming.inWindow(start, end, 20 * 60 + 59));

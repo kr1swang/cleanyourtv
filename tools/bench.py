@@ -19,8 +19,12 @@ Usage:
     TV_HOST=192.168.1.50 python tools/bench.py --keys 36 --series 3
     TV_HOST=192.168.1.50 python tools/bench.py --keys 36 --series 3 --out-dir my-results
 
-The output is a summary plus the raw per-key numbers, so a run can be compared with another one
-or re-analysed later.
+The output is a summary plus the raw per-key numbers, so a run can be compared with another one or
+re-analysed later.
+
+Exit status: 0 the run is measured and written; 2 an --out-dir that cannot be written into, judged
+before the TV is opened, or a folder that cannot be created (nothing was measured); 1 anything else,
+including a result.json that could not be written after the run, whose numbers are then printed.
 
 Why the frame is matched by its completion time and not by its intended vsync: on a launcher
 that moves the focus in a single frame (no animation), the frame that reacts to a key is born
@@ -74,13 +78,17 @@ class TV:
             if here not in sys.path:
                 sys.path.insert(0, here)
             # tv.py reads its target from the environment when imported, including CLI overrides here.
-            os.environ["TV_HOST"], os.environ["TV_PORT"] = self.host, str(self.port)
+            os.environ["TV_HOST"], os.environ["TV_PORT"] = str(self.host), str(self.port)
             try:
                 import tv as tv_client  # noqa: E402
             except ModuleNotFoundError as e:
                 raise SystemExit(f"bench.py needs {e.name}: python3 -m venv tools/venv && "
                                  "tools/venv/bin/pip install -r tools/requirements.txt") from e
-            tv_client.HOST, tv_client.PORT = self.host, int(self.port)
+            # Read back the target tv.py made of that environment: it splits `host:port` and refuses a
+            # port outside 1..65535 there. Overriding these from the arguments (as this did) put the
+            # `:port` back into the host, so `--host 192.0.2.20:5877` asked for a machine of that name.
+            self.host, self.port = tv_client.HOST, tv_client.PORT
+            self.serial = f"{self.host}:{self.port}"
             self.client = tv_client.connect()
         return self.client
 
@@ -373,7 +381,9 @@ def cold_start(tv, component, repeats):
     services = accessibility_services(tv, package)
     try:
         for _ in range(repeats):
-            tv.shell(f"am start -W -n {other}")
+            # Reuse Settings even if its task was first opened with ACTION_SETTINGS.
+            # A component-only start can otherwise stack another activity on every run.
+            tv.shell(f"am start -W --activity-reorder-to-front -n {other}")
             time.sleep(2)
             tv.shell(f"am force-stop {package}")
             time.sleep(3)
@@ -403,7 +413,7 @@ def return_to_home(tv, component, repeats):
     if class_name.startswith("."):
         class_name = component.split("/", 1)[0] + class_name
     for _ in range(repeats):
-        tv.shell(f"am start -W -n {other}")
+        tv.shell(f"am start -W --activity-reorder-to-front -n {other}")
         time.sleep(3)
         clear_log(tv)
         tv.shell("input keyevent 3")
@@ -499,19 +509,66 @@ def stats(values):
             "p99": pick(0.99), "max": ordered[-1], "n": len(ordered)}
 
 
+def out_dir(value):
+    """`--out-dir` as typed, or an argparse error before the TV is opened.
+
+    The folder may not exist yet: bench.py creates it. What it cannot do is write into a file, run
+    through a file, or nowhere - os.makedirs() answered those with a traceback after the TV had
+    already been asked which component answers HOME and what version it runs, at the start of a run
+    that then measured nothing. The same rule as tools/trace.py's --out (tools/perf-ab.md's three
+    tools), and the same reason for judging it in argparse: it costs nothing and it happens first.
+    """
+    if not value:
+        raise argparse.ArgumentTypeError("needs a folder to write the results into")
+    if os.path.exists(value) and not os.path.isdir(value):
+        raise argparse.ArgumentTypeError(f"{value} is a file, not a folder to write the results into")
+    # makedirs() creates the whole chain, so the nearest folder that is already there decides whether
+    # it can: a file anywhere above the last part is NotADirectoryError whatever follows it.
+    existing = os.path.dirname(os.path.abspath(value))
+    while existing and not os.path.exists(existing):
+        parent = os.path.dirname(existing)
+        if parent == existing:
+            break
+        existing = parent
+    if os.path.exists(existing) and not os.path.isdir(existing):
+        raise argparse.ArgumentTypeError(
+            f"{value} runs through {existing}, which is a file, not a folder")
+    return value
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__,
+    parser = argparse.ArgumentParser(prog="bench.py", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--host", default=os.environ.get("TV_HOST"),
-                        help="TV address (or set TV_HOST)")
-    parser.add_argument("--port", type=int, default=int(os.environ.get("TV_PORT", "5555")))
+                        help="TV address, IP or IP:port (or set TV_HOST)")
+    # Left as typed: tools/tv.py parses TV_HOST/TV_PORT when TV._connect imports it, refuses a port that
+    # is not 1..65535 there, and splits the port out of the address. int() here ran before any of that,
+    # so TV_PORT=abc (or an empty TV_PORT, which tools/tv.py reads as 5555) was a ValueError traceback.
+    parser.add_argument("--port", default=os.environ.get("TV_PORT") or "5555",
+                        help="the TV's ADB port (or set TV_PORT); default 5555")
     parser.add_argument("--keys", type=int, default=36, help="keys per series")
     parser.add_argument("--series", type=int, default=3, help="how many series")
     parser.add_argument("--cold", type=int, default=5, help="cold starts")
     parser.add_argument("--returns", type=int, default=10, help="returns to Home")
     parser.add_argument("--idle", type=int, default=60, help="idle seconds")
-    parser.add_argument("--out-dir", default="bench-results", help="where to write the results")
+    parser.add_argument("--out-dir", type=out_dir, default="bench-results",
+                        metavar="DIR", help="where to write the results (default bench-results)")
     args = parser.parse_args()
+    # Each of these five is a count of what the run measures, and zero of one measures nothing there
+    # while the run still exits 0: --series 0 and --keys 0 wrote a result.json whose key numbers are
+    # all null, and --cold 0 / --returns 0 the same for their fields, which in that file cannot be
+    # told apart from a TV that does not report them. --idle is worse than silent: idle_cpu() divides
+    # by the seconds, so 0 was a ZeroDivisionError and a negative one a ValueError out of time.sleep,
+    # both after the keys, the cold starts, the returns and the 20 s settle - a full run's numbers
+    # gone, with the traceback and exit 1 that a run which wrote nothing returns. Judged here, before
+    # the host is looked at and before the venv re-exec, the way --out-dir and tools/trace.py's --runs
+    # are; no run loses a capability, since a TV that cannot do a cold start already reports null.
+    for option, unit in (("keys", "keys per series"), ("series", "series"),
+                         ("cold", "cold starts"), ("returns", "returns to Home")):
+        if getattr(args, option) < 1:
+            parser.error(f"--{option} is the number of {unit}: pass at least 1, not {getattr(args, option)}")
+    if args.idle < 1:
+        parser.error(f"--idle is the number of idle seconds: pass at least 1, not {args.idle}")
     if not args.host:
         raise SystemExit("pass --host or set TV_HOST")
     venv = venv_python()
@@ -527,7 +584,15 @@ def main():
         raise SystemExit("no component answers HOME on this TV")
     package = tv.package_of(component)
     version = tv.version_of(package)
-    os.makedirs(args.out_dir, exist_ok=True)
+    try:
+        os.makedirs(args.out_dir, exist_ok=True)
+    except OSError as e:
+        # --out-dir itself was judged in argparse; a folder that exists but cannot be created into
+        # (a read-only checkout, a full disk) is only knowable here. Say it before a run of several
+        # minutes measures keys for a folder that will not take the result; the TV was only read.
+        print(f"cannot create {args.out_dir}: {e.strerror or e}. Nothing was measured, and nothing "
+              "on the TV was changed.", file=sys.stderr)
+        return 2
 
     print(f"Launcher: {component} ({version})")
     print(f"Keys: {args.series} x {args.keys}; writing to {args.out_dir}")
@@ -596,11 +661,22 @@ def main():
         "samples": samples,
     }
     path = os.path.join(args.out_dir, "result.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(result, f, indent=2)
-    print(json.dumps({k: v for k, v in result.items() if k != "samples"}, indent=2))
+    summary = {k: v for k, v in result.items() if k != "samples"}
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+    except OSError as e:
+        # The folder was writable when the run started - it can be removed, or fill up, during the
+        # minutes it measures. The numbers were measured on the TV and cannot be measured again the
+        # same way, so they are printed: this is the only copy, and exit 1 says the file is not it.
+        print(json.dumps(summary, indent=2))
+        print(f"cannot write {path}: {e.strerror or e}. Nothing was written: the numbers above are "
+              "this run's only copy.", file=sys.stderr)
+        return 1
+    print(json.dumps(summary, indent=2))
     print(f"Written: {path}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

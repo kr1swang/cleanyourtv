@@ -6,6 +6,12 @@ the picture it writes must hide what the person blurred (the Wi-Fi name) in both
 arguments are checked before anything is read. The image tests need Pillow, which CI does not
 install (it is optional, in tools/requirements-perf.txt), so they skip without it.
 
+`--out` and `--diff` are judged the same way, before the screenshots are opened and before Pillow is
+imported: exit status 1 is the page's word for "the two screenshots differ", so a folder typed wrong, a
+folder given in place of a file name, a file in the middle of the path and a name with no extension are
+all exit 2 with the path named. A write that fails once it has started - Pillow answers that with OSError,
+and an extension it does not know with ValueError - is also named, not left as a traceback with exit 1.
+
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
 import argparse
@@ -14,6 +20,8 @@ import importlib.util
 import io
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -138,6 +146,116 @@ class CompareTest(unittest.TestCase):
         for left in (0, 230):
             blurred = pair.crop((left, 60, left + 60, 80))
             self.assertNotEqual(list(blurred.getdata()), list(original.getdata()))
+
+    def test_a_run_with_both_pictures_still_writes_both(self):
+        a, b = self.shot("a.png"), self.shot("b.png")
+        out = os.path.join(self.tmp.name, "pair.png")
+        diff = os.path.join(self.tmp.name, "diff.png")
+        code, text = self.run_tool([a, b, "--out", out, "--diff", diff])
+        self.assertEqual(code, 0)
+        self.assertIn(f"{out}: written", text)
+        self.assertTrue(os.path.isfile(out) and os.path.isfile(diff))
+
+    def test_a_write_that_cannot_start_is_named_not_a_difference(self):
+        if not os.path.exists("/dev/full"):
+            self.skipTest("needs /dev/full, a file whose writes fail with ENOSPC")
+        a, b = self.shot("a.png"), self.shot("b.png")
+        out = os.path.join(self.tmp.name, "full.png")
+        os.symlink("/dev/full", out)
+        code, text = self.run_tool([a, b, "--out", out])
+        self.assertEqual(code, 2, "a failed write must not read as 'the screenshots differ'")
+        self.assertIn(f"cannot write {out}", text)
+        self.assertIn("No space left on device", text)
+        self.assertNotIn("Traceback", text)
+        self.assertNotIn("identical", text)
+        self.assertNotIn("pixels differ", text)
+
+    def test_an_extension_pillow_does_not_know_is_named(self):
+        a, b = self.shot("a.png"), self.shot("b.png")
+        out = os.path.join(self.tmp.name, "pair.txt")
+        code, text = self.run_tool([a, b, "--out", out])
+        self.assertEqual(code, 2)
+        self.assertIn(f"cannot write {out}", text)
+        self.assertIn("unknown file extension", text)
+        self.assertNotIn("Traceback", text)
+        self.assertFalse(os.path.exists(out))
+
+
+class OutputPathTest(unittest.TestCase):
+    """A --out or --diff that cannot be written is exit 2, not the 1 the page reads as 'they differ'."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.dir = Path(self.tmp.name)
+
+    def run_tool(self, argv):
+        with contextlib.redirect_stdout(io.StringIO()) as out, contextlib.redirect_stderr(io.StringIO()) as err:
+            code = screendiff.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_a_folder_that_is_not_there_is_named(self):
+        out = self.dir / "nope" / "pair.png"
+        code, stdout, stderr = self.run_tool(["before.png", "after.png", "--out", str(out)])
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn(f"--out {out}: there is no folder {out.parent}", stderr)
+        self.assertIn("Nothing was read or written", stderr)
+        self.assertFalse(out.parent.exists())
+
+    def test_the_diff_path_is_checked_the_same_way(self):
+        diff = self.dir / "nope" / "diff.png"
+        code, stdout, stderr = self.run_tool(["before.png", "after.png", "--diff", str(diff)])
+        self.assertEqual(code, 2)
+        self.assertEqual(stdout, "")
+        self.assertIn(f"--diff {diff}: there is no folder", stderr)
+
+    def test_a_folder_as_the_pair_is_refused(self):
+        code, _, stderr = self.run_tool(["before.png", "after.png", "--out", str(self.dir)])
+        self.assertEqual(code, 2)
+        self.assertIn(f"--out {self.dir} is a folder", stderr)
+        self.assertIn("--out shots/before-after.png", stderr)
+
+    def test_a_file_in_the_middle_of_the_path_is_named(self):
+        afile = self.dir / "shots"
+        afile.write_text("", encoding="utf-8")
+        out = afile / "pair.png"
+        code, _, stderr = self.run_tool(["before.png", "after.png", "--out", str(out)])
+        self.assertEqual(code, 2)
+        self.assertIn(f"{afile} is a file, not a folder", stderr)
+
+    def test_a_path_with_no_extension_is_refused(self):
+        out = self.dir / "pair"
+        code, _, stderr = self.run_tool(["before.png", "after.png", "--out", str(out)])
+        self.assertEqual(code, 2)
+        self.assertIn(f"--out {out} has no extension", stderr)
+        self.assertIn(f"name it {out}.png", stderr)
+
+    def test_the_paths_are_judged_before_the_screenshots_are_opened(self):
+        # Neither argument exists, so anything that opened them would say so first.
+        code, _, stderr = self.run_tool(["missing-before.png", "missing-after.png",
+                                        "--out", str(self.dir / "nope" / "pair.png")])
+        self.assertEqual(code, 2)
+        self.assertIn("there is no folder", stderr)
+        self.assertNotIn("cannot read a screenshot", stderr)
+
+    def test_the_paths_are_judged_before_pillow_is_read(self):
+        """CI has no Pillow, and the folder a reader typed wrong is the likelier failure either way."""
+        with tempfile.TemporaryDirectory() as shadow:
+            blocker = Path(shadow) / "PIL"
+            blocker.mkdir()
+            (blocker / "__init__.py").write_text('raise ImportError("No module named \'PIL\'")\n',
+                                                 encoding="utf-8")
+            env = dict(os.environ, PYTHONPATH=shadow)
+            out = self.dir / "nope" / "pair.png"
+            run = subprocess.run([sys.executable, str(ROOT / "tools" / "screendiff.py"),
+                                  "before.png", "after.png", "--out", str(out)],
+                                 cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 2)
+        self.assertIn("there is no folder", run.stderr)
+        self.assertNotIn("requirements-perf.txt", run.stderr, "Pillow was reported first")
+        self.assertNotIn("Traceback", run.stderr)
+        self.assertEqual(run.stdout, "")
 
 
 if __name__ == "__main__":

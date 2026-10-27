@@ -102,6 +102,17 @@ final class LibraryApps {
         return !removedFromHome && (explicitlyAdded || (tvApp && !themeHidden));
     }
 
+    /** The pill after the last Home row: show_library_pill false hides it only while the top-bar button is a way in. */
+    static boolean showPill(boolean library, boolean button, boolean pill) {
+        return library && (pill || !button);
+    }
+
+    /** OK on a library card opens the app (true) or changes its Home shortcut. app_library_selection's OK always
+     *  changes it; otherwise an app on Home opens, and with library_ok_opens every app does. */
+    static boolean okOpens(boolean selection, boolean openAll, boolean onHome) {
+        return !selection && (openAll || onHome);
+    }
+
     static boolean recent(long installedAt, long now) {
         return installedAt > 0 && installedAt <= now && now - installedAt <= RECENT_MS;
     }

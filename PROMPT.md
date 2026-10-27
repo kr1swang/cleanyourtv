@@ -3,7 +3,8 @@
 Paste this into Claude Code (or another coding assistant with shell access) on a computer that is
 on the same Wi-Fi as the TV. Works on Android TV / Google TV sets (Xiaomi, TCL, Hisense, Sony,
 OnePlus, Realme, Nvidia Shield and most others). It will not work on Samsung Tizen, LG webOS or
-Fire TV. If you cloned this repo, mention that: the assistant can reuse `tools/` and `launcher/`
+Fire TV. For Samsung, LG, Roku and other non-Android TVs, use https://cleanyour.tv/not-android instead:
+it turns off the tracking with the remote. If you cloned this repo, mention that: the assistant can reuse `tools/` and `launcher/`
 instead of writing them from scratch. Reuse the current branch's launcher and theme configuration;
 custom theme defaults are in `themes/apple-style/`.
 
@@ -21,6 +22,11 @@ do with screenshots pulled from the TV. Reuse preferences I have already stated;
 choices. Preserve Google Cast, voice search, system updates and their dependencies unless I explicitly
 request otherwise. Do not copy another device's disabled-package list.
 
+Where these steps name a file under `tools/`, `docs/` or `examples/` that is not in your working
+folder, you are running without this repo: clone it first with
+`git clone https://github.com/Gathin23/cleanyourtv` and work from there, so `tools/disable.sh` and the
+rest keep their safety checks, rather than stopping or writing your own.
+
 Connect
 - Find the TV on my network (hostname, ARP table, or ask me for the IP) and connect over ADB on port 5555.
   If the TV is in another home, I'll give you its Tailscale address instead (docs/REMOTE.md): use that,
@@ -36,6 +42,11 @@ Connect
   `_adb-tls-connect._tcp` with `dns-sd -B` or `adb mdns services`, ask me for the code and port under
   Developer options > Wireless debugging > Pair device with pairing code, then `adb pair`, `adb connect`
   and `adb tcpip 5555`. Android switches Wireless debugging off whenever Wi-Fi drops.
+  Some firmware runs network ADB on another fixed port instead (a projector used 5877): if 5555 refuses and
+  nothing advertises Wireless debugging, scan the TV's own TCP ports and try each open one with `TV_PORT`.
+- If the TV turns out not to be Android TV / Google TV (no ADB port at all, or it identifies as Tizen,
+  webOS, Roku OS, VIDAA or SmartCast), stop and tell me to use https://cleanyour.tv/not-android, which
+  turns off the tracking with the remote. Nothing in this repo applies to it.
 - Tell me when the "Allow USB debugging?" prompt will appear on the TV so I can accept it.
 - If `adb install` hangs on Android 14 it is waiting for an on-screen confirmation; push the APK and run
   `pm install -r` over the shell instead.
@@ -96,7 +107,11 @@ Debloat
   `docs/TROUBLESHOOTING.md` has the way out if one has been opened.
 - Disable in small batches and screenshot between them: a batch can take something load-bearing with
   it and you cannot tell which.
-- After the last batch, reboot once and compare `pm list packages -d` with what you disabled: some
+- After the last batch, wait about 15 seconds before rebooting - Android writes package state to
+  disk about ten seconds after a change (`WRITE_SETTINGS_DELAY`, `docs/TROUBLESHOOTING.md`), so a
+  reboot sent straight after the batch boots with the old state and what came back reads as
+  firmware re-enabling packages it never re-enabled. `adb shell sync` first is fine too. Then reboot
+  once and compare `pm list packages -d` with what you disabled: some
   firmware re-enables packages at every boot from its own list (TCL Android 9 does this for its user
   center). Note those in the list header instead of disabling them again after each boot. If
   setupwraith or the stock launcher came back and Home is black, check `logcat | grep
@@ -106,6 +121,9 @@ Debloat
   ad-blocking resolver (`settings put global private_dns_specifier dns.adguard-dns.com`, then
   `settings put global private_dns_mode hostname`). Tell me it doesn't block YouTube ads, check an app
   still plays afterwards, and note the undo (`private_dns_mode opportunistic`) in the README.
+  Ask me first whether my router already filters or routes traffic by domain through its own DNS
+  (Pi-hole, AdGuard Home, a VPN with domain lists, a fake-IP proxy): Private DNS goes around it, so those
+  rules stop applying to the TV, and blocking on the router is the better choice there.
 
 Launcher
 - Check that the TV accepts APKs before building anything. Some China-market sets answer every
@@ -161,9 +179,16 @@ Launcher
   A button the TV logs as `KEY_UNKNOWN` or `KEY_PROGRAM` cannot be matched by keycode, since every
   unmapped button shares it: read the scancode with `getevent -lt` and use `settings_key_scancodes`,
   which only `config.xml` carries (a theme can set keycodes, not scancodes).
+- After the first reboot with the new Home, check what the TV opens at power-on
+  (`logcat -b events -d | grep wm_set_resumed_activity`). If the firmware puts the Live TV app on screen by
+  itself, ask me which I want to land on, Home or Live TV: Home is `power_on_home` with HOME_KEY_SERVICE=1,
+  Live TV is `boot_to_live_tv` (`config.xml` or the theme). Never set both.
 - On Android 11 and newer the launcher must declare `<queries>` for `android.intent.category.LEANBACK_LAUNCHER`,
   or package visibility silently hides every app and the grid comes up empty; target a recent SDK, some
   Google TV 14 sets refuse older targets at install.
+- If you write the launcher yourself, make its theme explicitly opaque (`windowIsTranslucent`,
+  `windowIsFloating` and `windowSwipeToDismiss` false): on some firmware `Theme.DeviceDefault` comes out
+  translucent, the TV app keeps running under Home, and after an HDMI input the picture stays on screen.
 - Preserve this branch's existing custom layout, font, Dock order and focus behavior when deploying.
   The generic design below applies only when creating a new launcher; do not restore its four-column
   layout, top buttons, greeting or Dock title over the current custom version.
@@ -268,7 +293,10 @@ Verify
   Fix what you see before moving on.
 - Live TV, HDMI and some streaming apps (Netflix) give empty screenshots (0 bytes); that is the TV, not a
   broken debloat, and `--screenshot` exits 1 with that message. Check
-  `dumpsys activity activities | grep topResumedActivity` instead (see `docs/TROUBLESHOOTING.md`).
+  `dumpsys activity activities | grep -i ResumedActivity` instead (some builds print no `topResumedActivity`
+  line but do print `mResumedActivity`; see `docs/TROUBLESHOOTING.md`).
+- If screenshots keep showing an app you already left, byte for byte, `screencap` is returning its last
+  frame: confirm `mCurrentFocus` in `dumpsys window`, force-stop that app and capture again.
 - If the screen looks enlarged and clipped after an install or a reboot, check the display overrides
   before editing the launcher grid: `wm size` and `wm density` show a physical value next to an
   override, and an override left over from an old resolution experiment, or a density that comes back

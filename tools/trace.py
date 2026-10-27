@@ -15,6 +15,10 @@ and later. Set TV_HOST to the TV's IP (and TV_PORT if it is not 5555). Usage:
     tools/trace.py custom --setup 'input keyevent KEYCODE_HOME' --setup 'sleep 2' \\
                           --step 'input keyevent KEYCODE_DPAD_RIGHT' --step 'sleep 1' --out DIR
 
+--out DIR is the folder the traces go into; it is created if it is not there. A file where the folder
+goes, a path through a file, and an empty --out are refused as argument errors (exit 2) before the TV is
+asked anything, so a typo cannot read as a recording that failed.
+
 Scenarios (setup runs before the recording starts, so it stays out of the trace):
     cold     another app in front, the launcher force-stopped, then started with `am start -W`
     coldsys  Home in front, the launcher force-stopped: Android starts it again by itself
@@ -26,6 +30,7 @@ import argparse
 import base64
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import time
@@ -92,7 +97,8 @@ def recording_ms(steps):
 def scenario(name, launcher_component, other_component, setup=(), steps=()):
     """(setup, steps) shell commands for a scenario. Setup runs before the recording starts."""
     package = launcher_component.split("/")[0]
-    other = f"am start -n {other_component}" if other_component else None
+    # Reuse the other activity across runs instead of growing its task history.
+    other = f"am start --activity-reorder-to-front -n {other_component}" if other_component else None
     if name == "cold":
         return [other, "sleep 2", f"am force-stop {package}", "sleep 2"], \
                [f"am start -W -a android.intent.action.MAIN "
@@ -109,12 +115,35 @@ def scenario(name, launcher_component, other_component, setup=(), steps=()):
     return list(setup), list(steps)
 
 
+def traces_folder(value):
+    """--out as the folder the traces go into, judged before anything is asked of the TV.
+
+    os.makedirs() answers a file where the folder goes with FileExistsError, a path through a file with
+    NotADirectoryError and an empty argument with FileNotFoundError: three tracebacks with exit 1, each
+    thrown from main() after the TV has answered the Home query and the model was read, so the reader
+    cannot tell their argument from a recording that failed. Refusing here makes it an argument error
+    like --runs or --app, with the run never reaching the TV. A folder that does not exist yet is fine:
+    makedirs() creates it, as the default traces/ always has.
+    """
+    if not value:
+        raise argparse.ArgumentTypeError("--out is empty: name the folder for the traces, e.g. --out traces/before")
+    path = Path(value)
+    if path.exists() and not path.is_dir():
+        raise argparse.ArgumentTypeError(f"{value} is a file, and --out is the folder the traces go into: "
+                                         f"nothing could be recorded into it")
+    for parent in path.parents:
+        if parent.exists() and not parent.is_dir():
+            raise argparse.ArgumentTypeError(f"{value} passes through the file {parent}, so the folder the "
+                                             f"traces go into cannot be made")
+    return value
+
+
 def parse(argv):
     p = argparse.ArgumentParser(description="Record Perfetto traces on the TV around a launcher scenario. "
                                             "See tools/trace.md.")
     p.add_argument("scenario", choices=["cold", "coldsys", "home", "nav", "custom"])
     p.add_argument("--runs", type=int, default=5, help="how many traces to record (default 5)")
-    p.add_argument("--out", default="traces", help="folder for the traces (default traces/)")
+    p.add_argument("--out", type=traces_folder, default="traces", help="folder for the traces (default traces/)")
     p.add_argument("--package", default="com.gathin.tvhome", help="the launcher's package (default com.gathin.tvhome)")
     p.add_argument("--app", metavar="COMPONENT",
                    help="the other app for cold and home, as package/activity (default: found on the TV)")
@@ -232,7 +261,7 @@ def main(argv=None):
                 bench.restore_accessibility(_Shell(shell), args.package, helpers)
     finally:
         dev.close()
-    print(f"next: tools/trace_report.py {args.out}   (see tools/trace.md)")
+    print(f"next: tools/venv/bin/python -I tools/trace_report.py {args.out}   (see tools/trace.md)")
 
 
 class _Shell:
