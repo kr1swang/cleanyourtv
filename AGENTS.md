@@ -4,6 +4,15 @@ Instructions for coding agents (Claude Code, Codex, Gemini CLI, Cursor, Copilot 
 this repository. People should start with [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md);
 this file repeats their rules in the form an agent needs, and links to them for the detail.
 
+## Scope of this fork
+
+This is the Apple-style custom fork. Read [its guide](themes/apple-style/README.md) before changing
+custom launcher behavior; its [maintenance rules](themes/apple-style/README.md#maintenance) apply here.
+The upstream-only launcher description and restrictions on network access, video and services below
+remain the rules for contributions sent upstream. They do not require removing this fork's existing
+verified wallpaper downloads, video player or remote-key helper. This is not permission to add unrelated
+permissions, services or dependencies. Device safety, backups, privacy and verification rules still apply.
+
 ## First: which job are you doing?
 
 | You were asked to | Do this |

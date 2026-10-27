@@ -1,3 +1,14 @@
+## Apple-style custom fork
+
+This fork adds a six-column Dock, a centered clock and date, shadow-based app focus, and a control
+center for input sources, system/network settings, backgrounds and resetting app order. Backgrounds
+are verified downloads with FHD/4K static, 30 fps and 60 fps choices. The remote helper supports
+Home, YouTube and Netflix on the configured Chromecast remote while keeping Google TV and Cast enabled.
+
+Start with the [Apple-style guide](themes/apple-style/README.md) for configuration, deployment and
+verification. The descriptions, screenshots and project statistics below describe upstream unless
+explicitly marked otherwise; the custom launcher uses network access and supports video wallpapers.
+
 <p align="center">
   <a href="https://cleanyour.tv"><img src="https://raw.githubusercontent.com/Gathin23/cleanyourtv/main/docs/banner.png" alt="CleanYourTV. Your TV, minus the ads. Strip the bloatware from any Android TV or Google TV over Wi-Fi and replace the ad-filled home screen with a clean launcher that looks like an Apple TV. No root, no cable, nothing uninstalled, and a one-line restore." width="800"></a>
 </p>

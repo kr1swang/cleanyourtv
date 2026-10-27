@@ -1,5 +1,11 @@
 # Contributing
 
+This fork maintains the [Apple-style launcher](themes/apple-style/README.md). For custom changes,
+follow its [maintenance rules](themes/apple-style/README.md#maintenance). The upstream contribution
+policy below, including the network/video/service restrictions, applies to changes submitted upstream.
+The fork already includes verified background downloads, video wallpapers and a remote-key helper;
+its device-safety and privacy requirements remain unchanged.
+
 Thanks for helping more TVs lose their ads. Three kinds of contributions are especially welcome.
 
 Working with a coding agent? Point it at [`AGENTS.md`](AGENTS.md): the same rules, written for agents.

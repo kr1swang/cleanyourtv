@@ -130,6 +130,27 @@ For automatic resolution selection, list one FHD and one 4K movie using their re
 (`_FHD_30fps.mov`, `_FHD_60fps.mov`, `_4K_30fps.mov` or `_4K_60fps.mov`). The output mode selects
 the resolution; it does not choose a frame rate. Bare `_FHD.mov` and `_4K.mov` names also work.
 
+## Maintenance
+
+- Prefer upstream implementations when they cover the same behavior. Remove the superseded custom
+  implementation, while preserving the documented Apple-style behavior.
+- Keep configurable defaults in `config.json`, including six columns, Dock order and 30% Dock opacity.
+  Reuse upstream configuration handling instead of enforcing these values again in Java.
+- Keep custom behavior in focused components and reuse upstream settings, input-source, key-handling
+  and memory-management paths. Avoid unrelated refactoring during upstream merges.
+- Keep this guide as the detailed custom reference. Keep the fork notices in the root README,
+  AGENTS and CONTRIBUTING short; do not rewrite upstream documentation or generated tables.
+- Preserve Cast, voice search and system updates during deployment. The configured Google TV helper
+  leaves the stock launcher and setup services enabled; do not disable them to make Home redirection work.
+  Another TV needs its own input and remote mapping checks.
+- The release APK must remain below 589,824 bytes, the upstream 576 KiB gate. Do not bundle downloaded
+  wallpaper images or movies in the APK. Do not raise the gate to accommodate a change without agreement.
+- Run the repository's Python suite and launcher unit tests, lint and release build for code changes.
+  For Home/key/lifecycle changes, also verify physical remote keys, sleep/wake, reboot and phone Cast on
+  a connected TV. For layout changes, check navigation and screenshots. For performance claims, use
+  the [performance workflow](../../docs/workflows/perf-ab.md) and report measured results.
+  If no TV is available, state which hardware checks remain unverified.
+
 ## Verification
 
 The JVM tests cover catalog validation, FHD static default selection, shared-preview cache reuse,
