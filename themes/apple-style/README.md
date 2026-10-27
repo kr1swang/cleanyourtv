@@ -107,29 +107,6 @@ Unlike upstream's short-press redirect, holding Home is also consumed by this he
 At boot, upstream probes once during the first three minutes and redirects only when a stock Home
 window is observed, leaving another app or an HDMI input alone. No launcher or Cast package is disabled.
 
-## Manual or offline deployment
-
-```bash
-python3 tools/fetch-wallpapers.py --profile fhd-static
-python3 tools/fetch-wallpapers.py --profile 4k-static
-python3 tools/fetch-wallpapers.py --profile fhd-30
-python3 tools/fetch-wallpapers.py --profile fhd-60
-python3 tools/fetch-wallpapers.py --profile 4k-30
-python3 tools/fetch-wallpapers.py --profile 4k-60
-```
-
-The tool reads the same catalog as Android, verifies existing files and downloads only missing or
-invalid assets. Each profile fetches its matching preview. Downloaded media is ignored by Git.
-
-Copy the chosen image to `/sdcard/Android/data/<package>/files/wallpaper.png` and, for video, copy the
-movie alongside it. Merge only `video_wallpaper` in the existing external JSON: `[]` for static or a
-one-element filename list for a fixed video profile. Keep unknown keys. Select Follow theme to leave
-a downloaded on-TV selection; this resets other on-TV overrides too, so preserve them first.
-Do not invoke `tools/theme.sh` just to switch a profile: it replaces the theme and resets choices.
-For automatic resolution selection, list one FHD and one 4K movie using their release filenames
-(`_FHD_30fps.mov`, `_FHD_60fps.mov`, `_4K_30fps.mov` or `_4K_60fps.mov`). The output mode selects
-the resolution; it does not choose a frame rate. Bare `_FHD.mov` and `_4K.mov` names also work.
-
 ## Maintenance
 
 - Prefer upstream implementations when they cover the same behavior. Remove the superseded custom
@@ -155,6 +132,6 @@ the resolution; it does not choose a frame rate. Bare `_FHD.mov` and `_4K.mov` n
 
 The JVM tests cover catalog validation, FHD static default selection, shared-preview cache reuse,
 offline cache reads, cancellation, truncated/oversized responses, checksum failures and partial cleanup.
-The Python tests check the shared six-profile catalog and command-line downloader. Hardware validation
+The JVM catalog tests read the shipped six-profile catalog. Hardware validation
 of decoder performance, color transitions, remote navigation and Cast is still required before
 claiming those results. The settings UI can be built without a connected TV.

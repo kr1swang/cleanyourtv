@@ -209,7 +209,7 @@ Launcher
   wallpaper unless I have requested video; for video, follow the deployment rules below.
 
 Custom deployment profiles
-- The preferred route is Up from a Dock app → Control center → Background settings. Offer six profiles:
+- Choose backgrounds on the TV: Up from a Dock app → Control center → Background settings. Offer six profiles:
   FHD Static, FHD 30fps, FHD 60fps, 4K Static, 4K 30fps and 4K 60fps. Reuse a supplied preference.
   Detect the physical output resolution when suggesting a profile; do not silently lower resolution or FPS.
 - This fork has INTERNET permission solely for background assets. Its APK bundles config.json and the
@@ -226,12 +226,6 @@ Custom deployment profiles
 - Preserve Cast, voice search, update packages, the Home/app-key service and existing device settings.
   A background selection must not replace external config or alter unrelated keys.
   Applying a profile replaces only the background layer, retaining the grid and control-center focus.
-- For offline/manual deployment, use tools/fetch-wallpapers.py --profile fhd-static, 4k-static,
-  fhd-30, fhd-60, 4k-30 or 4k-60. It downloads the corresponding preview plus video, if any.
-  Push the chosen image as wallpaper.png; merge only video_wallpaper into the device's config.
-  Use an empty list for static, or the one selected movie's filename for a fixed video profile.
-  An existing downloaded on-TV choice overrides the theme: choose Follow theme when intentionally
-  returning to a manual deployment. Back up all other on-TV choices before resetting them.
 - Verify file checksums, available storage, Home launch, the selected decoder dimensions/FPS, returning
   from apps, repeated Home, and phone Cast when a physical device is available. Without hardware, report
   build and automated test results separately; do not claim actual FPS, memory savings or Cast compatibility.
