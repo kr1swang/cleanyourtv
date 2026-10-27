@@ -67,7 +67,7 @@ plain background and retries on a later foreground visit, at most once every two
 local image, None, or a supplied external wallpaper takes priority. No periodic update checker runs.
 
 The selected profile uses the upstream wallpaper preference; external config, Dock order and other
-preferences remain intact. A static profile disables legacy external video. A video profile plays its
+preferences remain intact. A static profile creates no video player. A video profile plays its
 fixed resolution/FPS; it never silently switches to another rendition. It starts from the beginning,
 releases the decoder when Home stops, and keeps the verified preview as a fallback. The Home/YouTube/
 Netflix service and Google Cast packages are not changed by this feature.

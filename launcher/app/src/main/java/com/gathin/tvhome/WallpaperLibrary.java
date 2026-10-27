@@ -122,7 +122,7 @@ final class WallpaperLibrary {
 
     private static Set<String> activeFiles(Context ctx) throws IOException {
         WallpaperCatalog.Variant v = selected(ctx);
-        // The default poster may still be used with legacy external video files.
+        // Keep the first-use static background until an explicit choice replaces it.
         if (v == null && choice(ctx) == null) v = defaultVariant(ctx);
         Set<String> keep = new HashSet<>();
         if (v != null)

@@ -1,27 +1,18 @@
 package com.gathin.tvhome;
 
 import android.content.Context;
-import android.hardware.display.DisplayManager;
 import android.media.MediaPlayer;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
-import android.view.Display;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.FrameLayout;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
-/** Optional, silent theme video. A SurfaceView lets the decoder compose behind the launcher UI. */
-final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback, DisplayManager.DisplayListener {
+/** Silent video selected in the background picker. A SurfaceView lets the decoder compose behind the launcher UI. */
+final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback {
     private static final String TAG = "VideoWallpaper";
-    private final VideoWallpaperSources sources;
-    private File playingFile;
+    private final File file;
     private final View poster;
     private final boolean animateTransition;
     private MediaPlayer player;
@@ -29,46 +20,16 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
     private boolean failed;
 
     static VideoWallpaper attach(Context context, FrameLayout root, View poster, boolean animateTransition) {
-        File dir = Config.dir(context);
-        try {
-            File downloaded = WallpaperLibrary.video(context);
-            if (WallpaperLibrary.isSelected(context)) {
-                if (downloaded == null) return null; // A static choice disables legacy theme video.
-                VideoWallpaperSources selected = new VideoWallpaperSources(downloaded.getParentFile(),
-                        java.util.Collections.singletonList(downloaded.getName()));
-                VideoWallpaper view = new VideoWallpaper(context, selected, poster, animateTransition);
-                root.addView(view, 0, new FrameLayout.LayoutParams(-1, -1));
-                return view;
-            }
-            if (dir == null) return null;
-            JSONObject json = Config.readTheme(context);
-            if (json == null) return null;
-            Object configured = json.opt("video_wallpaper");
-            List<String> names = new ArrayList<>();
-            if (configured instanceof String) {
-                names.add((String) configured);
-            } else if (configured instanceof JSONArray) {
-                JSONArray array = (JSONArray) configured;
-                for (int i = 0; i < array.length(); i++) {
-                    Object name = array.opt(i);
-                    if (name instanceof String) names.add((String) name);
-                }
-            }
-            VideoWallpaperSources sources = new VideoWallpaperSources(dir, names);
-            if (sources.select(0, 0) == null) return null;
-            VideoWallpaper view = new VideoWallpaper(context, sources, poster, animateTransition);
-            root.addView(view, 0, new FrameLayout.LayoutParams(
-                    FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            return view;
-        } catch (Exception e) {
-            Log.w(TAG, "Cannot read theme video; keeping the static background", e);
-            return null;
-        }
+        File file = WallpaperLibrary.video(context);
+        if (file == null) return null;
+        VideoWallpaper view = new VideoWallpaper(context, file, poster, animateTransition);
+        root.addView(view, 0, new FrameLayout.LayoutParams(-1, -1));
+        return view;
     }
 
-    private VideoWallpaper(Context context, VideoWallpaperSources sources, View poster, boolean animateTransition) {
+    private VideoWallpaper(Context context, File file, View poster, boolean animateTransition) {
         super(context);
-        this.sources = sources;
+        this.file = file;
         this.poster = poster;
         this.animateTransition = animateTransition;
         setFocusable(false);
@@ -91,11 +52,9 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
     private void startIfReady() {
         if (!resumed || failed || player != null || getWindowVisibility() != VISIBLE
                 || !getHolder().getSurface().isValid()) return;
-        File file = selectedFile();
-        if (file == null) return;
+        if (!file.isFile() || file.length() == 0) return;
         MediaPlayer next = new MediaPlayer();
         player = next;
-        playingFile = file;
         try {
             next.setDataSource(file.getPath());
             next.setDisplay(getHolder());
@@ -151,7 +110,6 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
         }
         MediaPlayer previous = player;
         player = null;
-        playingFile = null;
         if (previous == null) return;
         previous.setOnPreparedListener(null);
         previous.setOnInfoListener(null);
@@ -167,40 +125,12 @@ final class VideoWallpaper extends SurfaceView implements SurfaceHolder.Callback
     @Override protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
         // SurfaceView's constructor can call this before our fields have been initialized.
-        if (sources == null) return;
+        if (file == null) return;
         if (visibility == VISIBLE) startIfReady();
         else releasePlayer();
     }
 
-    private File selectedFile() {
-        Display display = getDisplay();
-        Display.Mode mode = display == null ? null : display.getMode();
-        return sources.select(mode == null ? 0 : mode.getPhysicalWidth(),
-                mode == null ? 0 : mode.getPhysicalHeight());
-    }
-
-    @Override public void onDisplayChanged(int displayId) {
-        Display display = getDisplay();
-        if (!resumed || display == null || display.getDisplayId() != displayId) return;
-        File selected = selectedFile();
-        if (selected == null ? playingFile == null : selected.equals(playingFile)) return;
-        releasePlayer();
-        failed = false;
-        startIfReady();
-    }
-
-    @Override public void onDisplayAdded(int displayId) { }
-    @Override public void onDisplayRemoved(int displayId) { }
-
-    @Override protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        DisplayManager manager = getContext().getSystemService(DisplayManager.class);
-        if (manager != null) manager.registerDisplayListener(this, new Handler(Looper.getMainLooper()));
-    }
-
     @Override protected void onDetachedFromWindow() {
-        DisplayManager manager = getContext().getSystemService(DisplayManager.class);
-        if (manager != null) manager.unregisterDisplayListener(this);
         pausePlayback();
         super.onDetachedFromWindow();
     }
