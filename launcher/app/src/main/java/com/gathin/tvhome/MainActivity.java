@@ -1327,7 +1327,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int position = focusedTilePosition();
             if (position >= 0 && position < adapter.appCount()
                     && !getPackageName().equals(adapter.packageAt(position))) {
-                if (event.getAction() == KeyEvent.ACTION_UP && !event.isCanceled()) {
+                if (RemoteKeys.menuReleased(event.getAction(), event.getFlags())) {
                     onTileLongPress(position, getCurrentFocus());
                 }
                 return true;
@@ -3117,6 +3117,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         boolean connectedOnly = inputsConnectedOnly;
         List<View> folded = new ArrayList<>();
         boolean sawNonHdmi = false;
+        // An explicit root URI asks the Live TV app to leave any HDMI source selected by its own UI.
+        boolean rootChannel = TvContract.Channels.CONTENT_URI.toString().equals(liveTvInputId);
         String tunerId = null;
         boolean tunerIsHw = false;
         boolean tunerIsAnalog = false;
@@ -3156,7 +3158,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             for (TvInputInfo info : inputs) {
                 if (info.getType() == TvInputInfo.TYPE_TUNER
                         && (info.getServiceInfo().applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0
-                        && (liveTvInputId.isEmpty() || liveTvInputId.equals(info.getId()))) {
+                        && (liveTvInputId.isEmpty() || rootChannel || liveTvInputId.equals(info.getId()))) {
                     // Prefer a hardware tuner: the framework names those ".../HW<n>". System apps such as
                     // AirPlay also register software inputs of type TUNER and may sort first (seen on TCL G05).
                     // Among tuners of the same kind, skip an analog input when another is present.
@@ -3266,13 +3268,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // An explicit tuner uses its channel collection (e.g. DVB-S rather than DVB-T/C).
             // Keep the legacy passthrough route for automatic selection: some OEM players need it.
             // If the configured input is absent, tunerId stays null and the app opens normally.
-            boolean configured = !liveTvInputId.isEmpty();
+            boolean configured = !liveTvInputId.isEmpty() && !rootChannel;
             Intent tuned = new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(configured ? TvContract.buildChannelsUriForInput(tunerId)
                                     : TvContract.buildChannelUriForPassthroughInput(tunerId),
                             configured ? TvContract.Channels.CONTENT_TYPE : TvContract.Channels.CONTENT_ITEM_TYPE)
                     .setPackage(liveTvPkg);
-            if (tuned.resolveActivity(getPackageManager()) != null) liveTv = tuned;
+            ComponentName handler = tuned.resolveActivity(getPackageManager());
+            if (handler != null) {
+                // On some MediaTek sets the tuner passthrough URI leaves the app's HDMI source selected.
+                // The stock launcher addresses the same activity with the root channel URI instead (#1941).
+                liveTv = rootChannel
+                        ? new Intent(Intent.ACTION_VIEW).setData(TvContract.Channels.CONTENT_URI).setComponent(handler)
+                        : tuned;
+            }
         }
         if (liveTv != null) {
             if (rows.getChildCount() > 0) addSeparator(rows);

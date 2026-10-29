@@ -89,9 +89,13 @@
             android:clearTaskOnLaunch="true"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
             android:screenOrientation="landscape">
+            <!-- CVTE firmware (ro.CVT_EN_COMMON_HOME_INTENT=1) sends the Home key and boot as MAIN + HOME +
+                 COMMON_HOME, which only matches a filter that lists both (#1201). In this one filter, not a second
+                 one: a plain HOME intent still matches it, and a second filter could list this activity twice. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.COMMON_HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <!-- Listed in the TV's own app list, so it can be opened from the stock home screen too. -->
