@@ -1,7 +1,7 @@
 # Hisense SmartTV 4K FFM (device songshan, product songshan_emH_FFM, board m7632, MediaTek),
 # Android 11 / SDK 30, firmware RTT2.220118.001 / 01.00.05.04. The Android model string is
 # "SmartTV 4K FFM".
-# Also sold as the Hisense 50A6H4 (US), Android model string "SmartTV 4K": the third unit below.
+# Also sold as the Hisense 50A6H4 (US) and Hisense 65U6G: the third and fourth units below.
 #
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/hisense-smarttv-4k-ffm-android11/debloat.txt
 # Undo:    TV_HOST=<tv ip> tools/restore.sh examples/hisense-smarttv-4k-ffm-android11/debloat.txt com.google.android.apps.tv.launcherx
@@ -66,6 +66,14 @@
 #   (README, "Are there switches in the TV's own Settings worth flipping too?"); not checked on this set. Set it before
 #   this list disables setupwraith.
 # - Private DNS (dns.adguard-dns.com) works; YouTube and the streaming apps still play.
+#
+# Fourth unit: the Hisense 65U6G (retail model; same device songshan and build RTT2.220118.001,
+# Android model string "SmartTV 4K FFM", Android 11 / SDK 30). One session on 2026-10-27 with reboots:
+# - setupwraith passed the Wi-Fi guard without FORCE_SETUPWRAITH (active network owned by com.android.tv.settings).
+# - Applied debloat (setupwraith, mediashell, YouTube Music, Google TV Movies) and clean launcher swap.
+# - Remote keycodes match the SmartRC layout: YouTube 293, Prime Video 295, Disney+ 607 (scancode 484),
+#   Tubi 606, and gear 83.
+# - Private DNS (dns.adguard-dns.com) verified persistent across reboots; streaming apps play normally.
 
 # Retail / store demo
 com.hisense.storemode

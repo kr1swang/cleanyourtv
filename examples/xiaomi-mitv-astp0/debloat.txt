@@ -8,6 +8,8 @@
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/xiaomi-mitv-astp0/debloat.txt
 # Undo:    TV_HOST=<tv ip> tools/restore.sh examples/xiaomi-mitv-astp0/debloat.txt com.mitv.tvhome
 # Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+# Input-only config and a second unit on firmware 24.7.4.3982: see README.md in this folder.
+# That record does not revalidate this firmware's debloat list or Home setup.
 #
 # Notes from this firmware:
 # - Same family as xiaomi-mitv-astp1; this list starts from that one, minus what this build lacks

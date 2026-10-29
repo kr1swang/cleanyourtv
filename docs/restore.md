@@ -9,6 +9,16 @@ TV_HOST=192.168.1.50 tools/restore.sh examples/<your tv>/debloat.txt            
 TV_HOST=192.168.1.50 tools/restore.sh examples/<your tv>/debloat.txt com.google.android.apps.tv.launcherx  # Google TV
 ```
 
+On Windows the same undo is:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\restore.ps1 -TvHost 192.168.1.50 examples\<your tv>\debloat.txt
+```
+
+and on Google TV the call takes the stock launcher as well, `-Stock
+com.google.android.apps.tv.launcherx`, after the list. `TV_HOST=... tools/restore.sh` does not run in
+PowerShell: it sets a variable and then calls a program Windows does not have.
+
 ## What the record holds
 
 Before `tools/disable.sh` changes anything it writes down what the TV looked like:

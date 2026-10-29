@@ -45,6 +45,7 @@ NAMES = {
     "da": "Danish",
     "de": "German",
     "es": "Spanish",
+    "es-419": "Latin American Spanish",
     "fi": "Finnish",
     "fr": "French",
     "in": "Indonesian",

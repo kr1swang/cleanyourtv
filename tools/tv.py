@@ -55,7 +55,6 @@ except ImportError as e:
         _args = [_venv, "-I", os.path.abspath(__file__), *sys.argv[1:]]
         if os.name == "nt":
             # No exec on Windows: os.execv starts a second process, and the shell takes its prompt back.
-            import subprocess
             sys.exit(subprocess.call(_args))
         os.execv(_venv, _args)
     _make = (r"python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt"

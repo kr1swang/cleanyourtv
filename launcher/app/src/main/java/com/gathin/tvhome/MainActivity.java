@@ -249,6 +249,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnVpn;
     /** The VpnBadge pill state btnVpn shows, so a refresh that changes nothing does not restyle it. */
     private int vpnPillState = VpnBadge.PILL_HIDDEN;
+    /** icon_only_vpn: the VPN pill is a round lock button; off, it keeps the plain glass look saved here. */
+    private boolean iconOnlyVpn;
+    private Drawable.ConstantState vpnPlainBackground;
+    private ColorStateList vpnPlainInk;
     private final Rect tileRect = new Rect();
     private final Rect revealRect = new Rect();
     // Static so they survive the activity being destroyed while another app is open (low-memory TVs,
@@ -284,17 +288,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean openOnStartChoice;
     /** open_on_start_network_wait, in ms; the boot's app while it waits for the network, and until when. */
     private long openOnStartWaitMs;
-    private Intent startPending;
+    private volatile Intent startPending;
     private long startDeadline;
+    /** Opens the boot's app once the network is validated (networkCallback posts this) or the wait is over. */
     private final Runnable openWhenOnline = new Runnable() {
         @Override
         public void run() {
             if (startPending == null) return;
             if (!OpenOnStart.opensNow(OpenOnStart.online(MainActivity.this), SystemClock.elapsedRealtime(),
-                    startDeadline)) {
-                handler.postDelayed(this, 500);
-                return;
-            }
+                    startDeadline)) return;
+            handler.removeCallbacks(this);   // the deadline's run, when the network came first
             Intent i = startPending;
             startPending = null;
             open(i);
@@ -375,6 +378,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities caps) {
             boolean validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+            // open_on_start_network_wait: the boot's app opens on the first validated network.
+            if (validated && startPending != null) handler.post(openWhenOnline);
             if (validated == lastValidated) return;
             lastValidated = validated;
             if (wifiNoInternetTint != null) handler.post(MainActivity.this::updateWifiLabel);
@@ -791,6 +796,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             makeIconOnly((TextView) btnSettings);
         }
         if (cfg.iconOnlyInputs) makeIconOnly((TextView) btnInputs);
+        iconOnlyVpn = vpnPill && cfg.iconOnlyVpn;
+        if (iconOnlyVpn) {
+            vpnPlainBackground = btnVpn.getBackground().getConstantState();
+            vpnPlainInk = btnVpn.getCompoundDrawableTintList();
+            makeIconOnly(btnVpn);
+        }
         btnSettings.setOnLongClickListener(v -> {
             showSettingsMenu();
             return true;
@@ -847,8 +858,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (topButtonsVisible && tim != null) tim.registerCallback(inputCallback, handler);
-        if (topButtonsVisible && cm != null) {
+        if (cm != null && (topButtonsVisible || openOnStartWaitMs > 0)) {
             cm.registerDefaultNetworkCallback(networkCallback);
+        }
+        if (topButtonsVisible && cm != null) {
             cm.registerNetworkCallback(new NetworkRequest.Builder()
                     .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
@@ -1269,8 +1282,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (topButtonsVisible && tim != null) tim.unregisterCallback(inputCallback);
-        if (topButtonsVisible && cm != null) {
+        if (cm != null && (topButtonsVisible || openOnStartWaitMs > 0)) {
             cm.unregisterNetworkCallback(networkCallback);
+        }
+        if (topButtonsVisible && cm != null) {
             cm.unregisterNetworkCallback(vpnCallback);
         }
     }
@@ -2893,6 +2908,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             ColorStateList ink = new ColorStateList(
                     new int[][]{new int[]{android.R.attr.state_focused}, new int[0]},
                     new int[]{VpnBadge.pillInkColor(up, true), VpnBadge.pillInkColor(up, false)});
+            if (iconOnlyVpn) {
+                // An open lock on the plain glass button, or the closed lock outlined in green like the pill (solid
+                // while focused); the words go to talkback.
+                btnVpn.setContentDescription(getString(up ? R.string.vpn : R.string.vpn_off));
+                btnVpn.setBackground(up ? VpnBadge.pillBackground(true, density) : vpnPlainBackground.newDrawable());
+                btnVpn.setCompoundDrawablesRelativeWithIntrinsicBounds(VpnBadge.iconOnlyLock(up), 0, 0, 0);
+                btnVpn.setCompoundDrawableTintList(up ? ink : vpnPlainInk);
+                btnVpn.setVisibility(View.VISIBLE);
+                return;
+            }
             btnVpn.setText(up ? R.string.vpn : R.string.vpn_off);
             btnVpn.setTextColor(ink);
             btnVpn.setBackground(VpnBadge.pillBackground(up, density));
@@ -2933,7 +2958,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (openOnStartWaitMs > 0 && !OpenOnStart.online(this)) {
             startPending = i;
             startDeadline = SystemClock.elapsedRealtime() + openOnStartWaitMs;
-            handler.postDelayed(openWhenOnline, 500);
+            handler.postDelayed(openWhenOnline, openOnStartWaitMs);
+            // Validated between the check above and startPending: networkCallback may have skipped it.
+            if (OpenOnStart.online(this)) handler.post(openWhenOnline);
             return false;
         }
         open(i);

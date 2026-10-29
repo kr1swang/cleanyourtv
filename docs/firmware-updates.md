@@ -38,8 +38,9 @@ well, and a weekly job on a home server or a Pi is enough to hear about it:
 ```
 
 `TV_HOST` is read before any of that: a run that leaves it unset stops in `tools/tv.py` with its own
-message and also exits 1, so set it in the job line, as above, where cron does not inherit it from
-your shell.
+message and exits 2, the code for a check that never ran, so set it in the job line, as above, where
+cron does not inherit it from your shell. A job on a computer where the tools' venv is gone answers 2
+the same way, naming the line that builds it.
 
 The job only gets an answer from a TV that keeps network ADB listening between runs and has
 accepted "Allow USB debugging?" for the computer that runs it with "Always allow from this computer"

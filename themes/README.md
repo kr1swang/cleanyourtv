@@ -22,6 +22,7 @@ refused (copy a theme first), and a `config.json` it cannot read is named before
 | `apple-style/` | This fork's bundled six-column Dock and wallpaper defaults; requires the custom build for its clock, layout and video support. Chromecast capture with the Golden Gate static wallpaper. | <img src="apple-style/screenshot.jpg" width="320" alt="apple-style theme on Chromecast with Golden Gate wallpaper"> |
 | `default/` | The built-in look written out as JSON, as a starting point for your own | <img src="default/screenshot.jpg" width="320" alt="default theme"> |
 | `aurora/` | A dark aurora wallpaper (teal and violet on navy, darker at the bottom) with a matching background colour | <img src="aurora/screenshot.jpg" width="320" alt="aurora theme"> |
+| `cinematic/` | OLED and cinema look: true-colour wallpaper, a 6-column frosted-glass dock, no ambient glow and the idle clock after two minutes | <img src="cinematic/screenshot.jpg" width="320" alt="cinematic theme"> |
 | `dussehra/` | Festive skin for Dussehra (ends 21 Oct 2026): a marigold toran, a faint gold rangoli, a diya for Wi-Fi, a bell for Inputs, a marigold for Settings and a petal shower | <img src="dussehra/screenshot.jpg" width="320" alt="dussehra theme"> |
 | `glass/` | Dark navy wallpaper with soft teal and violet light, the cinematic top shelf, a frosted-glass dock, icon-only buttons and the focus glow in the app's colour, gliding without overshoot | <img src="glass/screenshot.jpg" width="320" alt="glass theme"> |
 | `nature-calm/` | Twelve calm nature photos from Wikimedia Commons (misty karst and forest, autumn lakes, spring bluebells, winter frost, mossy woods, a rainforest lake, waterfalls), a new one every five minutes in random order with its place and photographer under the buttons; six small tiles in a frosted-glass dock, round icon-only buttons, no hero name. The photos are CC BY / CC BY-SA, not MIT: see `nature-calm/CREDITS.md` | <img src="nature-calm/screenshot.jpg" width="320" alt="nature-calm theme"> |
@@ -66,7 +67,7 @@ A new key needs one there in the same pull request.
 | `show_network_pill` | bool | The Wi-Fi/Ethernet pill in the top bar (`true` by default); `false` hides it |
 | `top_bar_apps` | list of package names | Apps shown as round buttons with their own logo in the top bar, left of the network pill; they leave the grid |
 | `show_inputs_pill` | bool | The Inputs pill in the top bar, shown when the TV has inputs (`true` by default); `false` hides it, and with `top_menu` it also leaves Inputs out of the gear's menu (streamers with no HDMI input, such as the Chromecast with Google TV); what the remote's Input button does is unchanged |
-| `icon_only_buttons` | bool | Wi-Fi and Settings as round icon buttons; Inputs keeps its label (`false` by default) |
+| `icon_only_buttons` | bool | Wi-Fi and Settings as round icon buttons; Inputs keeps its label. The VPN badge is drawn in the Wi-Fi pill's label, so with `wifi_label_width` at 0 it goes with the label: add `vpn_pill` to keep the VPN state on screen (`false` by default) |
 | `icon_only_inputs` | bool | The Inputs pill as a round icon button too, its label kept as the TalkBack description (`false` by default). Works with or without `icon_only_buttons` |
 | `top_menu` | bool | Inputs, Wi-Fi and Settings folded into one round gear, centred on the header: OK drops a menu with the three plus Reorder apps, hold OK keeps the launcher menu (`false` by default) |
 | `launcher_settings_button` | bool | Make the header Settings action open Launcher settings directly with a matching 22dp home icon; also changes the Settings row when `top_menu` is on. Hold OK keeps module-card and ordering tools. The settings page includes Reorder apps and TV settings (`false` by default) |
@@ -100,6 +101,7 @@ A new key needs one there in the same pull request.
 | `focus_overshoot` | bool | The highlight and the focused tile swing past their target before settling (`true` by default); `false` glides straight there with smooth scrolling |
 | `vpn_app` | string | App the network pill opens when a VPN is configured; also shows a red "VPN off" badge while no VPN is up |
 | `vpn_pill` | bool | The VPN as its own pill after the network pill instead of a badge inside it: solid green while a VPN is up, solid red "VPN off" while none is and `vpn_app` is installed, hidden otherwise. Pressing it opens `vpn_app` (without it, the App library, or VPN settings with `app_library` off); it keeps its label with `icon_only_buttons`; the network pill then opens Wi-Fi settings. Ignored with `top_menu`. A VPN app's kill switch holds a VPN up while the app says disconnected, so the pill stays green then (`false` by default) |
+| `icon_only_vpn` | bool | With `vpn_pill`, the VPN pill as a round icon button too, matching `icon_only_buttons`: an open lock on the plain glass button while no VPN is up, the closed lock in a green outline while one is, solid green only while focused, like the pill; "VPN" / "VPN off" become its TalkBack description (`false` by default) |
 | `animations` | bool | Basic focus, glass, title and tile entrance motion; true by default |
 | `advanced_effects` | bool | Optional lifted tile, icon zoom, smooth ambient colour and app opening effects; false by default |
 | `show_home_settings_shortcut` | bool | Keep the optional Default-home tile visible when the TV has a home picker; false by default |
@@ -238,6 +240,8 @@ Open a PR with a new folder here containing:
   the dock so the glow and the hero name show. A PR without it fails CI (`tests/test_themes.py`).
 - `wallpaper.jpg` or `wallpapers/` if the theme uses them.
 
-Then add a row to the table above with the screenshot, the same way as the others. Keep the dock list
-generic (the big streaming apps) unless the theme is for a specific TV, and say which TV you tried it on
-in the PR description.
+Then add a row to the table above with the screenshot, the same way as the others, and bump the count in
+the repository's `README.md`, in its Themes feature row (the `N ship in themes/` sentence):
+`tests/test_readme_theme_count.py` counts the folders here that carry a `config.json` and fails until the
+two agree. Keep the dock list generic (the big streaming apps) unless the theme is for a specific TV,
+and say which TV you tried it on in the PR description.
