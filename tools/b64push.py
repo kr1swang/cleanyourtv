@@ -94,7 +94,8 @@ def main():
     b64 = remote + ".b64.part"
     part = remote + ".part"
     try:
-        chunk = min(CHUNK, dev.max_chunk_size * 3 // 4 - 64)   # base64 of the chunk plus the echo must fit one payload
+        # base64 of the chunk plus the echo (which names the staging file) must fit one payload
+        chunk = min(CHUNK, (dev.max_chunk_size - 85 - len(b64)) * 3 // 4)
         chunk -= chunk % 3   # a multiple of 3, or each chunk ends in '=' padding mid-stream and base64 -d corrupts it
         # Only our own temporary names are cleared; the target stays until the copy is verified.
         # `: >` creates the base64 file even for an empty upload, so `base64 -d` has an input.

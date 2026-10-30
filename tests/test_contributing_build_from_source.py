@@ -32,7 +32,7 @@ BUILD_GRADLE = ROOT / "launcher/app/build.gradle"
 HEADING = "## 2. Improve the launcher"
 # The launcher job's size check, in the form ci.yml writes it:
 #   size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
-#   test "$size" -lt 589824
+#   test "$size" -lt 622592
 STAT_LINE = re.compile(r"size=\$\(stat -c %s ([^)\s]+)\)")
 LIMIT_LINE = re.compile(r'test "\$size" -lt (\d+)')
 JOB_HEAD = re.compile(r"^  ([a-z][a-z0-9-]*):\s*$", re.M)

@@ -9,7 +9,19 @@ by test_gen_tables.py, the Dutch one by nothing.
 
 TRANSLATIONS is now {page: the three words that page states its counts in}, so a translated README gets
 its own numbers moved with its grid, and this file reads the mapping: each page it names must state those
-three words in its card's alt text, one triple, and must be what render() gives back for it.
+three words in its card's alt text, one triple.
+
+This file judges that mapping on stand-in checkouts, and the words on this one. Whether the numbers on
+disk match examples/*/tv.json is tools/gen_tables.py --check's, run by CI's "README tables" job on main
+only - the rule test_examples.py states for the TV tables, for the same reason: a list PR adds its folder
+and its tv.json and changes nothing outside it (docs/workflows/tv-list.md, step 5), so the counts lag on
+purpose until a maintainer runs the script on main. Holding the page on disk to the checkout's numbers
+here turned that lag red on every list PR: one folder added the way the recipe says - debloat.txt and a
+tv.json with a new brand - failed test_the_translated_card_and_row_carry_the_numbers_the_examples_give
+("'356 tv-modellen · 98 merken · 29 talen · ' != '355 tv-modellen · 97 merken · 29 talen · '") and
+test_the_page_on_disk_is_what_the_script_writes, two failures a contributor is told not to fix. The check
+itself is not lost: test_a_stale_translated_page_is_what_the_check_reports runs --check against a page
+whose numbers did not move, so a translated page that lags is still caught, where it is actionable.
 
 The mapping is also the whole list of pages the script writes, so a translation cannot copy the brand block
 by hand and be left out of it: README.de.md did exactly that when the German page landed, and its grid said
@@ -19,10 +31,12 @@ every page that carries them to being written.
 
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
+import io
 import re
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -221,7 +235,7 @@ class TranslatedCountsTest(unittest.TestCase):
 
 
 class ThisRepositoryTest(unittest.TestCase):
-    """README.nl.md on this checkout: the mapping names its words, and the page is what render() gives."""
+    """README.nl.md on this checkout: the mapping names its words, and a lagging page is what --check reports."""
 
     def test_every_translated_page_the_generator_writes_names_its_three_words(self):
         self.assertTrue(gen_tables.TRANSLATIONS, "no translated page is written at all")
@@ -235,22 +249,26 @@ class ThisRepositoryTest(unittest.TestCase):
                                      f"{page}'s card alt text does not state {words[0]} · {words[1]} · "
                                      f"{words[2]} in the words TRANSLATIONS gives")
 
-    def test_the_translated_card_and_row_carry_the_numbers_the_examples_give(self):
-        entries = gen_tables.load(ROOT)
-        counts = (len(entries), len(gen_tables.brands(entries)), gen_tables.languages(ROOT))
-        for page, words in gen_tables.TRANSLATIONS.items():
-            with self.subTest(page=page):
-                text = (ROOT / page).read_text(encoding="utf-8")
-                self.assertEqual(f"{counts[0]} {words[0]} · {counts[1]} {words[1]} · "
-                                 f"{counts[2]} {words[2]} · ", alt_triple(text, words))
-                self.assertIn(f"| **{counts[2]} {words[2]}** |", text)
+    def test_a_stale_translated_page_is_what_the_check_reports(self):
+        """A translated page whose numbers did not move is --check's to report, on a checkout of its own.
 
-    def test_the_page_on_disk_is_what_the_script_writes(self):
-        # What --check reads: if the counts moved without the page, this is the failure a maintainer sees.
-        rendered = gen_tables.render(ROOT)
-        for page in gen_tables.TRANSLATIONS:
-            with self.subTest(page=page):
-                self.assertEqual((ROOT / page).read_text(encoding="utf-8"), rendered[page])
+        Not this one: the counts over a generated grid lag on purpose between a list PR and the
+        maintainer's run of the script on main (see test_examples.py's docstring), so reading them here
+        turned every list PR red over a file the contributor was told to leave alone.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = checkout(tmp)
+            self.assertIn("README.nl.md", gen_tables.stale(root))
+            out = io.StringIO()
+            with redirect_stdout(out):
+                status = gen_tables.main(["--check", "--root", str(root)])
+            self.assertEqual(1, status, "a lagging translated page is not an error for --check")
+            self.assertIn("README.nl.md", out.getvalue(), "the report does not name the translated page")
+            for path, text in gen_tables.render(root).items():
+                (root / path).write_text(text, encoding="utf-8")
+            self.assertNotIn("README.nl.md", gen_tables.stale(root))
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(0, gen_tables.main(["--check", "--root", str(root)]))
 
     def test_every_page_that_carries_the_brand_block_is_written(self):
         # The block's header says it is generated, so a page that carries it has to be in the list this

@@ -314,6 +314,11 @@ ARITY = {"--probe": 1, "--push": 3, "--pull": 3, "--batch": 1, "--reboot": 1}
 # PNG on some MediaTek sets (docs/TROUBLESHOOTING.md). /data/local/tmp is writable from shell.
 SHOT_REMOTE = "/data/local/tmp/cleanyourtv-shot.png"
 PNG = b"\x89PNG\r\n\x1a\n"
+# The last 8 bytes of every PNG: the IEND chunk's type and CRC. `screencap -p` writes one, so a file
+# that starts with the signature and does not end with this is a picture the pull stopped in the middle
+# of - not a screen. The signature alone let that through: the file was announced with its size and
+# exit 0, and the reader got half a screenshot that GitHub draws as a picture cut off at the bottom.
+PNG_END = b"IEND\xaeB`\x82"
 # Key names go into a shell command on the TV, so only plain key names and numeric keycodes get through.
 KEY_NAME = re.compile(r"^[A-Z0-9_]+$")
 KEY_GAP_S = 0.6   # between two keys, so the UI has finished reacting to the first
@@ -526,6 +531,16 @@ def screenshot(dev, local, keys=(), wait=0.0):
     with open(local, "rb") as f:
         if f.read(len(PNG)) != PNG:
             print(f"{local} is not a PNG: the pull from the TV came back damaged; try again", file=sys.stderr)
+            return 1
+        # A PNG that stops before its IEND chunk kept the signature and went through the check above:
+        # the run printed "screenshot <file> (N bytes)", returned 0 and left the reader a picture that
+        # ends in the middle - a pull that ran out (a transport that dropped, a fill that stopped on
+        # the TV) reads as a plain short screenshot, and the docs ask for those to go in a PR
+        # description. The end marker is what tells the two apart.
+        f.seek(max(0, size - len(PNG_END)))
+        if f.read() != PNG_END:
+            print(f"{local} is {size} bytes of a PNG that stops before its IEND chunk: the pull from the "
+                  "TV ended before the picture did; try again", file=sys.stderr)
             return 1
     print(f"screenshot {local} ({size} bytes)")
     return 0

@@ -1,4 +1,4 @@
-# Sony BRAVIA 4K VH21 (KD-65X85K, 2022, device BRAVIA_VH21, MediaTek MT5895), Australia & India
+# Sony BRAVIA 4K VH21 (KD-65X85K, 2022, device BRAVIA_VH21, MediaTek MT5895), Australia, India & New Zealand
 # Android 12 (Google TV, API 31), build BRAVIA_VH21_M_PA-user 12 STT2.230505.001.S136 682241, 3 GB RAM
 #
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/sony-bravia-4k-vh21/debloat.txt
@@ -39,7 +39,27 @@
 #  - screensaver: dreamx is commented out below because disabling it requires setting screensaver_components
 #    first (e.g. com.gathin.tvhome/.ClockDream or com.android.dreams.basic/.Colors).
 #
-# Applied 19-20 Oct 2026 (Unit 1) and 26 Oct 2026 (Unit 2); reboot-checked.
+# Third unit (New Zealand, Wi-Fi, redirect route):
+# Same model line and the same PA build. Applied in three batches with a screenshot between, then the
+# reference launcher via the redirect route, as the second unit: launcherx and setupwraith stay enabled
+# (setupwraith owns the saved Wi-Fi network here too), config.json's stock_home_redirect, and only
+# HomeKeyService bound. Differences from the second unit:
+#  - key_filter left on (true) and no app_keys: launcherx answers the remote's YouTube, Settings and Input
+#    buttons itself, and with the helper filtering keys a Home press opens the launcher even while Google
+#    home is already on screen. Checked on the real remote: a held Volume Up still ramps on this build.
+#  - Cold boot: 3 of 5 restarts landed on the new Home by themselves; on 2 the launcher's ProbeActivity ran
+#    but no window event for launcherx followed, and Google home stayed up until one Home press (the #1116
+#    race). A standby wake is not a cold boot, so it only shows after a restart or a firmware update.
+#  - com.qterics.da.product was back on (enabled state "default") after the first reboot; disabled again by
+#    hand it stayed off through five more restarts.
+#  - The screensaver shipped pointing at com.sony.dtv.livingfit (BRAVIA CAM Living Fit), which this list
+#    disables: screensaver_components was moved to com.gathin.tvhome/.ClockDream, then dreamx disabled.
+#  - Off by choice on this unit: Netflix, Prime Video, Spotify, HbbTV, the Sony bug report service and the
+#    customer support tile. The remote's Netflix and Prime Video buttons then open the app's Play Store
+#    page, which has an Enable button. Kept: QuickSet, Chromecast, AirPlay/HomeKit, DLNA, updates;
+#    seeds.iot was already off at the factory on this unit.
+#
+# Applied 19-20 Oct 2026 (Unit 1), 26 Oct 2026 (Unit 2) and 29 Oct 2026 (Unit 3); reboot-checked.
 
 # ACR viewing tracker
 tv.samba.ssm                      # Samba TV fingerprints what's on screen
@@ -50,6 +70,7 @@ com.sonyericsson.idd.agent        # Sony IDD usage-data agent
 com.sony.dtv.usercontext          # user context providers, boot receiver only
 com.qterics.da.product            # Qterics device agent
 com.sony.dtv.da.service           # remote-support session service
+com.sony.dtv.sonybugreportsys     # Sony bug report service (third unit)
 com.google.android.feedback
 
 # Sony ads, promos, help and recommendation rows
@@ -59,6 +80,7 @@ com.sony.dtv.sonytab              # Sony content tab / partner rows
 com.sony.dtv.smarthelp            # Sony help tile (second unit)
 com.sony.dtv.helpguidecontents    # help guide contents (second unit)
 com.sony.dtv.ecodashboard         # Eco dashboard tile (second unit)
+com.sony.dtv.customersupport      # customer support tile (third unit)
 
 # demo / shop mode
 com.sony.dtv.demosupport
@@ -70,8 +92,18 @@ com.google.android.katniss
 com.sony.dtv.voicesearch
 com.sony.dtv.assistantadapter
 
-# screensaver: set basic screensaver first, or the launcher's clock (com.gathin.tvhome/.ClockDream)
+# screensaver: set basic screensaver first, or the launcher's clock (com.gathin.tvhome/.ClockDream). The third
+# unit did that (settings put secure screensaver_components com.gathin.tvhome/.ClockDream) and then disabled it.
 # com.google.android.apps.tv.dreamx # Ambient screensaver and background sync jobs
+
+# streaming apps (off on the third unit by choice; other owners can uncomment them; the remote's Netflix and Prime Video buttons then open the
+# app's Play Store page, which has an Enable button)
+# com.netflix.ninja                 # Netflix
+# com.amazon.amazonvideo.livingroom # Prime Video
+# com.spotify.tv.android            # Spotify
+
+# features not used (off on the third unit by choice; other owners can uncomment)
+# com.sony.dtv.hbbtvplayer          # HbbTV / red button on live TV
 
 # preloaded apps (off by choice)
 au.com.ninenow.ctv                # 9Now

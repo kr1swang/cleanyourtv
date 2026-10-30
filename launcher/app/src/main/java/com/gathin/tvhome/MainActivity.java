@@ -147,6 +147,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long settingsRevision;
     /** Idle time on Home before ClockActivity; 0 is off (config.xml, home_idle_clock_minutes). */
     private long idleClockMs;
+    /** Back on Home opens ClockActivity (config.xml, back_opens_clock). */
+    private boolean backOpensClock;
     private final Runnable showIdleClock = () -> startActivity(new Intent(this, ClockActivity.class));
     private String liveTvAction;
     private String liveTvInputId;
@@ -276,7 +278,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** Festive skin from the theme (see Festival); applied while it is active today. */
     private Festival festival = Festival.NONE;
     private boolean festive;
-    private DiyaDrawable diya;
+    /** The network pill's festive light: the diya, or the jack-o'-lantern for Halloween. */
+    private FestiveLamp lamp;
     private BellDrawable bell;
     private MarigoldDrawable marigold;
     private int greetingColor;
@@ -435,7 +438,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         public void run() {
             updateGreeting();
             updatePanel();
-            // The pill follows the network callbacks and each return to Home; only the diya's flame follows the
+            // The pill follows the network callbacks and each return to Home; only the festive light follows the
             // signal level, so only it needs this minute's binder calls (about 7 ms on the UI thread).
             if (festive) updateWifiLabel();
             sky.update();
@@ -445,6 +448,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     };
 
     private java.util.Map<Integer, String> homeAppKeys = java.util.Collections.emptyMap();
+    /** clock_format, for the race panel's session times (the TextClocks take it in onCreate). */
+    private String clockFormat = "system";
+    private java.util.Map<Integer, String> homeHoldAppKeys = java.util.Collections.emptyMap();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -454,6 +460,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
         homeAppKeys = RemoteKeys.parseAppKeys(cfg.appKeys);
+        clockFormat = cfg.clockFormat;
+        ClockFormat.apply(getWindow().getDecorView(), clockFormat);
+        homeHoldAppKeys = RemoteKeys.parseHoldAppKeys(cfg.appKeys);
         appLibrarySelection = cfg.appLibrarySelection;
         libraryOkOpens = cfg.libraryOkOpens;
         // restore_key_services: after a force stop, put back the remote's accessibility helpers that Android took
@@ -473,6 +482,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         festive = festival.active(LocalDate.now());
         liveTvPkg = cfg.liveTvPackage;
         idleClockMs = cfg.homeIdleClockMinutes * MINUTE_MS;
+        backOpensClock = cfg.backOpensClock;
         bootToLiveTv = cfg.bootToLiveTv;
         openOnStartChoice = cfg.openOnStartChoice;
         openOnStartWaitMs = cfg.openOnStartNetworkWait * 1000L;
@@ -1033,8 +1043,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.update();
         if (videoWallpaper == null) wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
-        if (festive) {
-            if (diya != null) diya.start();
+        if (festive && lamp != null) {
+            lamp.start();
             LocalDate today = LocalDate.now();
             if (!reducedMotion && !today.equals(lastPetalShower)) {
                 lastPetalShower = today;
@@ -1203,6 +1213,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resumed = false;
         if (resumedHome.get() == this) resumedHome.clear();
         if (dockTransition != null) dockTransition.stop();
+        // No UP reaches a paused Home, so a vendor-key hold it saw go down would still open its app later.
+        // Only Home's own share is dropped: a key service that saw the same DOWN keeps its hold.
+        RemoteKeys.release(this);
+        cancelHoldOk();
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
@@ -1216,7 +1230,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         stopStats();
         if (gameDay != null) gameDay.stop();
         handler.removeCallbacks(turnTick);
-        if (diya != null) diya.stop();
+        if (lamp != null) lamp.stop();
         cancelPendingFocusScroll();
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
         if (cardPrompt != null) cardPrompt.dismiss();
@@ -1270,12 +1284,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             startPendingSettingsReorder();
             if (libraryFocusPending && appLibrary == null) focusLibrary();
             showCardPrompt();
+        } else {
+            cancelHoldOk();   // a dialog or another window took the remote while OK was held
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        RemoteKeys.release(this);
+        cancelHoldOk();
         if (gameDay != null) gameDay.shutdown();
         unregisterReceiver(packageReceiver);
         wallpaperPlayer.close();
@@ -1319,9 +1337,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        // Vendor keys (TCL Netflix button, 4062) never reach the key services, only the focused window.
-        if (event.getKeyCode() >= 1000 && RemoteKeys.handle(this, event, homeAppKeys.get(event.getKeyCode()), null)) return true;
+        // Vendor keys (TCL Netflix button, 4062) never reach the key services, only the focused window, so their
+        // "hold:" entries run here too or nowhere. Only while resumed: onPause releases Home's holds, and a DOWN
+        // taken after that would arm one nothing releases.
+        if (resumed && event.getKeyCode() >= 1000 && RemoteKeys.handle(this, event, homeAppKeys.get(event.getKeyCode()),
+                homeHoldAppKeys.get(event.getKeyCode()))) return true;
         if (handleSettingsKey(event)) return true;
+        if (holdOk(event)) return true;
         if (tileMenuEnabled && !reordering && openPopup == null && cardPrompt == null
                 && event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
             int position = focusedTilePosition();
@@ -1647,7 +1669,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     public void onBackPressed() {
-        // Home screen: Back goes nowhere.
+        // Home screen: Back goes nowhere, unless back_opens_clock is on.
+        if (backOpensClock) startActivity(new Intent(this, ClockActivity.class));
     }
 
     // ---- tile focus -------------------------------------------------------------------------
@@ -2678,7 +2701,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // FP1 FRI 11:00 PM   FP2 SAT 2:30 AM ...: done sessions fade, the live one is red, the next one bright.
         java.time.format.DateTimeFormatter when = java.time.format.DateTimeFormatter.ofPattern(
-                android.text.format.DateFormat.is24HourFormat(this) ? "EEE HH:mm" : "EEE h:mm a", Locale.getDefault())
+                ClockFormat.is24(this, clockFormat) ? "EEE HH:mm" : "EEE h:mm a", Locale.getDefault())
                 .withZone(java.time.ZoneId.systemDefault());
         android.text.SpannableStringBuilder row = new android.text.SpannableStringBuilder();
         for (int i = 0; i < race.sessions.size(); i++) {
@@ -2760,10 +2783,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.setContentDescription(btnWifi.getText());
             btnWifi.setText(null);
         }
-        if (festive && diya != null) {
+        if (festive && lamp != null) {
             if (online && flame == 0) flame = 3;   // online some other way (cellular, USB tethering)
-            diya.setSteady(steady);
-            diya.setFlame(flame);
+            lamp.setSteady(steady);
+            lamp.setFlame(flame);
         } else {
             if (icon != wifiIcon) {
                 wifiIcon = icon;
@@ -2813,15 +2836,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /**
      * Swaps the pill icons for the festival's: a bell for Inputs that swings when focused, a diya for the
-     * network whose flame follows the connection, and a marigold for Settings that turns when focused.
+     * network whose flame follows the connection, and a marigold for Settings that turns when focused. Halloween
+     * has its own: a bat for Inputs that flaps, a jack-o'-lantern whose face glows while online, and a ghost for
+     * Settings that floats up.
      */
     private void applyFestiveSkin(TextView inputs, TextView settings) {
+        if (festival.isHalloween()) {
+            SpookyIconDrawable bat = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.BAT);
+            SpookyIconDrawable ghost = new SpookyIconDrawable(getResources(), density, SpookyIconDrawable.GHOST);
+            JackOLanternDrawable pumpkin = new JackOLanternDrawable(getResources(), density);
+            bat.setReducedMotion(reducedMotion);
+            ghost.setReducedMotion(reducedMotion);
+            pumpkin.setReducedMotion(reducedMotion);
+            lamp = pumpkin;
+            setFestiveIcon(inputs, bat);
+            setFestiveIcon(btnWifi, pumpkin);
+            setFestiveIcon(settings, ghost);
+            addFocusAction(inputs, bat::nudge);
+            addFocusAction(settings, ghost::nudge);
+            return;
+        }
         bell = new BellDrawable(density);
         marigold = new MarigoldDrawable(density);
-        diya = new DiyaDrawable(density);
+        DiyaDrawable diya = new DiyaDrawable(density);
         bell.setReducedMotion(reducedMotion);
         marigold.setReducedMotion(reducedMotion);
         diya.setReducedMotion(reducedMotion);
+        lamp = diya;
         setFestiveIcon(inputs, bell);
         setFestiveIcon(btnWifi, diya);
         setFestiveIcon(settings, marigold);
@@ -2846,6 +2887,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void playPetalShower() {
         if (isFinishing() || isDestroyed()) return;
+        if (festival.isHalloween()) {
+            BatFlightView bats = new BatFlightView(this);
+            root.addView(bats, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            bats.play(16, 2800, () -> root.removeView(bats));
+            return;
+        }
         PetalShowerView shower = new PetalShowerView(this);
         root.addView(shower, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -3024,7 +3072,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      *  answers com.xiaomi.mitv.tvplayer.EXTSRC_PLAY and nothing else). Otherwise the standard way is
      *  ACTION_VIEW on its channel URI, which the Live TV app handles; where nothing takes that, the
      *  configured `input_action` is sent with the same URI instead (XGIMI's HDMI player only answers
-     *  com.xgimi.action.hdmiPlayer). With `input_uri_scheme` set (YaOS: live-tv) the same URI goes out
+     *  com.xgimi.action.hdmiPlayer). An `input_action` written as "package/.Activity" starts that activity
+     *  itself, ahead of the standard way, for firmware that answers the channel URI with "unsupported"
+     *  (Redmi X65, MiTV-NSOP0: com.xiaomi.mitv.tvplayer/.ExternalSourceActivity). With `input_uri_scheme` set (YaOS: live-tv) the same URI goes out
      *  with that scheme and no MIME type. A player guarded by a permission this build does not declare
      *  throws SecurityException, which used to take Home down with it (YaOS before the manifest asked
      *  for ACCESS_TV_SOURCE). */
@@ -3043,8 +3093,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Integer source = mappedSource(sourceId);
         if (source != null && source >= 0 && !inputAction.isEmpty()) {
             try {
-                startActivity(new Intent(inputAction).putExtra("input", source.intValue())
+                startActivity(inputActionIntent().putExtra("input", source.intValue())
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (ActivityNotFoundException | SecurityException e) {
+                // fall through to the standard way
+            }
+        } else if (source == null && InputSources.isComponent(inputAction)) {
+            // An activity named in input_action is the vendor's own source picker (Xiaomi: tvplayer's
+            // ExternalSourceActivity). Its firmware answers the standard channel URI with "unsupported", so the
+            // row goes straight there; the picker is the overlay the remote's Source button opens.
+            try {
+                startActivity(inputActionIntent().addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 return;
             } catch (ActivityNotFoundException | SecurityException e) {
                 // fall through to the standard way
@@ -3073,7 +3133,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 return;
             }
         }
-        open(new Intent(inputAction).setDataAndType(uri, "vnd.android.cursor.item/channel"));
+        open(inputActionIntent().setDataAndType(uri, "vnd.android.cursor.item/channel"));
+    }
+
+    /** `input_action` as an intent: an explicit component when it reads "package/.Activity", else an action. */
+    private Intent inputActionIntent() {
+        ComponentName component = InputSources.isComponent(inputAction)
+                ? ComponentName.unflattenFromString(inputAction) : null;
+        return component != null ? new Intent().setComponent(component) : new Intent(inputAction);
     }
 
     /** Dropdown menu under the Inputs pill: HDMI ports (with connection state), AV and Live TV. */
@@ -3585,9 +3652,91 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * Remove from Home takes the shortcut off (only with the app library on, where one press adds it back);
      * App info opens the TV's page for the app, which is what holding OK used to do.
      */
+    // ---- hold OK ---------------------------------------------------------------------------------
+    // View's own long click misses on some remotes: an IR remote that sends its repeat frames as separate
+    // presses, or a Bluetooth one whose repeats land after a tile rebind, never holds one DOWN long enough.
+    // So the launcher times the hold itself: OK down on a tile, still down (or still repeating) after
+    // HOLD_OK_MS opens the tile menu, and the UP that follows is eaten so it doesn't also open the app.
+
+    private static final long HOLD_OK_MS = 550;
+    private long holdOkDown = -1;
+    private int holdOkPosition = -1;
+    private String holdOkKey;    // the app under OK when it went down; a tile rebuild can move another app to that slot
+    private boolean holdOkFired;
+    private final Runnable holdOkTimer = this::fireHoldOk;
+
+    private static boolean isOkKey(int code) {
+        return code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER
+                || code == KeyEvent.KEYCODE_NUMPAD_ENTER || code == KeyEvent.KEYCODE_BUTTON_A;
+    }
+
+    /** True when the event belongs to a hold that opened the tile menu and must not reach the tile. */
+    private boolean holdOk(KeyEvent event) {
+        if (!tileMenuEnabled || !isOkKey(event.getKeyCode())) return false;
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (event.getRepeatCount() == 0) {
+                holdOkFired = false;
+                handler.removeCallbacks(holdOkTimer);
+                holdOkPosition = reordering || openPopup != null || cardPrompt != null ? -1 : focusedTilePosition();
+                holdOkKey = holdOkPosition < 0 || holdOkPosition >= adapter.appCount() ? null : adapter.keyAt(holdOkPosition);
+                if (holdOkKey == null) {
+                    holdOkDown = -1;
+                    return false;
+                }
+                holdOkDown = event.getDownTime();
+                handler.postDelayed(holdOkTimer, HOLD_OK_MS);
+                return false;
+            }
+            if (holdOkFired) return true;
+            if (holdOkDown >= 0 && event.getEventTime() - holdOkDown >= HOLD_OK_MS) {
+                fireHoldOk();
+                return true;
+            }
+            return false;
+        }
+        // ACTION_UP
+        handler.removeCallbacks(holdOkTimer);
+        holdOkDown = -1;
+        holdOkKey = null;
+        if (holdOkFired) {
+            holdOkFired = false;
+            View f = getCurrentFocus();
+            if (f != null) f.setPressed(false);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Stops timing a held OK when the launcher is paused, loses its window or goes away, so the menu can't open
+     * behind another screen. An interrupted press still counts as handled: its UP, if it comes back here, is eaten
+     * rather than opening the tile.
+     */
+    private void cancelHoldOk() {
+        handler.removeCallbacks(holdOkTimer);
+        if (holdOkDown >= 0) holdOkFired = true;
+        holdOkDown = -1;
+        holdOkPosition = -1;
+        holdOkKey = null;
+    }
+
+    private void fireHoldOk() {
+        handler.removeCallbacks(holdOkTimer);
+        if (holdOkDown < 0 || holdOkFired) return;
+        holdOkFired = true;
+        if (openPopup != null || reordering) return;   // View's own long click got there first
+        int position = holdOkPosition;
+        if (position < 0 || position >= adapter.appCount() || position != focusedTilePosition()) return;
+        // Same slot is not enough: tiles may have been rebuilt during the hold, so the app must match too.
+        if (!holdOkKey.equals(adapter.keyAt(position))) return;
+        View card = getCurrentFocus();
+        if (card != null) card.setPressed(false);
+        onTileLongPress(position, card);
+    }
+
     @Override
     public void onTileLongPress(int position, View card) {
-        if (reordering) return;
+        if (reordering || openPopup != null) return;
         String key = adapter.keyAt(position);
         String pkg = adapter.packageAt(position);
         // Empty dock slots and the Default-home tile carry the launcher's own package: no menu for them.

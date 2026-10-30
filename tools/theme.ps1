@@ -53,15 +53,19 @@ $tmp = '/data/local/tmp/cyt-theme'
 # A file's staging path; wallpapers/a.jpg is staged as $tmp-wallpapers-a.jpg.
 function Stage($name) { "$tmp-$($name -replace '/', '-')" }
 # Android 8 and 9 have no `content write`: they print "[ERROR] Unsupported operation: write" but exit 0, so
-# that message counts as a failure and cp runs.
-function Put($name) { $t = Stage $name; "rm -f $dir/$name 2>/dev/null; { o=`$(content write --uri $uri/$name < $t 2>&1) && case `"`$o`" in *'Unsupported operation'*) false ;; esac; } || cp $t $dir/$name 2>/dev/null; rm -f $t" }
+# that message counts as a failure and cp runs. So does "Error while accessing provider", which `content` prints
+# when the launcher has no provider or gets EACCES.
+# A folder the shell makes is the shell's (drwxrws--- shell ext_data_rw), and the provider, which runs as the
+# launcher, then gets EACCES writing into it. Nothing makes wallpapers/ up front: the provider creates it with the
+# first picture, and only the cp fallback, where the shell does the writing, runs mkdir.
+function Put($name) { $t = Stage $name; $d = "$dir/$name" -replace '/[^/]*$', ''; "rm -f $dir/$name 2>/dev/null; { o=`$(content write --uri $uri/$name < $t 2>&1) && case `"`$o`" in *'Unsupported operation'*|*'Error while accessing provider'*) false ;; esac; } || { mkdir -p $d 2>/dev/null; cp $t $dir/$name 2>/dev/null; }; rm -f $t" }
 function Drop($name) { "rm -f $dir/$name 2>/dev/null; content delete --uri $uri/$name 2>/dev/null" }
 
 # The collection a theme can push. A push empties it before writing the theme's own pictures, and -Reset has to
 # empty it too: the launcher's wallpaper picker lists that folder itself, and an on-TV pick of one of its
 # pictures is read back from it, so a reset that left the pictures behind still shows the theme it just removed.
 # Both paths use this one string (the same one theme.sh has).
-$clearWallpapers = "mkdir -p $dir/wallpapers 2>/dev/null; rm -f $dir/wallpapers/*.[jJ][pP][gG] $dir/wallpapers/*.[jJ][pP][eE][gG] $dir/wallpapers/*.[pP][nN][gG] $dir/wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $uri/wallpapers 2>/dev/null"
+$clearWallpapers = "rm -f $dir/wallpapers/*.[jJ][pP][gG] $dir/wallpapers/*.[jJ][pP][eE][gG] $dir/wallpapers/*.[pP][nN][gG] $dir/wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $uri/wallpapers 2>/dev/null"
 
 if ($Reset) {
     Invoke-Tv tv.py "mkdir -p $dir 2>/dev/null; $(Drop 'config.json'); $(Drop 'wallpaper.jpg'); $(Drop 'wallpapers/captions.txt'); $clearWallpapers; printf '%s' '$revision' > $tmp-theme_revision; $(Put 'theme_revision')" | Out-Null

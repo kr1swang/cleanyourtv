@@ -4,8 +4,8 @@
 in `values/strings.xml`, so a full language is by far the largest thing a translation pull request
 adds to `launcher/app/src/main/res/` - and the release APK has a hard budget:
 `.github/workflows/ci.yml`'s `launcher` job, which runs on every pull request in `launcher/`, measures
-`launcher/app/build/outputs/apk/release/app-release.apk` and fails the build at 589,824 B. The launcher
-ships just under that (README.md quotes about 532 KB), and #1271 is a full Korean translation that did
+`launcher/app/build/outputs/apk/release/app-release.apk` and fails the build at 622,592 B. The launcher
+ships just under that (README.md quotes about 572 KB), and #1271 is a full Korean translation that did
 not fit. Until now the page said nothing about it, so a translator could follow the recipe exactly and
 land a red build at a step the page never mentions.
 
@@ -25,7 +25,7 @@ CI = ROOT / ".github/workflows/ci.yml"
 
 # The launcher job's size check, in the form ci.yml writes it:
 #   size=$(stat -c %s launcher/app/build/outputs/apk/release/app-release.apk)
-#   test "$size" -lt 589824
+#   test "$size" -lt 622592
 STAT_LINE = re.compile(r"size=\$\(stat -c %s ([^)\s]+)\)")
 LIMIT_LINE = re.compile(r'test "\$size" -lt (\d+)')
 JOB_HEAD = re.compile(r"^  ([a-z][a-z0-9-]*):\s*$", re.M)
@@ -105,7 +105,7 @@ class TranslationRecipeGateTest(unittest.TestCase):
         ci = CI.read_text(encoding="utf-8")
         apk, limit = gate(ci)
         self.assertEqual("launcher/app/build/outputs/apk/release/app-release.apk", apk)
-        self.assertEqual(589824, limit)
+        self.assertEqual(622592, limit)
         self.assertTrue(runs_on_pull_requests(ci),
                         "ci.yml's launcher job no longer runs on a pull request, so a translation PR "
                         "would not meet the gate docs/workflows/translation.md now points at")

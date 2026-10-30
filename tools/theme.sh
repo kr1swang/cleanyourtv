@@ -67,14 +67,19 @@ TMP=/data/local/tmp/cyt-theme
 stage() { echo "$TMP-${1//\//-}"; }
 # Android 8 and 9 have no `content write`: they print the usage and "[ERROR] Unsupported operation: write" but
 # exit 0, so the exit status alone would skip cp and leave the file deleted. Treat that message as a failure.
-put() { echo "rm -f $DIR/$1 2>/dev/null; { o=\$(content write --uri $URI/$1 < $(stage "$1") 2>&1) && case \"\$o\" in *'Unsupported operation'*) false ;; esac; } || cp $(stage "$1") $DIR/$1 2>/dev/null; rm -f $(stage "$1")"; }
+# `content` also reports an exception from the provider as text - no provider in the launcher, or the launcher
+# getting EACCES - so "Error while accessing provider" is a failure too, and cp runs instead of the file going.
+# A folder is the shell's when the shell makes it (drwxrws--- shell ext_data_rw), and the provider, which runs as the
+# launcher, then gets EACCES writing into it. Nothing makes wallpapers/ up front: the provider creates it with the
+# first picture, and only the cp fallback, where the shell does the writing, runs mkdir.
+put() { echo "rm -f $DIR/$1 2>/dev/null; { o=\$(content write --uri $URI/$1 < $(stage "$1") 2>&1) && case \"\$o\" in *'Unsupported operation'*|*'Error while accessing provider'*) false ;; esac; } || { mkdir -p $(dirname "$DIR/$1") 2>/dev/null; cp $(stage "$1") $DIR/$1 2>/dev/null; }; rm -f $(stage "$1")"; }
 del() { echo "rm -f $DIR/$1 2>/dev/null; content delete --uri $URI/$1 2>/dev/null"; }
 
 # The collection a theme can push. A push empties it before writing the theme's own pictures, and --reset has to
 # empty it too: the launcher's wallpaper picker (LauncherSettingsActivity.showWallpaperPicker) lists that folder
 # itself, and an on-TV pick of one of its pictures is read back from it (WallpaperRotation.chosen), so a reset
 # that left the pictures behind still shows the theme it just removed. Both paths use this one string.
-CLEAR_WALLPAPERS="mkdir -p $DIR/wallpapers 2>/dev/null; rm -f $DIR/wallpapers/*.[jJ][pP][gG] $DIR/wallpapers/*.[jJ][pP][eE][gG] $DIR/wallpapers/*.[pP][nN][gG] $DIR/wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $URI/wallpapers 2>/dev/null"
+CLEAR_WALLPAPERS="rm -f $DIR/wallpapers/*.[jJ][pP][gG] $DIR/wallpapers/*.[jJ][pP][eE][gG] $DIR/wallpapers/*.[pP][nN][gG] $DIR/wallpapers/*.[wW][eE][bB][pP] 2>/dev/null; content delete --uri $URI/wallpapers 2>/dev/null"
 
 if [ "${1:-}" = --reset ]; then
   tv "mkdir -p $DIR 2>/dev/null; $(del config.json); $(del wallpaper.jpg); $(del wallpaper.png); $(del wallpapers/captions.txt); $CLEAR_WALLPAPERS; printf '%s' '$REVISION' > $TMP-theme_revision; $(put theme_revision)" >/dev/null

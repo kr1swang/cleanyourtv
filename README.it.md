@@ -1,6 +1,6 @@
 
 <p align="center">
-  <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="CleanYourTV: restituisci alla tua TV una schermata Home pulita" width="800"></a>
+  <a href="https://cleanyour.tv"><img src="docs/banner-halloween.png" alt="CleanYourTV: restituisci alla tua TV una schermata Home pulita" width="800"></a>
 </p>
 
 <p align="center">
@@ -92,6 +92,8 @@ Perché clonare: l'assistente usa `tools/disable.sh` e `launcher/build-and-insta
 - **Orologio e salvaschermo**: saluto, ora, data e un salvaschermo con l'orologio incluso.
 - **Temi**: cambiano colori, sfondo, dock e numero di colonne con un file di configurazione, senza ricompilare.
 - **Schede modulo**: altre app possono aggiungere schede alla Home, che compaiono solo se sei d'accordo.
+- **Add-on**: app facoltative che si agganciano come schede modulo; stanno in [`addons/`](addons/) e non fanno mai
+  parte del launcher. Temi, opzioni e add-on, con le schermate: [cleanyour.tv/addons](https://cleanyour.tv/addons).
 
 ![App selezionata e alone di colore sullo sfondo](docs/focus-2-up-netflix.png)
 
@@ -195,8 +197,11 @@ app e impostazioni, fallo tu prima di disattivare: `tools/disable.sh` non lo cre
 
 ### 3. Compilare e installare il launcher
 
-Il launcher è scritto in Java con AndroidX RecyclerView, nome del pacchetto `com.gathin.tvhome`. Servono JDK 17,
-Android SDK Platform 34 e Build Tools 34.0.0. Su macOS:
+Il launcher è scritto in Java con AndroidX RecyclerView, nome del pacchetto `com.gathin.tvhome`. Servono un JDK
+da 17 a 22 (completo, con `jlink`; dal JDK 23 in poi Gradle 8.9 si ferma), Android SDK Platform 34 e Build Tools 34.0.0 o una
+34.x più recente. Se preferisci non installare nulla a parte Docker, [`tools/docker-build.sh`](tools/docker-build.sh)
+compila il launcher in un contenitore: poi lo installi con `SKIP_BUILD=1` (guida in inglese:
+[tools/docker-build.md](tools/docker-build.md)). Su macOS:
 
 ```bash
 brew install openjdk@17 android-commandlinetools
@@ -255,6 +260,12 @@ per il ripristino prima di lanciarlo. Per pulizia e ripristino usa [`tools/disab
 | [`tools/relay.py`](tools/relay.py) | Inoltra una porta locale alla porta ADB della TV, per gli assistenti il cui ambiente isolato non raggiunge la rete. |
 | [`tools/theme.sh`](tools/theme.sh) | Invia o reimposta un tema e riavvia la Home. |
 | [`tools/manage.py`](tools/manage.py) | Elenca add-on, temi e opzioni con la schermata, mostra cosa c'è sulla TV e permette di installare, aggiornare o rimuovere. |
+| [`tools/docker-build.sh`](tools/docker-build.sh) | Compila il launcher o un add-on in Docker (JDK 17, Android SDK 34), così sul computer serve solo Docker. |
+| [`tools/bench.py`](tools/bench.py) | Misura il launcher che risponde a HOME: latenza dei tasti, fotogrammi a scatti, avvio a freddo, ritorno alla Home, CPU e memoria a riposo. Non cambia nulla sulla TV. |
+| [`tools/trace.py`](tools/trace.py), [`tools/trace_report.py`](tools/trace_report.py) | Registrano tracce Perfetto del launcher e mostrano dove va il tempo. Facoltativi: richiedono [`requirements-perf.txt`](tools/requirements-perf.txt). |
+| [`tools/flamechart.py`](tools/flamechart.py) | Disegna un flame chart prima e dopo da quelle tracce, per una pull request. Facoltativo. |
+| [`tools/screendiff.py`](tools/screendiff.py) | Confronta pixel per pixel una schermata prima e una dopo e salva la coppia con il nome del Wi-Fi sfocato. Facoltativo. |
+| [`tools/race_calendar.py`](tools/race_calendar.py) | Scrive il calendario F1 della stagione in un tema, per la modalità fine settimana di gara, dall'API gratuita Jolpica. |
 | [`launcher/build-and-install.sh`](launcher/build-and-install.sh) | Compila e installa il launcher e cambia la Home. |
 
 ## Configurazione aggiuntiva

@@ -1,6 +1,6 @@
 # Workflow: Add a press entry
 
-**When to use this:** an article about this project.
+**When to use this:** an article, or a YouTube video, about this project.
 
 1. Add a row `| Outlet | [Headline](<url>) | Date |` to the right country section of `docs/PRESS.md`, in the
    headline's own language. The link must open and show the article: no syndicated copies, no auto-generated
@@ -17,5 +17,12 @@
    `tools/venv/bin/python -I tools/readme_card.py Fredoka.ttf docs/card.jpg`. Fredoka is the variable TTF from Google Fonts and its
    file is not in the repo, so that first argument is the path of the copy you downloaded; each script says
    so when the path is wrong. If you cannot redraw them, say so in the PR.
+3. A video goes in the `## Videos` section at the end of the same page, not in a country section:
+   `| Channel | [Title](<url>) | Date | Views |`, in the table's date form (`27&nbsp;Oct`), newest first.
+   Two numbers above that table are read from the rows by `tests/test_press_counts.py` and move with it:
+   the `[N videos]` count at the end of the intro line (its link points at the section itself), and the day
+   in `views as of <date>` - no earlier than the newest row's date, so a video posted after the last read leaves the line
+   stale ("the views are 'as of 27 Oct' and the newest video is dated 28 Oct"). A row added without moving
+   the count fails as "the intro says 147 videos and the Videos section holds 148 rows".
 
 Then run the tests: `python3 -m unittest discover -s tests -v`.

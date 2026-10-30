@@ -91,7 +91,8 @@ on this set clearing the list unhooks the buttons the helpers were installed for
 disabled, its Input, Settings, YouTube and Netflix buttons reach only
 `com.xiaomi.android.tvsetup.partnercustomizer/.GlobalKeyReceiver`, which starts launcherx activities and
 crashes (the [MOSR4 note](xiaomi-mitv-mosr4.md) has that part, and its install line passes both helpers).
-So "the ramp returns with no service bound" is still measured on the G09 alone. And the build string in
+So "the ramp returns with no service bound" was measured on the G09 alone until the Mi TV 4A below ran that
+control too. And the build string in
 the issue is not the one that note carries (`RTM5.220609.003/1585`, written on another unit of the same
 model), so treat the two as separate units until both fingerprints are read: the model, the firmware
 family and the behaviour are what they agree on.
@@ -209,6 +210,47 @@ the second row came from the dispatcher; 20 steps a second is also why a held ke
 Single presses step once either way. `settings put secure long_press_timeout` is no way to slow the ramp
 here: the dispatcher marks its first repeat `FLAG_LONG_PRESS`, which is what Home's long-press action waits
 for, and with 800 set that action still fired 400 ms after the down, before and after a reboot.
+
+## A Xiaomi Mi TV 4A on Android TV 10, with the empty-list control run
+
+A version the sections above do not have: Xiaomi Mi TV 4A (MiTV-MOOQ1, `tarzan`, MediaTek), Android TV 10
+(SDK 29), firmware `QTG3.200305.006.6148`, stock Xiaomi Bluetooth remote, launcher built from a `main`
+download of 2026-10-28 ([#2446](https://github.com/Gathin23/cleanyourtv/issues/2446)).
+`com.google.android.tvlauncher` was disabled by `launcher/build-and-install.sh`, and the two buttons this
+owner wanted reach the stock launcher by name rather than through a vendor keycode:
+
+- **Input** (`KEYCODE_TV_INPUT`, 178): the firmware's `GlobalKey` handler does not pass the key on, it starts
+  `com.android.tv.action.VIEW_INPUTS` with an explicit component,
+  `com.google.android.tvlauncher/.inputs.InputsPanelActivity`, so with tvlauncher disabled `logcat` ends
+  `GlobalKey: ActivityNotFound` and the press does nothing at all. `INPUT_KEY_SERVICE=1` with
+  `handle_view_inputs` true brings the button back, but not by answering that intent:
+  `InputKeyService.onKeyEvent` consumes the Input key and starts a **new** `VIEW_INPUTS` intent with no
+  component, and `handle_view_inputs` lets the launcher open its Inputs menu for that new intent. It cannot
+  redirect the firmware's explicit intent, which is addressed to tvlauncher.
+- **PatchWall** (`KEY_WWW`; `getevent -lt` prints `MSC_SCAN 000c0196` and then `KEY_WWW DOWN`): nothing once
+  `com.mitv.tvhome.atv` is disabled. `scan:150:com.spotify.tv.android` in `app_keys` opens Spotify instead -
+  the remap the [redmi-mitv-mooq3 list](../../examples/redmi-mitv-mooq3/debloat.txt) records as not yet tried
+  on a real remote, tried here.
+
+`InputKeyService` was the only helper bound, `HomeKeyService` was never enabled on this set, and
+`dumpsys accessibility` listed it as one `Service[label=Inicio, ..., capabilities=8]`:
+
+| `enabled_accessibility_services` | holding Volume Up |
+| --- | --- |
+| `com.gathin.tvhome/.InputKeyService` | one step per press |
+| `''`, with `accessibility_enabled 0` | ramps continuously |
+| `InputKeyService` written back | one step per press again |
+
+The third row is the measurement [#944](https://github.com/Gathin23/cleanyourtv/issues/944) could not take.
+Clearing the list kills both buttons here too, so it is a test and not a configuration to stay in, but it was
+run to see the ramp come back - which is why the sentence above no longer rests on the G09 alone.
+`consume_volume_keys` was not tried, and `HomeKeyService` alone was not tried either, so this set gives one
+helper's row rather than the all-or-nothing bisect the G09 has.
+
+Android TV 10 is older than the `android12-release` source read above, which was not re-read for SDK 29: the
+mechanism claimed here is the `capabilities=8` in the dump and the three rows, not a line of
+`KeyboardInterceptor`. The owner kept both buttons and lives with the stepped volume - the second Choice
+below - so nothing in that section changes.
 
 ## Choices
 

@@ -12,7 +12,10 @@ tools/venv/bin/pip install -r tools/requirements-perf.txt
 
 Recording needs only `tools/requirements.txt` and a TV on Android 9 or later. The report's first run
 downloads Perfetto's query engine (about 13 MB, SHA-256 checked) to `~/.local/share/perfetto`. To avoid
-that, download `trace_processor_shell` yourself and pass `--engine PATH`.
+that, download `trace_processor_shell` yourself and pass `--engine PATH`. The path is read before any
+trace is opened, so it has to be a file with its execute bit set: an empty one, a typo, a folder or a
+file you forgot to `chmod +x` is answered with exit 2 and the path named, rather than a traceback out of
+Perfetto that names neither. `tools/flamechart.py` takes the same option and answers the same way.
 
 On Android 9 and 10, the TV's tracing services must be enabled first; they are enabled by default only
 from Android 11. See Perfetto's [tracing-service setup](https://perfetto.dev/docs/quickstart/android-tracing#starting-the-tracing-services)

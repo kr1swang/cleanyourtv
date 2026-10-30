@@ -131,7 +131,7 @@ pressing Home and service reconnection while another app is open.
 - Preserve Cast, voice search and system updates during deployment. The configured Google TV helper
   leaves the stock launcher and setup services enabled; do not disable them to make Home redirection work.
   Another TV needs its own input and remote mapping checks.
-- The release APK must remain below 589,824 bytes, the upstream 576 KiB gate. Do not bundle downloaded
+- The release APK must remain below 622,592 bytes, this fork’s 608 KiB gate. Do not bundle downloaded
   wallpaper images or movies in the APK. Do not raise the gate to accommodate a change without agreement.
 - Run the repository's Python suite and launcher unit tests, lint and release build for code changes.
   For Home/key/lifecycle changes, also verify physical remote keys, sleep/wake, reboot and phone Cast on

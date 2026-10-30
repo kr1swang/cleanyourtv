@@ -27,7 +27,8 @@ The output is a summary plus the raw per-key numbers, so a run can be compared w
 re-analysed later.
 
 Exit status: 0 the run is measured and written; 2 an --out-dir that cannot be written into, judged
-before the TV is opened, or a folder that cannot be created (nothing was measured); 1 anything else,
+before the TV is opened, a folder that cannot be created, or a TV that cannot be reached (tools/tv.py's
+sentence says which failure it was) - nothing was measured, and nothing was written; 1 anything else,
 including a result.json that could not be written after the run, whose numbers are then printed.
 
 Why the frame is matched by its completion time and not by its intended vsync: on a launcher
@@ -96,7 +97,25 @@ class TV:
             # `:port` back into the host, so `--host 192.0.2.20:5877` asked for a machine of that name.
             self.host, self.port = tv_client.HOST, tv_client.PORT
             self.serial = f"{self.host}:{self.port}"
-            self.client = tv_client.connect()
+            try:
+                self.client = tv_client.connect()
+            except Exception as error:
+                # tools/tv.py words the failures that mean the TV was not reached: a port that refuses,
+                # a Wireless debugging port that asks for TLS, an address nothing answers on, and the
+                # macOS Local Network denial that looks like one. The errors it has nothing to add to (a
+                # key file it cannot read, a connection reset in the handshake) keep their traceback.
+                # Left alone, a refused port here ended the run in a ConnectionRefusedError traceback
+                # with exit 1, naming neither the address nor what the run lost, and exit 1 is also what
+                # a finished run whose result.json could not be written returns - so a TV that was
+                # asleep read as a benchmark that ran. This is the one function both the first connect
+                # and the reopen after a dropped connection go through; a run that stops here has
+                # written nothing, because result.json comes at the end.
+                why = tv_client.connect_error(error)
+                if why is None:
+                    raise
+                print(f"{why}\nNothing was written: result.json is written at the end of a run.",
+                      file=sys.stderr)
+                raise SystemExit(2) from error
         return self.client
 
     def shell(self, command):

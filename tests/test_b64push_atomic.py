@@ -121,6 +121,17 @@ class B64PushTest(TempDirTest):
         for command in self.commands():
             self.assertIn(f"'{target}", command, "every remote path is single-quoted")
 
+    def test_every_command_fits_one_payload_with_a_long_remote_path(self):
+        # tools/theme.sh stages a wallpaper at /data/local/tmp/cyt-theme-wallpapers-<name>.jpg. Over native adb
+        # (a 4096-byte payload) a chunk sized without that path made `echo '<chunk>' >> <path>` too long:
+        # "shell command too long", and no picture of the theme reached the TV.
+        data = os.urandom(20000)
+        target = self.remote_dir / ("x" * 40 + ".jpg")
+        result = self.push(str(self.local(data)), str(target))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(target.read_bytes(), data)
+        self.assertLessEqual(max(len(c) for c in self.commands()), 4096)
+
     def test_failed_checksum_leaves_the_original_intact(self):
         target = self.remote_dir / "file.apk"
         target.write_bytes(b"old contents")

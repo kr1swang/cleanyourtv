@@ -108,7 +108,10 @@
 
     <!-- Inputs menu: HDMI and AV rows normally open with ACTION_VIEW on the input's channel URI, which the
          Live TV app handles. Where nothing answers that, this action is sent with the same URI instead
-         (XGIMI projectors: com.xgimi.action.hdmiPlayer). Leave empty to omit. -->
+         (XGIMI projectors: com.xgimi.action.hdmiPlayer). Written as "package/.Activity" it names the vendor's
+         own source picker instead, started by itself for every row, ahead of the standard way: for firmware that
+         answers the channel URI with "unsupported" (Redmi X65, MiTV-NSOP0:
+         com.xiaomi.mitv.tvplayer/.ExternalSourceActivity opens its HDMI 1 / HDMI 2 / AV overlay). Leave empty to omit. -->
     <string name="input_action" translatable="false"></string>
     <!-- Inputs menu: a scheme to send the input's passthrough URI with instead of content:// (and no channel MIME
          type). YaOS: live-tv. Its source player answers live-tv://android.media.tv/passthrough/<input>, while the
@@ -312,6 +315,10 @@
          up, the closed lock in a green outline while one is (solid green only while focused, like the pill). "VPN" /
          "VPN off" become its talkback description. A theme can set "icon_only_vpn": true. -->
     <bool name="icon_only_vpn">false</bool>
+    <!-- The launcher's clocks (Home, the clock screensaver and the Clock screen) in 12- or 24-hour time whatever the TV
+         is set to: "12", "24", or "system", the default, which follows the TV. Launcher settings' Clock row overrides
+         it, and a theme can set "clock_format": "24". -->
+    <string name="clock_format" translatable="false">system</string>
     <!-- true colours the Wi-Fi pill's icon green while the TV is online and leaves it white while it is not (dark on
          the focused pill either way), so the connection shows at a glance, also as an icon-only button. Can also be
          set with "wifi_status_color": true in a theme's config.json. -->
@@ -491,6 +498,10 @@
          Live TV window does not keep the screen on (CVTE): there the system screensaver would start in the
          middle of a programme. Can also be set with "home_idle_clock_minutes": 10 in a theme's config.json. -->
     <integer name="home_idle_clock_minutes">0</integer>
+    <!-- Back on the Home screen opens the clock screensaver (ClockActivity, the same screen as
+         home_idle_clock_minutes). Back keeps working as usual inside apps and Settings; only Home's own Back
+         press changes. Off by default (Back does nothing on Home); a theme can set "back_opens_clock": true. -->
+    <bool name="back_opens_clock">false</bool>
     <!-- The clock screensaver (Home idle clock and the system screensaver) over Home's wallpaper instead of black with
          a coloured glow. The clock still moves every minute. Can also be set with "clock_wallpaper" in a theme. -->
     <bool name="clock_wallpaper">false</bool>

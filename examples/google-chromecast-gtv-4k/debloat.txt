@@ -63,6 +63,15 @@
 # - Disabling dreamx leaves screensaver_components pointing at it. Point it at the launcher's clock:
 #   settings put secure screensaver_components com.gathin.tvhome/.ClockDream
 # - Animation scales already ship at 0.5x on this build.
+# - Disable in small batches, and wait before walking away. A run that disabled 21 packages in one
+#   batch had every one report "new state", then the device rebooted: 19 of the 21 were back
+#   afterwards. PackageManager writes package-restrictions.xml asynchronously, so a package disabled
+#   seconds before a reboot is lost while ones disabled minutes earlier (launcherx, setupwraith)
+#   survive. Four batches of 4/4/4/7 with a 20-second pause after each, checking the device is still
+#   up between them, went through with no reboot.
+# - If the device does reboot, check the uptime before assuming a crash loop:
+#   GET http://<ip>:8008/setup/eureka_info reports it, and one reboot with a steadily climbing
+#   uptime afterwards is not a loop.
 #
 # Second unit. The list's telemetry and preloaded-app groups were applied (the screensaver pair and
 # setupwraith were kept), plus a few apps by choice;

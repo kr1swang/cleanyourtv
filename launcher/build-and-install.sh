@@ -44,7 +44,10 @@ if [ -z "${JAVA_HOME:-}" ]; then
 fi
 export JAVA_HOME
 # Android Studio's default SDK location on macOS, then on Linux, then Homebrew's command-line tools.
-export ANDROID_HOME="${ANDROID_HOME:-$(for d in ~/Library/Android/sdk ~/Android/Sdk; do [ -d "$d" ] && echo "$d" && break; done)}"
+# Homebrew lives in /opt/homebrew on Apple silicon and in /usr/local on Intel, and a Mac that moved from one to
+# the other can still have its Homebrew in /usr/local. Without the second, such a Mac got the first written
+# into local.properties, and Gradle stopped with "SDK location not found".
+export ANDROID_HOME="${ANDROID_HOME:-$(for d in ~/Library/Android/sdk ~/Android/Sdk /opt/homebrew/share/android-commandlinetools /usr/local/share/android-commandlinetools; do [ -d "$d" ] && echo "$d" && break; done)}"
 export ANDROID_HOME="${ANDROID_HOME:-/opt/homebrew/share/android-commandlinetools}"
 export PATH="$JAVA_HOME/bin:$PATH"
 # local.properties is a Java properties file, where a backslash is an escape. Git Bash on Windows hands us

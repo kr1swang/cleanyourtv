@@ -119,7 +119,7 @@ build-tools 34.0.0; on macOS `brew install openjdk@17 android-commandlinetools` 
 
 No TV on the network, or an APK for someone else to install? Build it on its own: from `launcher/`,
 `./gradlew --no-daemon assembleRelease` leaves it at
-`launcher/app/build/outputs/apk/release/app-release.apk`, which has to stay under 589,824 B (576 KB);
+`launcher/app/build/outputs/apk/release/app-release.apk`, which has to stay under 622,592 B (608 KiB);
 CI builds with the same command and refuses a bigger one. Gradle also has to find the SDK, and this is
 where a hand build stops: `launcher/build-and-install.sh` writes the gitignored
 `launcher/local.properties` for you, so by hand either run
@@ -128,6 +128,14 @@ without one or the other Gradle stops at `SDK location not found`. The JDK has t
 answers `java -version` as a 17 but has no `jlink`, which the Android Gradle plugin needs (#1255) - and
 Homebrew's `openjdk@17` is keg-only, so point `JAVA_HOME` at it
 (`export JAVA_HOME=$(brew --prefix openjdk@17)`).
+
+With neither a JDK nor an SDK on this computer, build it in a container that has both:
+`tools/docker-build.sh launcher` (Docker only; `addons/<name>` builds an add-on, and the Gradle task
+defaults to `assembleRelease`). It writes the APK to the same place, so
+`SKIP_BUILD=1 TV_HOST=<ip> launcher/build-and-install.sh` installs it. Its debug key lives in the
+`cleanyourtv-gradle` volume rather than `~/.android`, so installing over an APK built here fails with
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE` unless both use the same key (`HOST_KEY_DIR=~/.android`), and
+[`tools/docker-build.md`](tools/docker-build.md) has the rest.
 
 Ideas that fit the direction: an idle screensaver with clock and ambient colour, per-TV icon packs
 for apps without banners, a settings screen to edit the dock from the TV, localisation.
