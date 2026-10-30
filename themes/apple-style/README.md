@@ -118,6 +118,10 @@ Preserve the installed service component name so upgrades retain its accessibili
 changing the shared service, verify physical keys, wake from sleep, Cast while asleep, reboot without
 pressing Home and service reconnection while another app is open.
 
+The theme selects `glass_style: shadow`. Other themes retain `glass`, `rim` or `halo`; these reuse
+upstream GlassView artwork, cached per card size and drawn over the card. All styles follow the
+existing card zoom/press animation; this does not restore the upstream floating spring cursor.
+
 ## Maintenance
 
 - Prefer upstream implementations when they cover the same behavior. Remove the superseded custom

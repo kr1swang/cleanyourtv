@@ -9,10 +9,20 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.widget.FrameLayout;
 
-/** Shared, pre-rendered focus shadow: no live blur or elevation during navigation. */
+/** Cached focus artwork: shadow behind the card, or upstream glass styles above it. */
 public final class AppTileLayout extends FrameLayout {
     private static Bitmap shadow;
     private static int cachedWidth, cachedHeight, cachedPadding;
+    private String focusStyle = Config.GLASS_DEFAULT;
+    private static Bitmap highlight;
+    private static String cachedStyle;
+    private static int highlightWidth, highlightHeight;
+
+    void setFocusStyle(String style) {
+        focusStyle = style;
+        invalidate();
+    }
+
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final RectF bounds = new RectF();
 
@@ -26,7 +36,7 @@ public final class AppTileLayout extends FrameLayout {
             float scale = card.getScaleX();
             float strength = Math.max(0f, Math.min(1f, (scale - 1f) / (AppAdapter.FOCUS_SCALE - 1f)));
             if (card.isActivated()) strength = 1f;
-            if (strength > 0f) {
+            if (strength > 0f && Config.GLASS_SHADOW.equals(focusStyle)) {
                 float density = getResources().getDisplayMetrics().density;
                 int padding = Math.round(24 * density);
                 int width = card.getWidth(), height = card.getHeight();
@@ -51,5 +61,34 @@ public final class AppTileLayout extends FrameLayout {
             }
         }
         super.dispatchDraw(canvas);
+        if (Config.GLASS_SHADOW.equals(focusStyle) || card == null || card.getVisibility() != VISIBLE
+                || card.getWidth() == 0) return;
+        float scale = card.getScaleX();
+        float strength = card.isActivated() ? 1f
+                : Math.max(0f, Math.min(1f, (scale - 1f) / (AppAdapter.FOCUS_SCALE - 1f)));
+        if (strength == 0f) return;
+        float density = getResources().getDisplayMetrics().density;
+        int padding = Math.round(6 * density);
+        int width = card.getWidth() + padding * 2, height = card.getHeight() + padding * 2;
+        if (highlight == null || highlightWidth != width || highlightHeight != height
+                || !focusStyle.equals(cachedStyle)) {
+            // Reuse upstream drawing, rasterized only when geometry/style changes, never per animation frame.
+            GlassView glass = new GlassView(getContext(), null);
+            glass.setLayerType(View.LAYER_TYPE_NONE, null);
+            glass.setStyle(focusStyle);
+            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density));
+            glass.layout(0, 0, width, height);
+            highlight = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+            glass.draw(new Canvas(highlight));
+            highlightWidth = width;
+            highlightHeight = height;
+            cachedStyle = focusStyle;
+        }
+        float cx = card.getLeft() + card.getWidth() / 2f;
+        float cy = card.getTop() + card.getHeight() / 2f;
+        bounds.set(cx - width * scale / 2f, cy - height * scale / 2f,
+                cx + width * scale / 2f, cy + height * scale / 2f);
+        paint.setAlpha(Math.round(255 * strength));
+        canvas.drawBitmap(highlight, null, bounds, paint);
     }
 }

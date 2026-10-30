@@ -6,6 +6,10 @@ import static org.junit.Assert.assertEquals;
 
 /** glass_style from config.xml or a theme: rim or halo by name, glass for anything else. */
 public class GlassStyleTest {
+    @Test public void shadowStyle() {
+        assertEquals(Config.GLASS_SHADOW, Config.glassStyle("shadow"));
+        assertEquals(Config.GLASS_SHADOW, Config.glassStyle(" SHADOW "));
+    }
 
     @Test
     public void rimByNameAnyCase() {
