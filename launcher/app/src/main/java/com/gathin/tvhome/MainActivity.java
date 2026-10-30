@@ -594,7 +594,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         grid = findViewById(R.id.grid);
         // The centered TightTextClock belongs to our full-height grid layout.
-        if (dockRow && !singleRow && findViewById(R.id.clock) instanceof TightTextClock) {
+        if (dockRow && !singleRow && !cfg.dockTitle && findViewById(R.id.clock) instanceof TightTextClock) {
             // A single translucent fill above the wallpaper, below all foreground UI.
             backdropShade = new View(this);
             backdropShade.setBackgroundColor(PanelStyle.BACKDROP_ALPHA << 24);

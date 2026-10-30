@@ -5,6 +5,8 @@
     "KEYCODE_BUTTON_4:com.netflix.ninja"
   ],
   "columns": 6,
+  "show_greeting": false,
+  "dock_title": false,
   "glass_style": "shadow",
   "dock_apps": [
     "com.google.android.youtube.tv",

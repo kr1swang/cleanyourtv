@@ -122,6 +122,10 @@ The theme selects `glass_style: shadow`. Other themes retain `glass`, `rim` or `
 upstream GlassView artwork, cached per card size and drawn over the card. All styles follow the
 existing card zoom/press animation; this does not restore the upstream floating spring cursor.
 
+The theme hides greetings and Dock titles with upstream `show_greeting: false` and
+`dock_title: false`. Enabling the Dock title uses the existing shelf scrolling instead of
+the title-free expanded-grid transition.
+
 ## Maintenance
 
 - Prefer upstream implementations when they cover the same behavior. Remove the superseded custom
