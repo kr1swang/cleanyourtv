@@ -1,5 +1,6 @@
 {
   "ambient_glow": false,
+  "action_style": "panel",
   "app_keys": [
     "KEYCODE_BUTTON_3:com.google.android.youtube.tv",
     "KEYCODE_BUTTON_4:com.netflix.ninja"

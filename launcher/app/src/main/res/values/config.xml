@@ -518,6 +518,8 @@
     <!-- The focus highlight's look: glass (the default: a translucent slab with a bright top sheen, a crisp rim and a
          faint outer glow), rim (the crisp rim alone, no sheen, fill or glow, for a quiet focus over a wallpaper) or
          halo (the rim with a lighter outer glow), or shadow (this fork: cached card shadow). Can also be set with "glass_style": "rim" in a theme's config.json. -->
+    <!-- Shared action entry: buttons (upstream default) or panel (this fork). Theme JSON may override it. -->
+    <string name="action_style" translatable="false">buttons</string>
     <string name="glass_style" translatable="false">glass</string>
 
     <!-- Tiles drawn from the app's icon and name instead of its banner (for banners that crop badly). -->

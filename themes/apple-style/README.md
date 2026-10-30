@@ -6,6 +6,11 @@ The APK bundles the six-column Dock defaults in `config.json` and the pinned ass
 Release filenames use `wallpaper_FHD` and `wallpaper_4K`, with `_30fps` or `_60fps` for movies.
 Release, downloader and cache filenames share the same FHD / 4K naming.
 
+`action_style` selects the shared action entry: `buttons` (default) shows the upstream top-right
+buttons; `panel` hides that group and opens the control center on Up from the first app row.
+The Apple-style theme selects `panel`. Unknown values fall back to `buttons`. Both modes reuse
+the existing system, network and input actions; no duplicate settings handlers are introduced.
+
 Press **Up** on a Dock app to open the control center, then choose **Background settings**.
 The center also offers Input sources, System settings, Network settings and Reset order.
 The network row shares upstream network detection: Wi-Fi shows its SSID when available, Ethernet

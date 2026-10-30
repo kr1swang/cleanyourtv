@@ -245,6 +245,9 @@ final class Config {
     final String glowStyle;
     /** The focus highlight's look (config.xml, glass_style): {@link #GLASS_DEFAULT}, {@link #GLASS_RIM}, {@link #GLASS_HALO} or {@link #GLASS_SHADOW}. */
     final String glassStyle;
+    /** Shared settings actions: upstream buttons or the custom control panel. */
+    final String actionStyle;
+    static final String ACTION_BUTTONS = "buttons", ACTION_PANEL = "panel";
 
     static final String GLOW_RADIAL = "radial", GLOW_HORIZON = "horizon";
     static final String GLASS_DEFAULT = "glass", GLASS_RIM = "rim", GLASS_HALO = "halo", GLASS_SHADOW = "shadow";
@@ -287,7 +290,7 @@ final class Config {
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
-                   int openOnStartNetworkWait, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock) {
+                   int openOnStartNetworkWait, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, String actionStyle) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -338,6 +341,7 @@ final class Config {
         this.iconOnlyInputs = iconOnlyInputs;
         this.iconOnlyVpn = iconOnlyVpn;
         this.backOpensClock = backOpensClock;
+        this.actionStyle = actionStyle(actionStyle);
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -406,6 +410,11 @@ final class Config {
     /** A known glow_style, or radial (the default) for anything else. */
     static String glowStyle(String value) {
         return value != null && GLOW_HORIZON.equalsIgnoreCase(value.trim()) ? GLOW_HORIZON : GLOW_RADIAL;
+    }
+
+    /** Only panel opts into the custom entry; unknown values retain upstream buttons. */
+    static String actionStyle(String value) {
+        return value != null && ACTION_PANEL.equalsIgnoreCase(value.trim()) ? ACTION_PANEL : ACTION_BUTTONS;
     }
 
     /** A known glass_style, or glass (the default) for anything else. */
@@ -525,6 +534,7 @@ final class Config {
         int clockWallpaperDim = res.getInteger(R.integer.clock_wallpaper_dim);
         boolean clockGlow = res.getBoolean(R.bool.clock_glow);
         String glassStyle = res.getString(R.string.glass_style);
+        String actionStyle = res.getString(R.string.action_style);
         boolean singleRow = res.getBoolean(R.bool.single_row);
         boolean dockBandAll = res.getBoolean(R.bool.dock_band_all);
         boolean applied = false;
@@ -639,6 +649,7 @@ final class Config {
             dockBandAll = bool(json, "dock_band_all", dockBandAll);
             glowStyle = string(json, "glow_style", glowStyle);
             glassStyle = string(json, "glass_style", glassStyle);
+            actionStyle = string(json, "action_style", actionStyle);
         }
         // A top-bar app is moved there, not copied: it leaves the grid.
         for (String pkg : topBarApps) if (!hidden.contains(pkg)) hidden.add(pkg);
@@ -713,7 +724,7 @@ final class Config {
                 consumeVolumeKeys, powerOnHome, homeLongPressHome, wifiStatusWarnings, topBarApps, showGreeting, headerWhite, clockWallpaper,
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
-                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn, clockFormat, backOpensClock);
+                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn, clockFormat, backOpensClock, actionStyle);
     }
 
     /**

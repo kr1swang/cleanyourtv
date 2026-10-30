@@ -534,7 +534,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
         greetingColor = greeting.getCurrentTextColor();
-        topButtonsVisible = findViewById(R.id.topButtons).getVisibility() == View.VISIBLE;
+        topButtonsVisible = Config.ACTION_BUTTONS.equals(cfg.actionStyle);
+        findViewById(R.id.topButtons).setVisibility(topButtonsVisible ? View.VISIBLE : View.GONE);
         if (!cfg.showGreeting) greeting.setVisibility(View.GONE);
         if (cfg.headerWhite) {
             // The clock's own white for the date and the line before it, instead of their dimmed whites.
@@ -2303,6 +2304,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
             if (position < COLUMNS) {
+                if (topButtonsVisible) return false;
                 showControlCenter(0);
                 return true;
             }
