@@ -247,6 +247,8 @@ final class Config {
     final String glassStyle;
     /** Shared settings actions: upstream buttons or the custom control panel. */
     final String actionStyle;
+    final String homeLayout, tileMenuStyle;
+    final boolean reorderSingleDrop;
     static final String ACTION_BUTTONS = "buttons", ACTION_PANEL = "panel";
 
     static final String GLOW_RADIAL = "radial", GLOW_HORIZON = "horizon";
@@ -290,7 +292,7 @@ final class Config {
                    boolean keyFilter, boolean dockGlass, String glowStyle, boolean wallpaperCaptions,
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly,
-                   int openOnStartNetworkWait, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, String actionStyle) {
+                   int openOnStartNetworkWait, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, String actionStyle, String homeLayout, String tileMenuStyle, boolean reorderSingleDrop) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -342,6 +344,9 @@ final class Config {
         this.iconOnlyVpn = iconOnlyVpn;
         this.backOpensClock = backOpensClock;
         this.actionStyle = actionStyle(actionStyle);
+        this.homeLayout = homeLayout(homeLayout);
+        this.tileMenuStyle = tileMenuStyle(tileMenuStyle);
+        this.reorderSingleDrop = reorderSingleDrop;
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -412,7 +417,15 @@ final class Config {
         return value != null && GLOW_HORIZON.equalsIgnoreCase(value.trim()) ? GLOW_HORIZON : GLOW_RADIAL;
     }
 
-    /** Only panel opts into the custom entry; unknown values retain upstream buttons. */
+    /** Presentation choices are opt-in; unknown values retain the upstream defaults. */
+    static String homeLayout(String value) {
+        return value != null && "apple".equalsIgnoreCase(value.trim()) ? "apple" : "default";
+    }
+
+    static String tileMenuStyle(String value) {
+        return value != null && "panel".equalsIgnoreCase(value.trim()) ? "panel" : "default";
+    }
+
     static String actionStyle(String value) {
         return value != null && ACTION_PANEL.equalsIgnoreCase(value.trim()) ? ACTION_PANEL : ACTION_BUTTONS;
     }
@@ -535,6 +548,9 @@ final class Config {
         boolean clockGlow = res.getBoolean(R.bool.clock_glow);
         String glassStyle = res.getString(R.string.glass_style);
         String actionStyle = res.getString(R.string.action_style);
+        String homeLayout = res.getString(R.string.home_layout);
+        String tileMenuStyle = res.getString(R.string.tile_menu_style);
+        boolean reorderSingleDrop = res.getBoolean(R.bool.reorder_single_drop);
         boolean singleRow = res.getBoolean(R.bool.single_row);
         boolean dockBandAll = res.getBoolean(R.bool.dock_band_all);
         boolean applied = false;
@@ -650,6 +666,9 @@ final class Config {
             glowStyle = string(json, "glow_style", glowStyle);
             glassStyle = string(json, "glass_style", glassStyle);
             actionStyle = string(json, "action_style", actionStyle);
+            homeLayout = string(json, "home_layout", homeLayout);
+            tileMenuStyle = string(json, "tile_menu_style", tileMenuStyle);
+            reorderSingleDrop = bool(json, "reorder_single_drop", reorderSingleDrop);
         }
         // A top-bar app is moved there, not copied: it leaves the grid.
         for (String pkg : topBarApps) if (!hidden.contains(pkg)) hidden.add(pkg);
@@ -724,7 +743,7 @@ final class Config {
                 consumeVolumeKeys, powerOnHome, homeLongPressHome, wifiStatusWarnings, topBarApps, showGreeting, headerWhite, clockWallpaper,
                 Math.max(0, Math.min(90, clockWallpaperDim)), clockGlow, glassStyle, singleRow && dockRow, dockBandAll, lunar, lunarOffset,
                 dateBelowClock, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly,
-                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn, clockFormat, backOpensClock, actionStyle);
+                Math.max(0, Math.min(600, openOnStartNetworkWait)), iconOnlyVpn, clockFormat, backOpensClock, actionStyle, homeLayout, tileMenuStyle, reorderSingleDrop);
     }
 
     /**

@@ -149,6 +149,9 @@ A new key needs one there in the same pull request.
 | `clock_glow` | bool | The clock screensaver's coloured glow (`true` by default); `false` leaves the moving clock on plain black, e.g. for an OLED |
 | `glow_style` | string | Shape of the glow behind the focused app, in its colour: `radial` (default) or `horizon`, the colour washing down from the top edge to black; the cinematic shelf keeps its own |
 | `action_style` | string | This fork: `buttons` (default) shows the upstream top-right actions; `panel` opens the control center on Up from the first app row. Unknown values use `buttons`. See [Apple-style](apple-style/README.md). |
+| `home_layout` | `default` (upstream layout) or `apple` (centered clock and full-height expanding grid). This fork only. |
+| `tile_menu_style` | `default` (upstream menu) or `panel` (centered icon rows, above-first placement and dim backdrop). This fork only. |
+| `reorder_single_drop` | `false` keeps reorder mode active after placing an app; `true` saves and exits after one placement. This fork only. |
 | `glass_style` | string | Look of the focus highlight: `glass` (default: a translucent slab with a bright top sheen, a crisp rim and a faint outer glow), `rim` (the crisp rim alone, no sheen, fill or glow, for a quiet focus over a wallpaper) `halo` (the rim with a lighter outer glow), or `shadow` (this fork: a cached shadow behind the focused card, without a rim) |
 | `cinematic_home` | bool | Cinematic top shelf: the focused dock app's artwork, softened, fills the top of the screen in its colour, with a larger name, "Last opened" (apps opened from Home), dock position dots, a focus glow in the app's colour and a translucent dock band; off by default |
 | `cinematic_dots` | bool | With `cinematic_home`, the dock position dots under the app's name (`true` by default); `false` leaves them out |

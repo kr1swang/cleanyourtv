@@ -11,6 +11,13 @@ buttons; `panel` hides that group and opens the control center on Up from the fi
 The Apple-style theme selects `panel`. Unknown values fall back to `buttons`. Both modes reuse
 the existing system, network and input actions; no duplicate settings handlers are introduced.
 
+The theme also selects `home_layout: "apple"`, `tile_menu_style: "panel"` and
+`reorder_single_drop: true`. Without those settings, the layout and menu use `default`,
+and placing an app keeps reorder mode active. Invalid layout/menu values use `default`.
+The Apple layout lives in `activity_main_apple.xml`; `activity_main.xml` remains the upstream layout.
+These switches are independent of `action_style` and `glass_style`. Dock expansion requires
+`dock_row: true`, `single_row: false` and `dock_title: false`.
+
 Press **Up** on a Dock app to open the control center, then choose **Background settings**.
 The center also offers Input sources, System settings, Network settings and Reset order.
 The network row shares upstream network detection: Wi-Fi shows its SSID when available, Ethernet

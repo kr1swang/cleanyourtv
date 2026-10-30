@@ -28,6 +28,9 @@ rule sit on its wanted list until a screenshot arrives.
 |---|---|
 | `columns` | <img src="../themes/six-columns/screenshot.jpg" width="320" alt="columns on a TV"> |
 | `action_style` | <img src="switches/action_style.png" width="320" alt="Existing control center on Chromecast, captured before the action_style switch; not a verification of the new switch"> |
+| `home_layout` | Not yet verified on a real TV after extraction into a config switch. |
+| `tile_menu_style` | Not yet verified on a real TV after extraction into a config switch. |
+| `reorder_single_drop` | Not yet verified on a real TV after extraction into a config switch. |
 | `glass_style` | <img src="switches/glass_style.jpg" width="320" alt="glass_style halo on a TV"> |
 | `sky_intensity` | <img src="sky-sunset.jpg" width="320" alt="sky_intensity on a TV"> |
 | `wallpaper_rotation_minutes` | <img src="../themes/scenes/screenshot.jpg" width="320" alt="wallpaper_rotation_minutes on a TV"> |

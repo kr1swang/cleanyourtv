@@ -212,6 +212,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView greeting;
     private View clockBlock;
     private boolean topButtonsVisible;
+    private boolean appleLayout, panelTileMenu, reorderSingleDrop;
     private View btnInputs;
     /** config show_inputs_pill: false keeps the Inputs pill hidden even when the TV has inputs. */
     private boolean showInputsPill = true;
@@ -455,10 +456,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        density = getResources().getDisplayMetrics().density;
-        // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
+        appleLayout = "apple".equals(cfg.homeLayout);
+        panelTileMenu = "panel".equals(cfg.tileMenuStyle);
+        reorderSingleDrop = cfg.reorderSingleDrop;
+        setContentView(appleLayout ? R.layout.activity_main_apple : R.layout.activity_main);
+        density = getResources().getDisplayMetrics().density;
         homeAppKeys = RemoteKeys.parseAppKeys(cfg.appKeys);
         clockFormat = cfg.clockFormat;
         ClockFormat.apply(getWindow().getDecorView(), clockFormat);
@@ -594,8 +597,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         libraryExcludedApps = new HashSet<>(cfg.libraryExcludedApps);
 
         grid = findViewById(R.id.grid);
-        // The centered TightTextClock belongs to our full-height grid layout.
-        if (dockRow && !singleRow && !cfg.dockTitle && findViewById(R.id.clock) instanceof TightTextClock) {
+        // Only the Apple layout uses the full-height expanding grid.
+        if (dockRow && !singleRow && !cfg.dockTitle && appleLayout) {
             // A single translucent fill above the wallpaper, below all foreground UI.
             backdropShade = new View(this);
             backdropShade.setBackgroundColor(PanelStyle.BACKDROP_ALPHA << 24);
@@ -709,7 +712,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             boolean titleVisible = hero.getVisibility() != View.GONE;
             int shelfClearance = cfg.appLibrary && titleVisible ? hero.getMeasuredHeight() + (int) (40 * density) : 0;
             // Preserve the custom dock's spacing and the small preview of the next row.
-            int want = Math.max(shelfClearance, h - dockRow - gridRows - (int) (21 * density));
+            int want = Math.max(shelfClearance, h - dockRow - gridRows - (int) ((appleLayout ? 21 : AppAdapter.BOTTOM_ROOM_DP) * density));
             // Where the rows cannot fit even at the smallest tile (3 rows with the title on), the title keeps its
             // room above the dock and the last rows run off the bottom instead of the title drawing over the clock.
             if (MainActivity.this.dockRow && titleVisible && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
@@ -1373,7 +1376,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     return true;
                 default:
                     if (ok || back) {
-                        if (!down) endReorder();
+                        if (!down) {
+                            if (reorderSingleDrop) endReorder();
+                            else drop();
+                        }
                         return true;
                     }
                     return super.dispatchKeyEvent(event);
@@ -2336,7 +2342,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      */
     private void moveDateBelowClock() {
         View clock = findViewById(R.id.clock);
-        if (clock instanceof TightTextClock) {
+        if (appleLayout) {
             LinearLayout header = (LinearLayout) clock.getParent();
             View[] dates = {shamsiDate, findViewById(R.id.date), lunarDate};
             for (View date : dates) header.removeView(date);
@@ -3743,15 +3749,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String pkg = adapter.packageAt(position);
         // Empty dock slots and the Default-home tile carry the launcher's own package: no menu for them.
         if (key == null || pkg == null || pkg.equals(getPackageName())) return;
-        PanelStyle style = new PanelStyle(this);
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(style.dp(12), style.dp(8), style.dp(12), style.dp(8));
-        panel.setClipChildren(false);
-        panel.setClipToPadding(false);
-        LinearLayout rows = panel;
+        PanelStyle style = panelTileMenu ? new PanelStyle(this) : null;
+        View panel;
+        LinearLayout rows;
+        if (panelTileMenu) {
+            rows = new LinearLayout(this);
+            rows.setOrientation(LinearLayout.VERTICAL);
+            rows.setPadding(style.dp(12), style.dp(8), style.dp(12), style.dp(8));
+            rows.setClipChildren(false);
+            rows.setClipToPadding(false);
+            panel = rows;
+        } else {
+            panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+            rows = panel.findViewById(R.id.rows);
+        }
         PopupWindow popup = glassPopup(panel, ViewGroup.LayoutParams.WRAP_CONTENT);
-        if (position < adapter.movableCount()) addTileMenuRow(rows, popup, style, R.drawable.ic_control_move, R.string.tile_reorder_short, () -> {
+        if (!panelTileMenu && dockRow && position < adapter.movableCount()) {
+            boolean inDock = position < COLUMNS;
+            addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
+                    () -> startDockEditFor(key, inDock));
+        }
+        if (position < adapter.movableCount()) addTileMenuRow(rows, popup, style, R.drawable.ic_control_move,
+                panelTileMenu ? R.string.tile_reorder_short : R.string.tile_move, () -> {
             if (!beginReorder()) return;
             int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
             if (at < 0) {
@@ -3762,13 +3781,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             pickUp(at);
         });
         Intent info = SystemSettings.appInfo(this, pkg);
-        if (info != null) addTileMenuRow(rows, popup, style, R.drawable.ic_control_info,
-                R.string.tile_info_short, () -> open(info));
+        if (panelTileMenu && info != null) addTileMenuRow(rows, popup, style, R.drawable.ic_control_info,
+                panelTileMenu ? R.string.tile_info_short : R.string.library_app_info, () -> open(info));
         if (appLibraryEnabled) addTileMenuRow(rows, popup, style, 0, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();
         });
+        if (!panelTileMenu && info != null) addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(info));
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        if (!panelTileMenu) {
+            popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+            int[] at = new int[2];
+            card.getLocationInWindow(at);
+            int gap = (int) (10 * density), height = panel.getMeasuredHeight();
+            if (at[1] + card.getHeight() + gap + height <= root.getHeight()) {
+                dropIn(popup, panel, card, Gravity.START);
+            } else {
+                panel.setAlpha(0f);
+                panel.setPivotY(height);
+                panel.setScaleY(0.92f);
+                panel.setTranslationY(8 * density);
+                popup.showAtLocation(root, Gravity.NO_GRAVITY, at[0], Math.max(0, at[1] - gap - height));
+                panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(220)
+                        .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+            }
+            rows.getChildAt(0).requestFocus();
+            return;
+        }
         int cardWidth = Math.round(card.getWidth() * card.getScaleX());
         // Long press temporarily shrinks the card. Size to its resting focus scale, not that press frame.
         int minWidth = Math.round(card.getWidth() * adapter.focusScale())
@@ -3815,7 +3854,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void addTileMenuRow(LinearLayout rows, PopupWindow popup, PanelStyle style,
             int icon, int title, Runnable action) {
-        bindMenuAction(style.addActionRow(rows, icon, title), popup, action);
+        if (style == null) addSettingsMenuRow(rows, popup, title, action);
+        else bindMenuAction(style.addActionRow(rows, icon, title), popup, action);
     }
 
     private void bindMenuAction(View row, PopupWindow popup, Runnable action) {

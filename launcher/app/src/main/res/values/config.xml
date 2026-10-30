@@ -519,6 +519,10 @@
          faint outer glow), rim (the crisp rim alone, no sheen, fill or glow, for a quiet focus over a wallpaper) or
          halo (the rim with a lighter outer glow), or shadow (this fork: cached card shadow). Can also be set with "glass_style": "rim" in a theme's config.json. -->
     <!-- Shared action entry: buttons (upstream default) or panel (this fork). Theme JSON may override it. -->
+    <!-- Fork presentation switches; default retains the upstream layout/menu and repeated sorting. -->
+    <string name="home_layout" translatable="false">default</string>
+    <string name="tile_menu_style" translatable="false">default</string>
+    <bool name="reorder_single_drop">false</bool>
     <string name="action_style" translatable="false">buttons</string>
     <string name="glass_style" translatable="false">glass</string>
 
