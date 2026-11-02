@@ -5,6 +5,7 @@ center for input sources, system/network settings, backgrounds and resetting app
 are verified downloads with FHD/4K static, 30 fps and 60 fps choices. The remote helper supports
 Home, YouTube and Netflix on the configured Chromecast remote while keeping Google TV and Cast enabled.
 
+The Apple-style theme enables these custom styles through config options.
 Start with the [Apple-style guide](themes/apple-style/README.md) for configuration, deployment and
 verification. The descriptions, screenshots and project statistics below describe upstream unless
 explicitly marked otherwise; the custom launcher uses network access and supports video wallpapers.

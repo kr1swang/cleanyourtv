@@ -223,7 +223,8 @@ Launcher
 Custom deployment profiles
 - Read [the Apple-style guide](themes/apple-style/README.md) before deploying this fork. It is the
   reference for background choices, verified downloads, cache recovery and control-center behavior.
-- Choose backgrounds on the TV: Up from a Dock app → Control center → Background settings.
+- With `action_style: "panel"`, choose backgrounds on the TV: Up from a Dock app → Control center →
+  Background settings.
   Reuse a supplied preference. Check physical output resolution when recommending a profile;
   do not silently lower resolution or FPS. Do not overwrite unrelated settings when switching backgrounds.
 - Preserve Cast, voice search, update packages and the Home/app-key service. Verify on a physical device;
@@ -243,11 +244,18 @@ Other-device compatibility
   services. Do not automatically enable the helper on another device; identify its physical keys first.
   Verify the helper is bound, physical Home and Cast from sleep, reboot without pressing Home, and
   service reconnection while another app is open. Keep both Google TV launcher and setupwraith enabled.
+- Before running `launcher/build-and-install.sh` or its PowerShell counterpart, confirm the intended
+  service-repair permission state, reusing any prior choice. Use `RESTORE_KEY_SERVICES=1` for the shell
+  script or `-RestoreKeyServices` for PowerShell to retain `WRITE_SECURE_SETTINGS`. Without that option,
+  the script revokes the permission, including on an update.
+  Verify the resulting permission state and helper binding; this permission is separate from enabling
+  an accessibility service. See [Remote keys](themes/apple-style/README.md#remote-keys).
 - Check which requested Dock packages are installed. Missing apps can be replaced by other grid apps
   under the default fill behavior; report the resulting order rather than claiming the exact six apps
   are present. Ask before installing replacement apps or changing the requested order.
-- The custom layout has no upper-right Inputs/Settings buttons. Open the control center with Up from
-  the Dock. Input sources is hidden when no input route is available. On built-in TVs, verify Settings,
+- With `action_style: "panel"`, the upper-right action buttons are hidden; Up from the Dock opens
+  the control center. With `action_style: "buttons"`, use the top-right buttons instead. The control
+  center hides Input sources when no input route is available. On built-in TVs, verify Settings,
   HDMI/source selection and live TV through the control center and remote. Check the actual
   display for overscan, clipped focus shadows, text scaling and four/six-column navigation.
 
