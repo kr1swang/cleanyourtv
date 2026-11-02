@@ -26,7 +26,9 @@ takes precedence when both are connected. Colors do not indicate internet valida
 opens network settings. System callbacks update the row only while the main control page is open.
 Input sources appear only when an input route is available, such as a visible passthrough input,
 Live TV or a configured vendor panel. This does not mean an HDMI cable has a live signal.
-Sources reuse the existing TV/CEC and vendor fallbacks. Reset order requires confirmation and
+Sources reuse the existing TV/CEC and vendor fallbacks, including `inputs_cec_state_only` for TVs
+that misreport HDMI port states. When enabled, only CEC device rows show a state; bare ports do not.
+The theme leaves this workaround off. Reset order requires confirmation and
 restores the theme Dock and default app ordering without changing the background.
 Back returns through the lists to the previously focused Dock app. With the custom key helper enabled,
 Home closes the overlay, collapses the grid and selects the first Dock app without restarting Home.
