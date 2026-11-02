@@ -24,8 +24,15 @@ if (-not (Test-Path (Join-Path $Root "$Project/settings.gradle")) -and
 }
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'docker is not installed or not on PATH.' }
 
+# Windows PowerShell 5.1 turns a native command's stderr into an error record, and 'Stop' ends the script on
+# it: on a first run the image does not exist yet, so this probe writes "No such image" to stderr - the case
+# the line below is there to handle - and the build is never reached. Ask docker with 'Continue' and judge
+# the exit code.
+$ErrorActionPreference = 'Continue'
 docker image inspect $Image *> $null
-if ($LASTEXITCODE -ne 0) {
+$Missing = $LASTEXITCODE -ne 0
+$ErrorActionPreference = 'Stop'
+if ($Missing) {
     Write-Host "Building the $Image image once (JDK 17, Android SDK 34, build-tools 34.0.0; a few minutes)..."
     docker build -t $Image (Join-Path $Root 'tools/docker')
     if ($LASTEXITCODE -ne 0) { throw 'docker build failed' }

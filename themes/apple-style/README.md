@@ -36,6 +36,7 @@ Main and child pages have no title and share 288dp-wide rows. Opening, Back/Home
 changes and the dim backdrop use 180ms transitions; reduced motion uses a 60ms fade without sliding.
 Dock expansion and collapse use 360ms scrolling. The clock remains visible behind the control center.
 
+Upstream 3.3 enables `tile_menu` by default, so the theme does not repeat that switch.
 Holding OK on an app opens Reorder followed by App info, with the supplied outline icons. These actions share the
 control center's colors, Outfit type, rounded rows and focused shadow. The menu stays centered on
 the app, opens above it unless there is insufficient space, and fits its content with a minimum visible width equal
@@ -113,6 +114,9 @@ The installed `YouTubeKeyService` component extends upstream `HomeKeyService`, s
 boot probe, stock-home detection, service repair and configurable app-key handling. The bundled
 `app_keys` map Chromecast BUTTON_3 to YouTube and BUTTON_4 to Netflix; `stock_home_redirect`
 names Google TV. External config can override these for another remote or launcher.
+When using upstream `build-and-install`, pass `RESTORE_KEY_SERVICES=1` if service repair should
+remain authorized. An install without that flag now revokes `WRITE_SECURE_SETTINGS` and verifies
+the resulting permission state; it does not itself turn off an already enabled helper.
 The helper must still be enabled by the owner; these settings alone do not enable a service.
 Clearing app data removes saved service-repair records too. Bundled key mappings remain, but they do
 not restore Android accessibility authorization; check that the helper is enabled and bound afterward.

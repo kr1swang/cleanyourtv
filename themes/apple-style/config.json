@@ -24,6 +24,5 @@
   "dock_opacity": 30,
   "fade_rows": true,
   "stock_home_redirect": "com.google.android.apps.tv.launcherx",
-  "tile_menu": true,
   "wallpaper_true_color": true
 }

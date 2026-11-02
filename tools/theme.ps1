@@ -5,8 +5,9 @@
 #        tools\theme.ps1 -TvHost 192.168.1.50 -Reset
 #
 # One argument, and -Reset takes none: both together are refused rather than one of them dropped (below).
-# Exit status as in theme.sh: 0 the theme is on the TV, or the reset ran; 1 the theme could not be pushed; 2 the
-# command line is not one theme folder or -Reset, so nothing was sent.
+# Exit status: 0 the theme is on the TV, or the reset ran; 1 the theme could not be pushed, or Home did not
+# restart after it (a failure of the shared helper stops this script with that status); 2 the command line is
+# not one theme folder or -Reset, no TV host was given, or tools\venv is missing, so nothing was sent.
 param(
     [Parameter(Position = 0)][string]$Theme,
     [switch]$Reset,
@@ -22,13 +23,23 @@ if ($Theme -and $Reset) {
 }
 $ErrorActionPreference = 'Stop'
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
-if (-not $TvHost) { throw 'pass -TvHost <tv ip> or set $env:TV_HOST' }
+if (-not $TvHost) {
+    # The same status theme.sh answers, for the same reason: a missing address is a run that never started, not
+    # a theme that could not be pushed, and 1 is what the header keeps for the push that ran and failed.
+    [Console]::Error.WriteLine('pass -TvHost <tv ip> or set $env:TV_HOST. Nothing was sent to the TV.')
+    exit 2
+}
 $env:TV_HOST = $TvHost
 # Resolve the theme folder against the caller's directory before moving into tools\.
 if ($Theme) { $Theme = (Resolve-Path $Theme).Path }
 Set-Location $PSScriptRoot
 $py = 'venv\Scripts\python.exe'
-if (-not (Test-Path $py)) { throw 'run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt' }
+if (-not (Test-Path $py)) {
+    # As in theme.sh: the venv is on this computer, so nothing was sent and this is a run that stopped before the
+    # theme was up, not a push that ran and failed.
+    [Console]::Error.WriteLine('run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt. Nothing was sent to the TV.')
+    exit 2
+}
 $pkg = 'com.gathin.tvhome'
 # Runs tools\tv.py or b64push.py and stops on a non-zero exit: 'Stop' only covers cmdlets, so a failed
 # native call would otherwise fall through to "Theme ... is on the TV".
