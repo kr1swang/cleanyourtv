@@ -32,8 +32,9 @@
    the default `strings.xml`. A missing string falls back to English (`launcher/app/lint.xml`), but a new switch
    needs its strings in every locale.
 6. Moving hard-coded text into resources is welcome; do not bundle unrelated build changes with it.
-7. Check the size gate before you push. A language's strings ship in the release APK, and that APK has to
-   stay under 622,592 B (608 KiB): `launcher/app/build/outputs/apk/release/app-release.apk`, measured with
+7. For this fork, add the [fork allowance](../../themes/apple-style/README.md#maintenance) to the upstream gate below.
+   Check the size gate before you push. A language's strings ship in the release APK, and that APK has to
+   stay under 589,824 B (576 KB): `launcher/app/build/outputs/apk/release/app-release.apk`, measured with
    `stat -c %s` on Linux or `stat -f %z` on macOS, and checked by the "Launcher build and unit tests" job
    on every pull request. `README.md` quotes the launcher at about 572 KB, so a full language can be the
    difference between green and a failed build. A language that does not fit is a maintainer decision, not

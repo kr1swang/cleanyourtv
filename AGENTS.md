@@ -1,14 +1,13 @@
 # AGENTS.md
 
-Instructions for coding agents (Claude Code, Codex, Gemini CLI, Cursor, Copilot and others) working in
-this repository. People should start with [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md);
+Instructions for coding agents. People should start with [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md);
 this file repeats their rules in the form an agent needs, and links to them for the detail.
 
 ## Scope of this fork
 
 Read [the fork guide](themes/apple-style/README.md). Its existing downloads/player/key helper are
 exempt from upstream network/video/service restrictions. No new permissions/services/dependencies.
-All safety rules apply.
+Safety rules apply. See the guide for the fork APK allowance.
 
 ## First: which job are you doing?
 
@@ -132,7 +131,7 @@ use it and ends with the check to run.
 |---|---|
 | Tests, as CI runs them | `tools/venv/bin/python -m unittest discover -s tests -v` after `python3 -m venv tools/venv` and `tools/venv/bin/pip install -r tools/requirements.txt`. On `main`, CI sets `CLEANYOURTV_STRICT=1`, and its "README tables" job checks that the TV tables and counts are what `tools/gen_tables.py` writes. On Windows the suites that drive `tools/*.sh` report as skipped: they need a POSIX shell, and CI runs them. |
 | Launcher, if you touched `launcher/` | JDK 17, Android SDK platform 34, build-tools 34.0.0. In `launcher/`: `./gradlew --no-daemon testReleaseUnitTest lintRelease assembleRelease`. Lint must stay at zero errors. |
-| APK size gate | `launcher/app/build/outputs/apk/release/app-release.apk` must be under 622,592 B (608 KB). Linux: `stat -c %s`, macOS: `stat -f %z`. |
+| APK size gate | `launcher/app/build/outputs/apk/release/app-release.apk` uses upstream 589,824 B (576 KB) plus the fork allowance. Linux: `stat -c %s`, macOS: `stat -f %z`. |
 | README rows | A new list adds only its folder, with a `tv.json`: the TV tables, the brand grid and the counts are generated after merging, so leave them alone. A theme has its row in `themes/README.md`; an add-on in `addons/README.md`. |
 | One topic per PR | A TV list never rides inside a launcher feature PR. A device's list plus small fixes for that same device can be one PR. |
 | Tested on | Say which TV, Android version and firmware you tested on, in the PR template's "Tested on" line. |

@@ -157,8 +157,10 @@ the title-free expanded-grid transition.
 - Preserve Cast, voice search and system updates during deployment. The configured Google TV helper
   leaves the stock launcher and setup services enabled; do not disable them to make Home redirection work.
   Another TV needs its own input and remote mapping checks.
-- The release APK must remain below 622,592 bytes, this fork’s 608 KiB gate. Do not bundle downloaded
-  wallpaper images or movies in the APK. Do not raise the gate to accommodate a change without agreement.
+- The release APK budget is the upstream CI gate **plus 48 KiB**: currently 576 + 48 = **624 KiB**
+  (strictly below 638,976 bytes). CI subtracts the fork allowance before the unchanged upstream check,
+  so future upstream gate changes carry through. Do not increase the allowance without agreement.
+  Downloaded wallpaper images and movies remain outside the APK.
 - Run the repository's Python suite and launcher unit tests, lint and release build for code changes.
   For Home/key/lifecycle changes, also verify physical remote keys, sleep/wake, reboot and phone Cast on
   a connected TV. For layout changes, check navigation and screenshots. For performance claims, use

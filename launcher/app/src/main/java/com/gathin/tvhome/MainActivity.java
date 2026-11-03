@@ -446,8 +446,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void onReceive(Context context, Intent intent) {
             updateClockVisibility();
+            clockRefresh.start();   // the wall clock was set: line the redraw up with the new minute
         }
     };
+    /** Keeps the Home clocks moving on Android before 12 when the firmware stops ACTION_TIME_TICK (see ClockRefresh). */
+    private ClockRefresh clockRefresh;
     private final Runnable minuteTick = new Runnable() {
         @Override
         public void run() {
@@ -552,6 +555,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (cinematic && hero.getVisibility() != View.GONE) setUpCinematicShelf(cfg.cinematicScrim);
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
+        clockRefresh = new ClockRefresh(clockBlock);
         greetingColor = greeting.getCurrentTextColor();
         topButtonsVisible = Config.ACTION_BUTTONS.equals(cfg.actionStyle);
         findViewById(R.id.topButtons).setVisibility(topButtonsVisible ? View.VISIBLE : View.GONE);
@@ -1037,6 +1041,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             registerReceiver(timeReceiver, timeFilter);
         }
         updateClockVisibility();
+        clockRefresh.start();   // with timeReceiver: while Home is visible, paused or not
         tileRefresh.onStart();
         wallpaperDownload = WallpaperLibrary.prefetch(this, allowDefaultWallpaper, () -> {
             if (isFinishing() || isDestroyed()) return;
@@ -1307,6 +1312,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // singleTask Home intents may pause/resume without hiding the video.
         if (videoWallpaper != null) videoWallpaper.pausePlayback();
         unregisterReceiver(timeReceiver);
+        clockRefresh.stop();
         handler.removeCallbacks(clockCheck);
         stopped = true;
         tileRefresh.onStop();

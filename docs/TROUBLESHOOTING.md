@@ -1357,6 +1357,22 @@ Fix: `inputs_cec_state_only` true in `config.xml` and rebuild, or `"inputs_cec_s
 Connected). The trade: a device without CEC, such as a laptop, shows no state either. The switch and its
 screenshot: [docs/switches.md](switches.md).
 
+## Every clock stops after the power button, until a reboot (TCL UnionTV)
+
+**Seen on:** a TCL UnionTV (`ro.product.model` UnionTV, Android 9, `PPR2.180905.006.A1`).
+
+The clocks freeze at the minute the TV was last put to sleep with the power button, while the system time stays
+right. TCL's AlarmManager skips new alarms while `sys.tcl.powerstatus` reads `suspend` (logcat: `sys.tcl.powerstatus
+is suspend, skip setImplLocked`), and on waking it drops the one that sends `ACTION_TIME_TICK`:
+`dumpsys alarm | grep mLastTick` shows the last tick at the minute of the power press. Before Android 12 a
+`TextClock` only moves on that tick.
+
+The launcher redraws its own clocks every minute, and when the display comes back on, on Android 11 and older, so
+Home and the Clock screensaver keep time. Clocks in other apps stay frozen. Unplugging the TV, or setting the time
+once, arms the tick again until the next power press:
+`tools/tv.py "cmd alarm set-time $(( $(date +%s) * 1000 ))"` (the sum is done on the computer: the TV's shell
+overflows it).
+
 ## A key helper is bound and a held remote button stopped repeating
 
 Hold volume up or down and the volume moves one step per press instead of ramping. The remote may be
@@ -1689,6 +1705,15 @@ Keep the package. Every settings page that reads a hardware value then stalls ab
 page that parses the answer crashes. The China-market lists here already say not to touch it; this is
 why.
 
+The price is not the same on every set, and it is not a China-firmware problem only. On a MiTV-MOOQ1
+(`tarzan`, Android TV 10, `QTG3.200305.006.5283`, the model in `examples/xiaomi-mi-tv-4a`, whose own
+list keeps the package) with `mitv.service` disabled, the brightness and contrast menu took about 30 s
+to open, and about 40 s after a power cycle at the wall; re-enabling the package and power-cycling
+again brought the menu back to normal, and the owner repeated both directions
+([issue #3085](https://github.com/Gathin23/cleanyourtv/issues/3085), from a set that had applied the
+second set of `examples/xiaomi-mitv-aesp0`). So on that firmware the picture menu alone costs 30-40 s
+to open, against the ~5 s this section measured on a CN set.
+
 **Re-enabling the package on its own does not bring Settings back.** The service is registered at boot
 and the disabled package's PERSISTENT process starts anyway, so nothing looks different after
 `pm enable` and it is easy to conclude the debloat was innocent - the reporter lost a day to exactly
@@ -1808,6 +1833,37 @@ tools/tv.py 'settings put global private_dns_mode opportunistic'
 or keep Private DNS and accept that the router's domain rules no longer cover the TV. Write down which one
 you chose, so the next "this one service is slow on the TV" does not start from scratch.
 
+## A VPN app on the TV makes strict Private DNS fail every lookup
+
+Hostname mode applies the specifier to the VPN network as well as to Wi-Fi, and with a VPN app connected on
+the TV itself it can fail validation there while Wi-Fi still reports it valid. Seen on a Xiaomi Mi Box S
+(`MIBOX4`, oneday, Android TV 9, `PI.3933`) with the Tailscale app connected for all apps: setting
+`dns.adguard-dns.com` in hostname mode broke every name lookup within seconds. `ping youtube.com` and
+`ping dns.adguard-dns.com` both answered `unknown host`, `ping 1.1.1.1` still worked, and
+`dumpsys connectivity` showed the Wi-Fi network `VALIDATED` with `UsePrivateDns: true`, the VPN network with
+`DnsAddresses: [100.100.100.100, ...]`, `UsePrivateDns: true` and `lastValidated{false}` (#3130). The
+lookups go to the VPN's own resolver, and DNS-over-TLS to that specifier through it did not validate. ADB
+kept working throughout, since it is an IP connection and needs no lookup, so the undo below can be sent
+over the same session.
+
+Check for a running VPN before switching Private DNS on:
+
+```sh
+tools/tv.py 'dumpsys connectivity' | grep 'type: VPN'
+```
+
+A `NetworkAgentInfo` line there means one is up: leave Private DNS off on that set, and filter ads on the
+router or in the VPN's own DNS settings instead. If it is already on, this puts lookups back within a few
+seconds:
+
+```sh
+tools/tv.py 'settings put global private_dns_mode opportunistic'
+tools/tv.py 'settings delete global private_dns_specifier'
+```
+
+Not checked in that report: other VPN clients and Android versions, and whether a specifier the VPN's
+resolver can reach validates.
+
 ## An app that runs a local VPN is on until the next boot, then gone
 
 A DNS filter, an ad blocker or a VPN client you keep, set to start with the TV, works once switched on, and
@@ -1820,8 +1876,10 @@ receiver had returned and handed the loading to a thread, no foreground service 
 the process was an empty cached one, and this firmware keeps very few of those:
 `tools/tv.py 'dumpsys activity settings' | grep CUR_MAX` prints `CUR_MAX_CACHED_PROCESSES=8` and
 `CUR_MAX_EMPTY_PROCESSES=4`. The first boot services push it out before it reaches the VPN. Any such app that
-loads slowly on a small TV can hit this; Private DNS (the README's option) is not affected, since the system
-resolver does the work.
+loads slowly on a small TV can hit this; Private DNS (the README's option) is not affected by that
+eviction, since the system resolver does the work - but while the app is up, the specifier applies to its
+VPN network as well, which is
+[the failure above](#a-vpn-app-on-the-tv-makes-strict-private-dns-fail-every-lookup).
 
 What does not help: the background exemptions (`cmd appops set <package> RUN_ANY_IN_BACKGROUND allow`,
 `dumpsys deviceidle whitelist +<package>`, `am set-standby-bucket <package> active`), because the app

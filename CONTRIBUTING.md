@@ -4,7 +4,8 @@ This fork maintains the [Apple-style launcher](themes/apple-style/README.md). Fo
 follow its [maintenance rules](themes/apple-style/README.md#maintenance). The upstream contribution
 policy below, including the network/video/service restrictions, applies to changes submitted upstream.
 The fork already includes verified background downloads, video wallpapers and a remote-key helper;
-its device-safety and privacy requirements remain unchanged.
+its device-safety and privacy requirements remain unchanged. The APK gate below is the upstream base;
+the fork guide defines the additional allowance.
 
 Thanks for helping more TVs lose their ads. Three kinds of contributions are especially welcome.
 
@@ -119,7 +120,7 @@ build-tools 34.0.0; on macOS `brew install openjdk@17 android-commandlinetools` 
 
 No TV on the network, or an APK for someone else to install? Build it on its own: from `launcher/`,
 `./gradlew --no-daemon assembleRelease` leaves it at
-`launcher/app/build/outputs/apk/release/app-release.apk`, which has to stay under 622,592 B (608 KiB);
+`launcher/app/build/outputs/apk/release/app-release.apk`, which has to stay under 589,824 B (576 KB);
 CI builds with the same command and refuses a bigger one. Gradle also has to find the SDK, and this is
 where a hand build stops: `launcher/build-and-install.sh` writes the gitignored
 `launcher/local.properties` for you, so by hand either run
