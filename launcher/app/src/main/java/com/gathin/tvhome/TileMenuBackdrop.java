@@ -17,11 +17,11 @@ final class TileMenuBackdrop extends Drawable {
     private final long duration;
     private ValueAnimator animation;
 
-    TileMenuBackdrop(View root, View gridShade, boolean reducedMotion) {
+    TileMenuBackdrop(View root, View gridShade, boolean animations, boolean reducedMotion) {
         this.root = root;
         this.gridShade = gridShade;
         dim.setColor(0x00000000);
-        duration = reducedMotion ? 60 : 180;
+        duration = PanelStyle.transitionDuration(animations, reducedMotion);
     }
 
     // Reuse one overlay, reversing an unfinished dismissal from its current opacity.
@@ -39,16 +39,25 @@ final class TileMenuBackdrop extends Drawable {
             animation.removeAllListeners();
             animation.cancel();
         }
+        if (duration == 0) {
+            setAlpha(alpha);
+            if (remove) remove();
+            return;
+        }
         animation = ValueAnimator.ofInt(dim.getAlpha(), alpha);
         animation.setDuration(duration);
         animation.addUpdateListener(a -> setAlpha((int) a.getAnimatedValue()));
         if (remove) animation.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(android.animation.Animator a) {
-                root.getOverlay().remove(TileMenuBackdrop.this);
-                tile = null;
+                remove();
             }
         });
         animation.start();
+    }
+
+    private void remove() {
+        root.getOverlay().remove(this);
+        tile = null;
     }
 
     @Override public void draw(Canvas canvas) {

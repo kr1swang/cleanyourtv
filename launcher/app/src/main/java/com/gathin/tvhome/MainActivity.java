@@ -3534,7 +3534,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** One Home-owned window for the center and its selection lists. */
     private void showControlCenter(int selectedRow) {
         if (controlCenter == null || !controlCenter.isShowing()) {
-            controlCenter = new ControlCenter(this, reducedMotion, () -> {
+            controlCenter = new ControlCenter(this, animations, reducedMotion, () -> {
                 controlReturnPending = true;
                 root.post(this::finishControlCenter);
             });
@@ -3972,7 +3972,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.setPivotY(above ? height : 0);
         panel.setScaleY(0.92f);
         panel.setTranslationY((above ? 8 : -8) * density);
-        if (tileMenuBackdrop == null) tileMenuBackdrop = new TileMenuBackdrop(root, backdropShade, reducedMotion);
+        if (tileMenuBackdrop == null) tileMenuBackdrop = new TileMenuBackdrop(root, backdropShade, animations, reducedMotion);
         tileMenuBackdrop.show((View) card.getParent());
         popup.setOnDismissListener(() -> {
             tileMenuBackdrop.dismiss();

@@ -57,6 +57,7 @@ The former flower card and standalone download settings page have been removed.
 
 Main and child pages have no title and share 288dp-wide rows. Opening, Back/Home closing, child-page
 changes and the dim backdrop use 180ms transitions; reduced motion uses a 60ms fade without sliding.
+With `animations: false`, the panel and tile-menu backdrop change immediately, including dismissal.
 Dock expansion and collapse use 360ms scrolling. The clock remains visible behind the control center.
 
 Upstream 3.3 enables `tile_menu` by default, so the theme does not repeat that switch.

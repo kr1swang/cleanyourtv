@@ -19,6 +19,10 @@ final class PanelStyle {
 
     PanelStyle(Context context) { this.context = context; }
 
+    static long transitionDuration(boolean animations, boolean reducedMotion) {
+        return !animations ? 0 : reducedMotion ? 60 : 180;
+    }
+
     TextView text(int size, boolean secondary) {
         TextView t = new TextView(context);
         t.setTextSize(size);

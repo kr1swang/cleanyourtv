@@ -16,7 +16,6 @@ import android.widget.TextView;
 
 /** Home-owned overlay. No activity transition, blur, bitmap capture or idle work. */
 final class ControlCenter {
-    private static final long TRANSITION_MS = 180;
     final Activity activity;
     private final PanelStyle style;
     final LinearLayout rows;
@@ -24,16 +23,18 @@ final class ControlCenter {
     private final LinearLayout body;
     private final ScrollView scroll;
     private final boolean reducedMotion;
+    private final long duration;
     private Runnable back;
     private Runnable leavePage;
     private AlertDialog prompt;
     private boolean restoreFocus = true;
     private boolean closing;
 
-    ControlCenter(Activity activity, boolean reducedMotion, Runnable onClosed) {
+    ControlCenter(Activity activity, boolean animations, boolean reducedMotion, Runnable onClosed) {
         this.activity = activity;
         style = new PanelStyle(activity);
         this.reducedMotion = reducedMotion;
+        duration = PanelStyle.transitionDuration(animations, reducedMotion);
         dialog = new Dialog(activity) {
             @Override public void cancel() { ControlCenter.this.close(true); }
         };
@@ -100,16 +101,23 @@ final class ControlCenter {
         // Move the viewport with its content. Translating rows alone clips the reverse
         // transition against the ScrollView's 4dp inset; the body has 16dp of room.
         body.setAlpha(0);
-        body.setTranslationX(reducedMotion ? 0 : dp(replacing && onBack == null ? -12 : 12));
+        body.setTranslationX(duration == 0 || reducedMotion ? 0 : dp(replacing && onBack == null ? -12 : 12));
         animatePanel(1, 0, PanelStyle.BACKDROP_DIM, null);
     }
 
     /** One animation clock drives the panel and system-composited backdrop together. */
     private void animatePanel(float alpha, float translation, float dim, Runnable end) {
         Window window = dialog.getWindow();
+        if (duration == 0) {
+            body.setAlpha(alpha);
+            body.setTranslationX(0);
+            window.setDimAmount(dim);
+            if (end != null) end.run();
+            return;
+        }
         float fromDim = window.getAttributes().dimAmount;
         body.animate().alpha(alpha).translationX(translation)
-                .setDuration(reducedMotion ? 60 : TRANSITION_MS)
+                .setDuration(duration)
                 .setUpdateListener(fromDim == dim ? null : animation ->
                         window.setDimAmount(fromDim + (dim - fromDim) * animation.getAnimatedFraction()))
                 .withEndAction(end).start();
