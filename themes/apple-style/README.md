@@ -12,11 +12,32 @@ The Apple-style theme selects `panel`. Unknown values fall back to `buttons`. Bo
 the existing system, network and input actions; no duplicate settings handlers are introduced.
 
 The theme also selects `home_layout: "apple"`, `tile_menu_style: "panel"` and
-`reorder_single_drop: true`. Without those settings, the layout and menu use `default`,
-and placing an app keeps reorder mode active. Invalid layout/menu values use `default`.
+`reorder_single_drop: true`. The resource defaults are `default`, `default` and `false`, but this APK
+overlays them with the bundled theme. Invalid layout/menu values use `default`.
 The Apple layout lives in `activity_main_apple.xml`; `activity_main.xml` remains the upstream layout.
 These switches are independent of `action_style` and `glass_style`. Dock expansion requires
 `dock_row: true`, `single_row: false` and `dock_title: false`.
+
+Configuration is applied in this order: resource defaults → bundled `themes/apple-style/config.json`
+→ external `config.json` → saved on-TV choices for the settings that support them. Saved app order
+is separate and takes priority until Reset order. A theme push/reset clears the on-TV overrides
+through upstream's theme revision handling.
+Omitted external keys keep their bundled values; pushing `themes/default/config.json` alone does
+not turn off the custom styles. To select the upstream layout and menus, include these explicit
+overrides in the external config:
+
+```json
+{
+  "home_layout": "default",
+  "action_style": "buttons",
+  "tile_menu_style": "default",
+  "reorder_single_drop": false,
+  "glass_style": "glass"
+}
+```
+
+These override only the named styles. Dock order, columns, greeting and Dock title keep their bundled
+values unless overridden too. Focus artwork remains per-card as described below.
 
 Press **Up** on a Dock app to open the control center, then choose **Background settings**.
 The center also offers Input sources, System settings, Network settings and Reset order.
@@ -136,7 +157,7 @@ Preserve the installed service component name so upgrades retain its accessibili
 changing the shared service, verify physical keys, wake from sleep, Cast while asleep, reboot without
 pressing Home and service reconnection while another app is open.
 
-The theme selects `glass_style: shadow`. Other themes retain `glass`, `rim` or `halo`; these reuse
+The theme selects `glass_style: shadow`. An external theme can explicitly select `glass`, `rim` or `halo`; these reuse
 upstream GlassView artwork, cached per card size and drawn over the card. All styles follow the
 existing card zoom/press animation; this does not restore the upstream floating spring cursor.
 

@@ -1,3 +1,6 @@
+此 fork 提供 Apple-style 桌面、控制中心、背景下載與動態桌布。客製版的設定與部署方式見
+[Apple-style 指南](themes/apple-style/README.md)；下方內容介紹上游版本，其無網路權限、無影片背景的限制不適用於本 fork。
+
 <p align="center">
   <a href="https://cleanyour.tv"><img src="docs/banner.png" alt="CleanYourTV：讓電視主畫面回歸簡潔" width="800"></a>
 </p>

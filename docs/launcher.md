@@ -2,6 +2,9 @@
 
 [Back to the README](../README.md#the-launcher)
 
+This page describes upstream. This fork also supports downloaded and video backgrounds; see the
+[Apple-style guide](../themes/apple-style/README.md) for its defaults, control center and remote helper.
+
 A small native home screen for Android TV: **about 572 KB**, plain Java, built for TVs with 1 GB of RAM.
 No blur, no video, no network permission, no background services. This page has the details the
 README leaves out: settings, languages, remote keys and building it yourself. Every key a theme can

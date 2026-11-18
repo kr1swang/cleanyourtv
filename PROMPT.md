@@ -24,7 +24,7 @@ request otherwise. Do not copy another device's disabled-package list.
 
 Where these steps name a file under `tools/`, `docs/` or `examples/` that is not in your working
 folder, you are running without this repo: clone it first with
-`git clone https://github.com/Gathin23/cleanyourtv` and work from there, so `tools/disable.sh` and the
+`git clone --branch workitem/apple-style https://github.com/kr1swang/cleanyourtv` and work from there, so `tools/disable.sh` and the
 rest keep their safety checks, rather than stopping or writing your own.
 
 Connect
