@@ -49,6 +49,8 @@ final class WallpaperPlayer {
     /** The picture on screen, released once the next one has been drawn. */
     private Bitmap current;
     private WallpaperSurface surface;
+    private final Config config;
+    private Runnable ready;
     private boolean active;
     private boolean closed;
     private boolean loading;
@@ -64,6 +66,12 @@ final class WallpaperPlayer {
     private int[] sun;
 
     WallpaperPlayer(Context context, FrameLayout root, Config config) {
+        this(context, root, config, false);
+    }
+
+    /** Live background changes decode through update(); cold Home keeps upstream's first-frame path. */
+    WallpaperPlayer(Context context, FrameLayout root, Config config, boolean deferFirst) {
+        this.config = config;
         this.root = root;
         backgroundColor = config.backgroundColor;
         files = new ArrayList<>(config.wallpapers);
@@ -95,7 +103,7 @@ final class WallpaperPlayer {
         if (config.wallpaperEnabled && !files.isEmpty()) {
             root.addView(image, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            showFirst();
+            if (!deferFirst) showFirst();
         }
     }
 
@@ -134,14 +142,45 @@ final class WallpaperPlayer {
         update();
     }
 
+    void start(Runnable onReady) {
+        ready = onReady;
+        start();
+        if (current != null) notifyReady();
+    }
+
+    private void notifyReady() {
+        Runnable callback = ready;
+        ready = null;
+        if (callback != null) callback.run();
+    }
+
+    /** Reuse only an unchanged single image, including its rendering and rotation settings. */
+    boolean canReuse(Config next) {
+        return current != null && files.size() == 1 && files.equals(next.wallpapers)
+                && config.wallpaperEnabled == next.wallpaperEnabled
+                && config.backgroundColor == next.backgroundColor
+                && config.wallpaperDim == next.wallpaperDim
+                && config.wallpaperTrueColor == next.wallpaperTrueColor
+                && config.wallpaperRotationMinutes == next.wallpaperRotationMinutes
+                && config.wallpaperOrder.equals(next.wallpaperOrder)
+                && config.wallpaperMoods.equals(next.wallpaperMoods)
+                && config.wallpaperCaptions == next.wallpaperCaptions;
+    }
+
     /** The decoded image also covers the video decoder's startup and release. */
     View poster() {
         return current == null || image.getParent() == null ? null : image;
     }
 
     /** Video keeps its ImageView poster; static images can retain a separate composition layer. */
-    void separateSurface(int backgroundColor) {
-        if (current == null) return;
+    void separateSurface(boolean separate) {
+        if (!separate) {
+            if (surface != null) root.removeView(surface);
+            surface = null;
+            image.setVisibility(View.VISIBLE);
+            return;
+        }
+        if (current == null || surface != null) return;
         surface = new WallpaperSurface(image, current, backgroundColor);
         root.addView(surface, 0, new FrameLayout.LayoutParams(-1, -1));
     }
@@ -176,6 +215,7 @@ final class WallpaperPlayer {
     void close() {
         active = false;
         closed = true;
+        ready = null;
         decoder.shutdownNow();
     }
 
@@ -190,7 +230,11 @@ final class WallpaperPlayer {
     }
 
     void update() {
-        if (!active || closed || loading || files.isEmpty()) return;
+        if (!active || closed || loading) return;
+        if (files.isEmpty()) {
+            notifyReady();
+            return;
+        }
         String previous = preferences.getString("image", "");
         // A picture outside the time of day's group (the group changed) is replaced at once, not after the interval.
         List<File> playable = playable();
@@ -223,6 +267,7 @@ final class WallpaperPlayer {
                     preferences.edit().putString("image", displayed)
                             .putLong("changed", System.currentTimeMillis()).apply();
                 }
+                notifyReady();
             });
         });
     }

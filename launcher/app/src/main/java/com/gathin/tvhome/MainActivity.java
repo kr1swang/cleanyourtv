@@ -174,14 +174,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private FrameLayout root;
     private View backdropShade;
     private TileMenuBackdrop tileMenuBackdrop;
-    private WallpaperPlayer wallpaperPlayer;
+    private HomeWallpaper wallpaperPlayer;
     private View ambient;
     private ControlCenter controlCenter;
     private boolean controlReturnPending;
-    private VideoWallpaper videoWallpaper;
-    private java.util.concurrent.Future<?> wallpaperDownload;
-    private boolean allowDefaultWallpaper, downloadedWallpaperReady;
-    private String wallpaperSelection;
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
     private View hero;
@@ -533,9 +529,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // black under it is a second full-screen fill on every frame for nothing. The starting window still uses
         // the theme's background, so launch looks the same.
         getWindow().setBackgroundDrawable(null);
-        attachWallpaper(cfg);
         sky = findViewById(R.id.sky);
-        sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
+        wallpaperPlayer = new HomeWallpaper(this, root, cfg, sky::setIntensity);
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
         // a fade renders it into a full-screen offscreen buffer first.
@@ -1041,11 +1036,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onStart();
         started = true;
         stopped = false;
-        if (videoWallpaper != null) {
-            // Background trim may have released the preview as well as the static surface.
-            if (wallpaperPlayer.poster() == null) wallpaperPlayer.start();
-            videoWallpaper.resumePlayback();
-        }
+        wallpaperPlayer.onStart();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(timeReceiver, timeFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -1054,19 +1045,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateClockVisibility();
         clockRefresh.start();   // with timeReceiver: while Home is visible, paused or not
         tileRefresh.onStart();
-        wallpaperDownload = WallpaperLibrary.prefetch(this, allowDefaultWallpaper, () -> {
-            if (isFinishing() || isDestroyed()) return;
-            downloadedWallpaperReady = true;
-            if (hasWindowFocus()) refreshWallpaper();
-        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         resumed = true;
-        // A physical Home press can return without finishing the settings activity.
-        refreshWallpaper();
         // A festival that started or ended while Home was in the background: rebuild with or without it.
         if (festive != festival.active(LocalDate.now())) {
             recreate();
@@ -1079,6 +1063,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             recreate();
             return;
         }
+        // Saved settings that require recreation take precedence over an in-place background swap.
+        refreshWallpaper();
         restartIdleClock();
         promptsPaused = false;
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
@@ -1115,7 +1101,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (showStats) startStats();
         if (gameDay != null) gameDay.start();
         sky.update();
-        if (videoWallpaper == null) wallpaperPlayer.start();
+        wallpaperPlayer.start();
         handler.postDelayed(minuteTick, MINUTE_MS);
         if (festive && lamp != null) {
             lamp.start();
@@ -1319,9 +1305,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         controlReturnPending = false;
         if (controlCenter != null) controlCenter.close(false);
         started = false;
-        if (wallpaperDownload != null) { wallpaperDownload.cancel(true); wallpaperDownload = null; }
         // singleTask Home intents may pause/resume without hiding the video.
-        if (videoWallpaper != null) videoWallpaper.pausePlayback();
+        wallpaperPlayer.onStop();
         unregisterReceiver(timeReceiver);
         clockRefresh.stop();
         handler.removeCallbacks(clockCheck);
@@ -2049,7 +2034,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * so changing apps neither repaints it on the CPU (about 11 ms) nor uploads it again.
      */
     private void setAmbient(int color) {
-        if (videoWallpaper != null) return;
+        if (wallpaperPlayer.hasVideo()) return;
         if (color == ambientColor && ambient.getBackground() != null) return;
         ambientColor = color;
         BitmapDrawable glow = (BitmapDrawable) ambient.getBackground();
@@ -3607,39 +3592,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Replace only the background; the grid, focus and open panel stay attached. */
     private void refreshWallpaper() {
-        if (!downloadedWallpaperReady && java.util.Objects.equals(
-                wallpaperSelection, WallpaperLibrary.choice(this))) return;
-        Config cfg = Config.load(this);
-        if (videoWallpaper != null) {
-            videoWallpaper.pausePlayback();
-            root.removeView(videoWallpaper);
-            videoWallpaper = null;
-        }
-        wallpaperPlayer.detach();
-        root.setBackgroundColor(cfg.backgroundColor);
-        attachWallpaper(cfg);
-        downloadedWallpaperReady = false;
-        sky.setIntensity(videoWallpaper == null ? cfg.skyIntensity : 0);
-        if (started) {
-            if (videoWallpaper != null) videoWallpaper.resumePlayback();
-            else wallpaperPlayer.start();
-        }
-    }
-
-    private void attachWallpaper(Config cfg) {
-        wallpaperPlayer = new WallpaperPlayer(this, root, cfg);
-        wallpaperSelection = WallpaperLibrary.choice(this);
-        // Remember the source, not file existence: a deleted library poster must be fetched on return.
-        allowDefaultWallpaper = cfg.wallpaperEnabled && (cfg.wallpapers.isEmpty()
-                || (cfg.wallpaper != null
-                    && WallpaperLibrary.directory(this).equals(cfg.wallpaper.getParentFile())));
-        // An explicit on-TV wallpaper choice takes precedence over the theme's video.
-        if (cfg.wallpaperEnabled && (getSharedPreferences(Config.SETTINGS_NAME, MODE_PRIVATE)
-                .getString(Config.WALLPAPER_CHOICE_KEY, null) == null || WallpaperLibrary.isSelected(this))) {
-            videoWallpaper = VideoWallpaper.attach(this, root, wallpaperPlayer.poster(),
-                    cfg.animations && !cfg.reducedMotion);
-        }
-        if (videoWallpaper == null) wallpaperPlayer.separateSurface(cfg.backgroundColor);
+        wallpaperPlayer.refresh();
     }
 
     private void finishControlCenter() {

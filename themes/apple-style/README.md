@@ -94,6 +94,11 @@ check marks the selected profile. Size and download status follow the name.
 The overlay uses no blur, background capture, local ADB, polling or extra dependencies.
 Opening it does not pause Home; applying a different background replaces only the background
 layer, preserving the grid and panel focus.
+Live changes decode the new image on WallpaperPlayer's worker and keep the previous background
+until it is ready. Switching between a resolution's static/30fps/60fps profiles reuses its decoded
+preview when the image and rendering settings are unchanged. Cold Home startup keeps upstream's
+first-frame image path. Pending changes are discarded when Home stops or a newer selection replaces
+them; returning Home applies the latest saved choice.
 
 Golden Gate offers static 1080p, static 4K,
 1080p/30 fps, 1080p/60 fps, 4K/30 fps and 4K/60 fps. The picker shows download size, progress and
@@ -180,6 +185,8 @@ the title-free expanded-grid transition.
   Reuse upstream configuration handling instead of enforcing these values again in Java.
 - Keep custom behavior in focused components and reuse upstream settings, input-source, key-handling
   and memory-management paths. Avoid unrelated refactoring during upstream merges.
+  `HomeWallpaper` owns download recovery and image/video switching; `WallpaperPlayer` keeps upstream
+  image decoding and rotation. `TileStyle` holds card geometry differences and shares row fitting.
 - Keep this guide as the detailed custom reference. Keep the fork notices in the root README,
   AGENTS and CONTRIBUTING short; do not rewrite upstream documentation or generated tables.
 - Preserve Cast, voice search and system updates during deployment. The configured Google TV helper
@@ -199,6 +206,8 @@ the title-free expanded-grid transition.
 
 The JVM tests cover catalog validation, FHD static default selection, shared-preview cache reuse,
 offline cache reads, cancellation, truncated/oversized responses, checksum failures and partial cleanup.
-The JVM catalog tests read the shipped six-profile catalog. Hardware validation
-of decoder performance, color transitions, remote navigation and Cast is still required before
+The JVM catalog tests read the shipped six-profile catalog. The Python suite's `test_home_wallpaper.py`
+compiles the real `HomeWallpaper` coordinator with player doubles to check rapid selection changes,
+late callbacks and stop/resume. Hardware validation of decoder performance, color transitions,
+remote navigation and Cast is still required before
 claiming those results. The settings UI can be built without a connected TV.
