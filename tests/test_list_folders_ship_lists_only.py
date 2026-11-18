@@ -21,8 +21,36 @@ written in the test holds the walk itself: a folder with `restore.sh`, a script 
 `.ps1` and a script beside the list are each reported, and a folder carrying only what a list folder ships
 is quiet.
 
+The same step's last clause, `pm uninstall` steps, was named in that sentence and in `MAINTAINER.md`
+("`pm uninstall` steps in a list folder -> rework: keep the folder to disabling only") without a check:
+the walk above reads file suffixes, and a command sits inside the list's own comments. Two lists handed
+one out - `examples/xiaomi-mitv-mssp3` (`pm uninstall --user 0 com.mstar.netflixobserver`, in a header
+that also said the list only disables) and `examples/xiaomi-mitv-mssp3-android9` (the same for
+`com.google.android.katniss`, in a five-line removal recipe with its `cmd package install-existing`
+undo). A list's Undo line is `tools/restore.sh`, which runs `pm enable`: it cannot put back what an
+uninstall removes, so the step and the undo do not belong in one file. `uninstall_steps()` reads every
+`debloat*.txt` in the tree for the command shape - the line, once its `#` and indentation are gone, is
+`pm uninstall` with a package name - and leaves prose alone (`pm uninstall fails with ...`, "even after
+`pm uninstall --user 0`", `pm uninstall-updates`).
+
+The same step's middle clause, Private DNS or AdGuard setup, was the same kind of gap. `AGENTS.md` states
+it in as many words ("No Private DNS or AdGuard setup ... inside a list folder. The README already has the
+optional DNS extra; a note that Private DNS works on that TV is fine") and `docs/DOS-AND-DONTS.md`'s
+Don't column lists "private-DNS or AdGuard steps". One folder handed the setup out anyway:
+`examples/freebox-player-pop/README.md`'s "Ad-blocking DNS (off, on purpose)" section carried
+`settings put global private_dns_specifier <your-id>.dns.nextdns.io` and
+`settings put global private_dns_mode hostname` as a code block, beside a note that the set itself was
+left on automatic DNS - so the commands were the optional DNS extra `docs/faq.md` already documents
+(`#can-it-block-ads-inside-apps-too`), copied into a list folder where the section's own title says they
+are off. `private_dns_setup()` reads every file in a list folder for the two commands that turn Private
+DNS on, and leaves the way back alone: `private_dns_mode opportunistic`, `private_dns_mode off` and
+`settings delete global private_dns_*` are what the folders' undo lines switch it back to. A folder's note
+that Private DNS works (`Private DNS (dns.adguard-dns.com) works`) is the kind `AGENTS.md` allows, so no
+note is read at all - only the two commands that turn it on.
+
 Run from the repository root: python3 -m unittest discover -s tests -v
 """
+import re
 import subprocess
 import tempfile
 import unittest
@@ -34,7 +62,50 @@ EXAMPLES = ROOT / "examples"
 # The suffixes a shell on the reader's computer runs without being asked twice.
 SCRIPT_SUFFIXES = (".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd")
 
+# A `pm uninstall <package>` step, read once the line's `#` and indentation are gone: the command itself,
+# with a package name as the last word of the line. `pm uninstall-updates` is a different command and a
+# sentence that mentions the command without a package (`pm uninstall fails with ...`, "even after
+# `pm uninstall --user 0`.") hands nothing to a reader, so neither is a step.
+UNINSTALL = re.compile(r"(?:adb\s+shell\s+)?pm\s+uninstall(?:\s+\S+)*?\s+[A-Za-z][\w]*\.[\w.]+$")
+
+# A Private DNS or AdGuard setup step: the two settings writes that turn it on. The way back is a
+# different command (`private_dns_mode opportunistic`, `private_dns_mode off`, or `settings delete
+# global private_dns_*`), so a folder's undo line stays quiet, and so does a note that it works.
+DNS_SETUP = (re.compile(r"settings\s+put\s+global\s+private_dns_mode\s+hostname\b"),
+             re.compile(r"settings\s+put\s+global\s+private_dns_specifier\s+\S+"))
+
 # What step 6 tells a list author, and the check it is now held to.
+
+
+def uninstall_steps(examples):
+    """`folder/file:line: text` for every `pm uninstall <package>` step a list under `examples/` hands out."""
+    found = []
+    for path in sorted(examples.rglob("debloat*.txt")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            text = line.strip().lstrip("#").strip()
+            if UNINSTALL.match(text):
+                found.append(f"{path.relative_to(examples).as_posix()}:{number}: {text}")
+    return found
+
+
+def private_dns_setup(examples):
+    """`folder/file:line: text` for every Private DNS or AdGuard setup step in a list folder."""
+    found = []
+    for folder in folders(examples):
+        for path in sorted(folder.rglob("*")):
+            if not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            for number, line in enumerate(text.splitlines(), 1):
+                # A command indented under a `#` bullet reads the same as an active line here, as it
+                # does for the uninstall steps: either way the folder hands the reader the command.
+                stripped = line.strip().lstrip("#").strip()
+                if any(shape.search(stripped) for shape in DNS_SETUP):
+                    found.append(f"{path.relative_to(examples).as_posix()}:{number}: {stripped}")
+    return found
 
 
 def scripts(examples):
@@ -67,6 +138,23 @@ class ListFoldersTest(unittest.TestCase):
                          "'Do not add install or restore scripts, Private DNS or AdGuard setup, or `pm "
                          "uninstall` steps', and tools/disable.sh, tools/restore.sh and the launcher's own "
                          "install script do everything a folder needs. Found: " + ", ".join(found))
+
+    def test_no_list_hands_out_an_uninstall_step(self):
+        found = uninstall_steps(EXAMPLES)
+        self.assertEqual([], found,
+                         "a list disables and re-enables, so its Undo line (tools/restore.sh) cannot put "
+                         "back what a `pm uninstall` removes: docs/workflows/tv-list.md step 6 asks for no "
+                         "`pm uninstall` steps and MAINTAINER.md marks them rework ('keep the folder to "
+                         "disabling only'). Found: " + ", ".join(found))
+
+    def test_no_list_folder_hands_out_a_private_dns_setup(self):
+        found = private_dns_setup(EXAMPLES)
+        self.assertEqual([], found,
+                         "a list folder says whether Private DNS works on its set and leaves the setup "
+                         "to the optional DNS extra: docs/workflows/tv-list.md step 6 asks for no "
+                         "'Private DNS or AdGuard setup' in a folder, AGENTS.md's hard rules say the same, "
+                         "and docs/faq.md#can-it-block-ads-inside-apps-too has the two commands and the "
+                         "way back. Found: " + ", ".join(found))
 
     def test_the_walk_reads_every_folder(self):
         # Without this, a walk that stopped finding folders would pass the test above by finding nothing.
@@ -137,6 +225,80 @@ class TheWalkTest(unittest.TestCase):
                     self.assertNotIn(f"examples/{folder.name}/restore.sh", line,
                                      f"{page.relative_to(ROOT)} tells a reader to run a script inside the "
                                      f"list folder; the undo is tools/restore.sh {page.relative_to(ROOT).parent}/debloat.txt")
+
+    def test_a_commented_uninstall_command_is_reported(self):
+        # The shape both lists had: the command indented under a `#` bullet, in the header's notes.
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": "# TV\n#   Beyond this repo:\n"
+                                                      "#     pm uninstall --user 0 com.example.one\n"})
+            self.assertEqual(["x/debloat.txt:3: pm uninstall --user 0 com.example.one"],
+                             uninstall_steps(examples))
+
+    def test_an_active_uninstall_line_is_reported_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": "# TV\ncom.example.one\n",
+                                       "x/debloat-keep-cast.txt": "pm uninstall com.example.two\n"})
+            self.assertEqual(["x/debloat-keep-cast.txt:1: pm uninstall com.example.two"],
+                             uninstall_steps(examples))
+
+    def test_an_adb_shell_wrapper_is_the_same_step(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": "#   adb shell pm uninstall --user 0 com.example.one\n"})
+            self.assertEqual(1, len(uninstall_steps(examples)))
+
+    def test_a_sentence_that_mentions_the_command_is_not_a_step(self):
+        # Every one of these is on main: a failure the firmware answers, a history line, and a command
+        # whose name only starts the same way. None of them hands a reader a package to remove.
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": (
+                "# - pm uninstall fails with DELETE_FAILED_INTERNAL_ERROR; the commented-out line\n"
+                "#   and it re-enabled them even after `pm uninstall --user 0`.\n"
+                "# - `pm uninstall-updates` does not exist on this Android 11 build\n"
+                "#   pm uninstall --user 0, as the owner did before this list\n"
+                "com.example.one\n")})
+            self.assertEqual([], uninstall_steps(examples))
+
+    def test_the_walk_reads_a_list_at_any_depth(self):
+        # A folder can ship more than one list (a keep-cast twin); the walk covers the folder, not one name.
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/lists/debloat.txt": "#     pm uninstall com.example.one\n"})
+            self.assertEqual(["x/lists/debloat.txt:1: pm uninstall com.example.one"],
+                             uninstall_steps(examples))
+
+    def test_a_dns_setup_code_block_in_a_folder_is_reported(self):
+        # The shape examples/freebox-player-pop/README.md had: the two commands, as a block to copy.
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": "# TV\ncom.example.one\n", "x/README.md": (
+                "## Ad-blocking DNS (off, on purpose)\n\n```bash\n"
+                "tools/venv/bin/python -I tools/tv.py 'settings put global private_dns_specifier "
+                "<your-id>.dns.nextdns.io'\n"
+                "tools/venv/bin/python -I tools/tv.py 'settings put global private_dns_mode hostname'\n"
+                "```\n")})
+            self.assertEqual(2, len(private_dns_setup(examples)))
+            self.assertIn("x/README.md:4: tools/venv/bin/python -I tools/tv.py 'settings put global "
+                          "private_dns_specifier <your-id>.dns.nextdns.io'", private_dns_setup(examples))
+
+    def test_a_commented_dns_setup_line_is_reported_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": "# TV\n#   settings put global private_dns_mode "
+                                                     "hostname\ncom.example.one\n"})
+            self.assertEqual(["x/debloat.txt:2: settings put global private_dns_mode hostname"],
+                             private_dns_setup(examples))
+
+    def test_the_way_back_and_a_working_note_are_not_a_setup(self):
+        # Every one of these is on main: two lists' undo lines, a README's revert, a profile's
+        # `settings delete`, and the notes that say it works. None of them turns Private DNS on.
+        with tempfile.TemporaryDirectory() as tmp:
+            examples = self.tree(tmp, {"x/debloat.txt": (
+                "# TV\ncom.example.one\n"
+                "# Undo: tools/tv.py 'settings put global private_dns_mode opportunistic'\n"
+                "# Private DNS (dns.adguard-dns.com) works in hostname mode.\n"
+                "#    null before. Undo: settings delete global private_dns_mode; settings delete global "
+                "private_dns_specifier\n"),
+                "x/README.md": "- Private DNS works on this set: with `dns.adguard-dns.com`, the streaming "
+                               "apps still play.\n- If DNS fails after a cold boot, set "
+                               "private_dns_mode=off.\n"})
+            self.assertEqual([], private_dns_setup(examples))
 
 
 if __name__ == "__main__":

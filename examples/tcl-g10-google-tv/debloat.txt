@@ -86,6 +86,46 @@
 # it being measured here. Power-on lands on the new Home by itself (no power_on_home needed).
 # AdGuard Private DNS worked there.
 #
+# Also used on a TCL 55QM5K, US (product G10_4K_US_NF, build STT2.230203.001, incremental AS50,
+# like the C6KS). Tested on 2026-11-12 for one session with one reboot check, not yet lived with
+# for several days. Every package of this list is installed on it (nothing to skip), and it also
+# ships the extras in the last optional block below: com.tcl.hotelmenu, com.roku.web.trc and US
+# streaming preloads (Hulu, Disney+, Peacock, Paramount+, Max, Tubi, Pluto TV, Spotify, FOX ONE,
+# YouTube TV). As on the 43P69K, Samba TV ACR and logkit shipped enabled and were disabled; ttvs
+# was kept: on this firmware it hosts TCL's firmware updater (versionUpdateApp, checked with
+# `dumpsys package com.tcl.ttvs`), so it is not "just analytics" on every unit. The saved setup
+# Wi-Fi belonged to setupwraith: forgotten and re-joined in Settings first, after which disabling
+# setupwraith kept Wi-Fi. Phone casting still worked with the wizard off on this unit (unlike the
+# #3446 report above), and AirPlay was verified too. Its remote is a Bluetooth BT_RC923A whose
+# app and gear buttons send Linux scancodes, not keycodes: gear 233, Netflix 242, YouTube 245,
+# Prime Video 752, Live TV 365, plus Apple TV 652, TCL TV 345 and Disney+ 762. All dead once
+# launcherx is off; this folder's config.json maps them with app_keys "scan:..." entries (read it
+# with tools/theme.sh). One key does not go through a config.json: the gear's scancode array
+# settings_key_scancodes is config.xml-only, so put <item>233</item> into
+# launcher/app/src/main/res/values/config.xml before building. With INPUT_KEY_SERVICE=1 and
+# HOME_KEY_SERVICE=1 the mapped buttons worked from the real remote, and held volume stepped once
+# per press (see the 55Q6CS note); the owner accepted the trade. TclAppBoot needs APP_AUTO_START
+# for the key services (appops set com.gathin.tvhome APP_AUTO_START allow, then
+# appops write-settings); it held across the reboot. Power-on lands on the new Home by itself
+# (no power_on_home needed).
+#
+# A second TCL 55Q6CS, India (product G10_4K_GB, software V8-R75PT01-LF1V500, same build STT2.230203.001,
+# incremental AS50, Realtek rtd6748). Tested on 2026-11-15 for one day with one reboot check, not yet lived with
+# for several days. As on the first 55Q6CS, Samba TV ACR, logkit and ttvs shipped enabled; all three were disabled.
+# tv.plus and smartlink.core are not installed. Every other active line was disabled except three the owner kept:
+# channelplus (TCL Live), ui_mediaCenter (USB media) and gtvpai (left enabled, as advised above). From the optional
+# lines: guard, messagebox, usercenter, t_solo, smartalexa, hearaid, browser, magiconnectfree, both AirPlay lines,
+# tv.remote.service, katniss, videos, play.games and youtube.tvmusic; waterfall.overseas was disabled and then
+# re-enabled, as the owner watches TCL Channel. Also disabled there: com.tcl.miracast and the India preloads
+# com.discoveryplus.tv.android, com.indiatv.androidtv.livetv, com.spotify.tv.android, com.mxtech.videoplayer.ad and
+# com.vectorunit.purple.googleplay. All of it stayed off after the reboot. setupwraith owned a second, hidden
+# saved network but not the one the set was on; forgetting that one with `cmd wifi forget-network <id>` let
+# disable.sh's guard through, and Wi-Fi and ADB stayed up.
+# Unlike the first 55Q6CS, with launcherx disabled and NO key helper bound, the owner's real remote still opened
+# Netflix, YouTube and Prime Video from their buttons, and Input, gear and Dashboard all did something; held
+# volume ramped. Key helpers were left off. Only the outcome was checked, not which firmware service answers
+# (TclShortCutKeyManager does on the 55P6K above). Power-on lands on the new Home by itself.
+# AdGuard Private DNS worked there.
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/tcl-g10-google-tv/debloat.txt
 # Undo:    TV_HOST=<tv ip> tools/restore.sh examples/tcl-g10-google-tv/debloat.txt com.google.android.apps.tv.launcherx
 # Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
@@ -109,12 +149,26 @@
 # - Disabling the stock launcher alone is not enough to install a replacement:
 #   com.google.android.tungsten.setupwraith (the setup wizard) also claims Home at a lower
 #   priority and takes over once launcherx is disabled. Disable it too before setting the new
-#   launcher as Home — launcher/build-and-install.sh does this automatically and rolls back if
-#   Home doesn't land on the new launcher. List it in your own debloat file so restore.sh brings
-#   it back. Confirmed on two separate 55P6K units.
+#   launcher as Home, from your own debloat file so restore.sh brings it back
+#   (`pm disable-user --user 0 com.google.android.tungsten.setupwraith`, one package per call):
+#   launcher/build-and-install.sh does not do it. With the wizard still claiming Home, the script
+#   stops at "Home resolves to ..., not to the new launcher", puts the stock launcher back and tells
+#   you to add the wizard to the list - the same order examples/aipro2k and examples/benq-e55-760
+#   record. Confirmed on two separate 55P6K units.
 # - On the 43P69K, the saved setup Wi-Fi belonged to setupwraith (dumpsys wifi: cname=...setupwraith).
 #   Forget and re-join it in Settings BEFORE disabling setupwraith, so the network belongs to Settings;
 #   otherwise disabling its owner drops Wi-Fi and the ADB connection.
+# - Disabling setupwraith also costs phone casting. The Cast receiver (com.google.android.apps.mediashell)
+#   loads its factory device credentials from a provider inside the wizard
+#   (...setupwraith.libs.castinfo.CastInfoProvider), so once it is off a phone answers "Untrusted device"
+#   and logcat says "No private key, hence empty signature" (docs/TROUBLESHOOTING.md, the bullet that
+#   starts "Casting from a phone fails"). A 65T69C owner on this list reported Chromecast, and
+#   screen mirroring with it, stopped once the list was applied (#3446); the maintainer's reply
+#   points at this wizard. To cast again, enable launcherx first - the
+#   wizard's RecoveryActivity takes Home with launcherx off, see above - then
+#   `pm enable com.google.android.tungsten.setupwraith`; if no ClientAuthSigner line comes,
+#   `am crash $(pidof com.google.android.apps.mediashell)` starts the receiver again with it. The other
+#   Google TV lists state the same cost (examples/google-chromecast-gtv-hd, examples/asus-m1g).
 # - TclAppBoot blocks the launcher's key services (and WireGuard's VPN) at every boot until the
 #   package has APP_AUTO_START (docs/TROUBLESHOOTING.md). Run `appops write-settings` after
 #   `appops set com.gathin.tvhome APP_AUTO_START allow`: app-ops are saved lazily, and a plain
@@ -178,7 +232,7 @@ com.google.android.apps.tv.dreamx      # ambient mode screensaver, see quirks ab
 # com.google.android.youtube.tv
 # Disabled on the India 55Q6CS (by the owner's choice for the apps):
 # com.tcl.messagebox                   # TCL push messages
-# com.tcl.t_solo                       # TCL promo app
+# com.tcl.t_solo                       # T-Solo "listen alone": TV sound to Bluetooth headphones
 # com.tcl.smartalexa                   # Alexa integration
 # com.tcl.hearaid                      # hearing-aid audio app
 # com.tcl.browser                      # TCL web browser
@@ -192,3 +246,18 @@ com.google.android.apps.tv.dreamx      # ambient mode screensaver, see quirks ab
 # fr.tf1.mytf1                           # TF1+
 # fr.m6.m6replay                         # M6+
 # tv.wuaki.apptv                         # Rakuten TV
+
+# Extras the US 55QM5K ships, off on that unit (uncomment what you don't use; its owner also
+# disabled the optional streaming lines above, then re-enabled Peacock, Paramount+ and Prime Video):
+# com.tcl.hotelmenu                      # hotel-mode portal
+# com.roku.web.trc                       # Roku ad-engagement SDK left on this TCL
+# com.hulu.livingroomplus                # Hulu
+# com.disney.disneyplus                  # Disney+
+# com.peacocktv.peacockandroid           # Peacock
+# com.cbs.ott                            # Paramount+
+# com.wbd.stream                         # Max
+# com.tubitv                             # Tubi
+# tv.pluto.android                       # Pluto TV
+# com.spotify.tv.android                 # Spotify
+# com.fox.foxone                         # FOX ONE
+# com.google.android.youtube.tvunplugged # YouTube TV, the live service

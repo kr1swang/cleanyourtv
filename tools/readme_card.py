@@ -2,11 +2,13 @@
 the file the front page displays.
 
 Run tools/readme_stats.py and tools/readme_featured.py first, then:
-python3 tools/readme_card.py Fredoka.ttf docs/card.jpg
-python3 tools/readme_card.py --halloween Fredoka.ttf docs/card-halloween.jpg   # the October variant
+
+    tools/venv/bin/python -I tools/readme_card.py Fredoka.ttf docs/card.jpg
+    tools/venv/bin/python -I tools/readme_card.py --halloween Fredoka.ttf docs/card-halloween.jpg   # the October variant
+
 The Halloween variant keeps the layout and the generated numbers: it shows docs/stats-halloween.png
-(python3 tools/readme_stats.py --halloween Fredoka.ttf docs/stats-halloween.png: the same numbers in pumpkin
-orange), recolours the headings to orange, adds a thin dripping stripe and a few bats, and
+(tools/venv/bin/python -I tools/readme_stats.py --halloween Fredoka.ttf docs/stats-halloween.png: the same
+numbers in pumpkin orange), recolours the headings to orange, adds a thin dripping stripe and a few bats, and
 shows docs/new-home-halloween.jpg as AFTER. docs/card.jpg is not touched, so the README goes back with one line.
 Fredoka is the variable TTF from Google Fonts, and its file is not in this repo: pass the path of the
 copy you downloaded. The four pictures it stacks are this checkout's own - docs/stock-home.jpg,
@@ -15,9 +17,19 @@ docs/new-home.jpg and the two its siblings draw - so run it from the repository 
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import picture_file  # noqa: E402  the staged write the wallpaper scripts use
+
 USAGE = ("usage: readme_card.py [--halloween] <font.ttf> <out.jpg>\n"
          "  Fredoka, the variable TTF from Google Fonts, is not in this repo: download it and pass the\n"
          "  path of the file you saved.")
+
+# A reader asking what the script does, answered the way the rest of tools/ answers it (tv.py, privacy.py,
+# blocky_wallpapers.py): this file's own note on stdout and 0. Without this branch the word was read as the
+# font - the usage line went to stderr and the run returned 1, the status this file gives a run that wrote
+# nothing - so `tools/readme_card.py --help | less` showed nothing, and `--help && ...` looked like a
+# failed run.
+HELP = ("-h", "--help")
 
 
 def font_and_out(argv):
@@ -28,6 +40,9 @@ def font_and_out(argv):
     it wanted nor where to get it.
     """
     argv = [a for a in argv if a != "--halloween"]
+    if any(word in HELP for word in argv[1:]):
+        print((__doc__ or USAGE).strip())
+        sys.exit(0)
     if len(argv) != 3:
         sys.exit(USAGE)
     font, out = argv[1], argv[2]
@@ -44,8 +59,17 @@ def out_problem(path):
     `img.save()` answers a folder with IsADirectoryError, a path through a file with NotADirectoryError,
     a folder that is not there with FileNotFoundError and a name with no extension with `unknown file
     extension` - each a traceback that names neither the argument nor whether a picture was written.
+    An empty name is its own case, because `$OUT` unset is how a reader reaches it: no path at all, and
+    a message that starts with a space.
     Judged here, before Pillow is imported, so a machine without Pillow gives the same answer.
     """
+    if not path.strip():
+        # The name came out empty, which is not a path at all: `$OUT` unset is how a reader meets it.
+        # Pillow's answer for it is `unknown file extension: ` - a message that starts with a space and
+        # names neither the argument nor the variable, so the shape has its own words here.
+        return (f"the picture was given as {path!r}, an empty name, so no picture would be written: "
+                f"name the file, e.g. docs/card.jpg - and if the name came from a shell variable, "
+                f"that variable was empty")
     if os.path.isdir(path):
         return (f"{path} is a folder, and this writes one picture: pass a file name such as "
                 f"docs/card.jpg")
@@ -65,7 +89,8 @@ FONT, OUT = font_and_out(sys.argv)
 # The picture is the other argument the reader types, and Pillow only refuses it after the whole thing
 # has been drawn: a folder, a folder that is not there, a path through a file and a suffixless name were
 # each a 12-line traceback with exit 1, the code a run that wrote nothing returns, saying nothing about
-# what was written. Judged before the Pillow import, so a machine without it answers the same way.
+# what was written. A name that came out empty is judged here too: Pillow answers it the same way, in
+# words that start with a space. Judged before the Pillow import, so a machine without it answers the same way.
 OUT_PROBLEM = out_problem(OUT)
 if OUT_PROBLEM:
     sys.exit(f"{OUT_PROBLEM}. Nothing was written.")
@@ -134,6 +159,7 @@ def load(path):
 
 BG, LINE, DIM, GREEN = "#15181e", "#2c313a", "#aab3bd", "#cfffcf"
 ORANGE = "#ff9a3c"  # the Halloween variant's mint
+GOLD = "#ffcc4d"  # the #1 in the trending heading, the website's gold
 W = 1600
 def f(size, wt):
     # A path that exists is not yet a font: Google Fonts serves Fredoka as a zip holding the variable
@@ -226,11 +252,27 @@ def decorate(card):
     card.alpha_composite(deco) if hasattr(card, "alpha_composite") and card.mode == "RGBA" else card.paste(deco, (0, 0), deco)
 
 
+def trending():
+    """The strip on top: '#1 TRENDING REPO OF THE WEEK' spaced like the other headings, the #1 in gold
+    (a thin # and a bold 1, so the # stays sharp), and the source in grey beneath."""
+    strip = Image.new("RGB", (W, 206), BG); d = ImageDraw.Draw(strip)
+    lab, thin, bold, sub = f(30, 500), f(36, 400), f(36, 650), f(28, 400)
+    rest, sp, gap, hg = "TRENDING REPO OF THE WEEK", 8, 22, 6
+    w = (d.textlength("#", font=thin) + hg + d.textlength("1", font=bold) + gap
+         + sum(d.textlength(c, font=lab) for c in rest) + sp * (len(rest) - 1))
+    x = (W - w) / 2; y = 62 + lab.getbbox("T")[3] - bold.getbbox("1")[3]  # the gold #1 sits on the heading's baseline
+    d.text((x, y), "#", font=thin, fill=GOLD); x += d.textlength("#", font=thin) + hg
+    d.text((x, y), "1", font=bold, fill=GOLD); x += d.textlength("1", font=bold) + gap
+    for c in rest: d.text((x, 62), c, font=lab, fill="#e6e9ee"); x += d.textlength(c, font=lab) + sp
+    d.text((W / 2, 140), "via trendshift.io  ·  Oct 19–25, 2026", font=sub, fill=DIM, anchor="mm")
+    return strip
+
+
 stats, featured = load("docs/stats-halloween.png" if HALLOWEEN else "docs/stats.png"), load("docs/featured.png")
 if HALLOWEEN:
     heading(featured, (650, 50, 950, 85))     # "FEATURED IN"
     tint(featured, (1090, 315, 1135, 352))    # the arrow after "412 articles"
-parts = [stats, featured, tv]
+parts = [trending(), stats, featured, tv]
 SEP = 24  # extra air on each side of a divider
 H = sum(p.height for p in parts) + 2 * SEP * (len(parts) - 1)
 card = Image.new("RGB", (W, H), BG); d = ImageDraw.Draw(card); y = 0
@@ -240,8 +282,10 @@ for i, p in enumerate(parts):
 if HALLOWEEN:
     decorate(card)
 try:
-    card.save(OUT, quality=88, optimize=True)
+    picture_file.save(card, OUT, quality=88, optimize=True)
 except (OSError, ValueError) as error:
-    # The read-only folder or the full disk, or an extension Pillow does not know (`.txt`): found at the
-    # write, after the drawing. Name the file and say that no picture came of the run.
+    # The read-only file, the full disk or an extension Pillow does not know (`.txt`) is found at the
+    # write, after the drawing: the card is encoded beside the file and renamed into place first, so
+    # the docs/card.jpg the front page shows is intact, and this line is true - the old img.save() opened
+    # the destination before encoding and left it cut short.
     sys.exit(f"cannot write {OUT}: {error}. Nothing was written.")

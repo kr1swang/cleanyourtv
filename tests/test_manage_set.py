@@ -6,7 +6,9 @@ there - the built-in default comes back - so `set dock_band 3` used to write 3, 
 theme and leave the switch at its default on the TV. The type of every key is in the Keys table of
 themes/README.md, so set reads the argument the way that table says and refuses the rest before it writes.
 """
+import errno
 import json
+import os
 import re
 import subprocess
 import sys
@@ -189,9 +191,10 @@ class SetValueTest(unittest.TestCase):
         self.assertEqual("string", manage.declared_kind(manage.find("greeting_name")))
         self.assertEqual("config-only", manage.declared_kind(manage.find("settings_fallback_components")))
         self.assertEqual("list", manage.declared_kind(manage.find("input_sources")))
+        self.assertEqual("colour", manage.declared_kind(manage.find("background_color")))
         # A type cell this file does not recognise would fall through to "string" and let a wrong value
         # through, so every cell the table carries today has to land on a kind.
-        known = {"bool", "list", "number", "object", "string", "config-only"}
+        known = {"bool", "list", "number", "object", "string", "config-only", "colour"}
         for cell in sorted(set(types.values())):
             with self.subTest(cell=cell):
                 self.assertIn(manage.declared_kind({"type": cell}), known)
@@ -315,6 +318,42 @@ class SetThemeFolderTest(unittest.TestCase):
         self.assertFalse(missing.exists(), "a folder that is not there must not be made")
         self.push.assert_not_called()
 
+    def test_a_theme_name_the_filesystem_will_not_look_at_is_named_not_a_traceback(self):
+        # A --theme whose name no filesystem can hold. Path.exists() re-raises that OSError, so the run ended in
+        # a traceback with exit 1 - the code this file keeps for a command on the TV or a script of this
+        # checkout that failed - after nothing had been read, written or pushed. The refusal also comes back as
+        # a sentence rather than an exception, which is what set_key() returning text proves.
+        long_name = (Path(self.tmp.name) / ("a" * 300)).resolve()
+        try:
+            os.stat(long_name)
+        except OSError:
+            pass
+        else:
+            self.skipTest("this filesystem accepts a 300-character name")
+        refusal = self.set_key(folder=long_name)
+        self.assertIn(f"{long_name} cannot be looked at", refusal)
+        self.assertIn("File name too long", refusal)
+        self.assertIn("Nothing was written or pushed", refusal)
+        self.push.assert_not_called()
+
+    def test_looked_at_reads_the_filesystems_own_answer(self):
+        # The errno table, so the branch is judged on filesystems that would accept the 300-character name.
+        for code in (errno.EACCES, errno.ENAMETOOLONG, errno.EROFS, errno.EIO):
+            with self.subTest(errno=code):
+                with mock.patch.object(manage.os, "stat", side_effect=OSError(code, os.strerror(code))):
+                    self.assertEqual(manage.looked_at(Path("/tmp/theme")), ("refused", os.strerror(code)))
+        # What Path.exists() answers with False for: the shapes set already answered, unchanged.
+        for code in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EBADF):
+            with self.subTest(errno=code):
+                with mock.patch.object(manage.os, "stat", side_effect=OSError(code, os.strerror(code))):
+                    self.assertEqual(manage.looked_at(Path("/tmp/theme")), ("missing", None))
+        with mock.patch.object(manage.os, "stat", side_effect=ValueError("embedded null byte")):
+            self.assertEqual(manage.looked_at(Path("/tmp/theme")), ("missing", None))
+        self.assertEqual(manage.looked_at(self.theme), ("folder", None))
+        afile = Path(self.tmp.name) / "a-file"
+        afile.write_text("", encoding="utf-8")
+        self.assertEqual(manage.looked_at(afile), ("file", None))
+
     def test_an_empty_folder_of_their_own_is_still_started(self):
         # The other half: a folder that exists with no config.json yet is where set starts the file.
         mine = Path(self.tmp.name) / "fresh-theme"
@@ -331,6 +370,194 @@ class SetThemeFolderTest(unittest.TestCase):
         self.assertIn("cannot write", refusal)
         self.assertIn("config.json", refusal)
         self.assertIn("Nothing was pushed", refusal)
+        self.push.assert_not_called()
+
+    def test_a_partial_write_preserves_the_existing_config(self):
+        self.config.write_text('{"greeting_name": "Keep me", "dock_band": false}\n', encoding="utf-8")
+        original = self.config.read_bytes()
+        write_text = Path.write_text
+
+        def interrupted(path, text, *args, **kwargs):
+            write_text(path, text[:12], *args, **kwargs)
+            raise OSError(28, "No space left on device")
+
+        with mock.patch.object(Path, "write_text", interrupted):
+            refusal = self.set_key()
+        self.assertIn("cannot write", refusal)
+        self.assertEqual(self.config.read_bytes(), original)
+        self.assertEqual(list(self.theme.iterdir()), [self.config])
+        self.push.assert_not_called()
+
+    def test_a_partial_first_write_leaves_no_config(self):
+        write_text = Path.write_text
+
+        def interrupted(path, text, *args, **kwargs):
+            write_text(path, text[:12], *args, **kwargs)
+            raise OSError(28, "No space left on device")
+
+        with mock.patch.object(Path, "write_text", interrupted):
+            refusal = self.set_key()
+        self.assertIn("cannot write", refusal)
+        self.assertEqual(list(self.theme.iterdir()), [])
+        self.push.assert_not_called()
+
+    def test_a_failed_replace_keeps_the_original_and_cleans_staging(self):
+        self.config.write_text('{"greeting_name": "Keep me"}\n', encoding="utf-8")
+        original = self.config.read_bytes()
+        with mock.patch.object(manage.os, "replace", side_effect=PermissionError("replace refused")):
+            refusal = self.set_key()
+        self.assertIsNotNone(refusal)
+        self.assertEqual(self.config.read_bytes(), original)
+        self.assertEqual(list(self.theme.iterdir()), [self.config])
+        self.push.assert_not_called()
+
+    def test_a_symlink_still_updates_its_target_and_keeps_its_mode(self):
+        target = Path(self.tmp.name) / "shared.json"
+        target.write_text('{"greeting_name": "Keep me"}\n', encoding="utf-8")
+        target.chmod(0o640)
+        try:
+            self.config.symlink_to(target)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks unavailable")
+        mode = target.stat().st_mode
+        self.assertIsNone(self.set_key())
+        self.assertTrue(self.config.is_symlink())
+        self.assertEqual(json.loads(target.read_text()), {"greeting_name": "Keep me", "dock_band": True})
+        self.assertEqual(target.stat().st_mode, mode)
+        self.assertEqual(list(self.theme.iterdir()), [self.config])
+        self.assertEqual(set(Path(self.tmp.name).iterdir()), {self.theme, target})
+        self.push.assert_called_once()
+
+    def test_config_link_loops_are_refused_without_replacing_either_link(self):
+        other = self.theme / "other.json"
+        for two_links in (False, True):
+            with self.subTest(two_links=two_links):
+                try:
+                    self.config.symlink_to(other.name if two_links else self.config.name)
+                    if two_links:
+                        other.symlink_to(self.config.name)
+                except (OSError, NotImplementedError):
+                    self.skipTest("symlinks unavailable")
+                try:
+                    refusal = self.set_key()
+                    self.assertIsNotNone(refusal)
+                    self.assertIn("cannot write", refusal)
+                    self.assertIn("Nothing was pushed", refusal)
+                    self.assertTrue(self.config.is_symlink())
+                    self.assertEqual(self.config.readlink(), Path(other.name if two_links else self.config.name))
+                    if two_links:
+                        self.assertEqual(other.readlink(), Path(self.config.name))
+                    self.assertEqual(set(self.theme.iterdir()), {self.config, other} if two_links else {self.config})
+                    self.push.assert_not_called()
+                finally:
+                    self.config.unlink(missing_ok=True)
+                    other.unlink(missing_ok=True)
+
+    def test_an_older_python_resolve_loop_error_is_a_write_refusal(self):
+        # Older pathlib versions report link loops as RuntimeError rather than OSError.
+        resolve = Path.resolve
+        config = self.theme.resolve() / self.config.name
+
+        def loop_error(path, *args, **kwargs):
+            if path == config:
+                raise RuntimeError("Symlink loop")
+            return resolve(path, *args, **kwargs)
+
+        # The theme folder is resolved separately before config.json is considered.
+        with mock.patch.object(Path, "resolve", loop_error):
+            refusal = self.set_key()
+        self.assertIn("cannot write", refusal)
+        self.assertIn("Symlink loop", refusal)
+        self.assertFalse(self.config.exists())
+        self.push.assert_not_called()
+
+    def test_a_dangling_config_link_still_creates_its_target(self):
+        target = Path(self.tmp.name) / "new-shared.json"
+        try:
+            self.config.symlink_to(target)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks unavailable")
+        self.assertIsNone(self.set_key())
+        self.assertTrue(self.config.is_symlink())
+        self.assertEqual(json.loads(target.read_text()), {"dock_band": True})
+        self.assertEqual(set(Path(self.tmp.name).iterdir()), {self.theme, target})
+        self.push.assert_called_once()
+
+    def test_cleanup_after_replacement_warns_and_keeps_the_push_result(self):
+        class CleanupFails(tempfile.TemporaryDirectory):
+            def __exit__(self, *args):
+                super().__exit__(*args)
+                raise PermissionError("staging cleanup refused")
+
+        target = Path(self.tmp.name) / "shared.json"
+        for linked in (False, True):
+            for push_code in (0, 17):
+                with self.subTest(linked=linked, push_code=push_code):
+                    self.config.unlink(missing_ok=True)
+                    destination = target if linked else self.config
+                    destination.write_text('{"greeting_name": "Keep me"}\n', encoding="utf-8")
+                    if linked:
+                        try:
+                            self.config.symlink_to(target)
+                        except (OSError, NotImplementedError):
+                            self.skipTest("symlinks unavailable")
+                    self.push.reset_mock()
+                    self.push.return_value = push_code
+                    with mock.patch.object(manage.tempfile, "TemporaryDirectory", CleanupFails), \
+                            mock.patch("sys.stdout"), mock.patch("sys.stderr") as stderr:
+                        self.assertEqual(manage.cmd_set("dock_band", "true", str(self.theme)), push_code)
+                    self.assertEqual(json.loads(destination.read_text()),
+                                     {"greeting_name": "Keep me", "dock_band": True})
+                    self.assertEqual(self.config.is_symlink(), linked)
+                    self.push.assert_called_once()
+                    message = "".join(call.args[0] for call in stderr.write.call_args_list)
+                    self.assertIn("cleanup", message)
+                    self.assertIn("staging cleanup refused", message)
+                    self.assertNotIn("cannot write", message)
+                    self.assertNotIn("Nothing was pushed", message)
+                    self.assertEqual("theme push failed" in message, bool(push_code))
+
+    def test_a_push_that_exited_2_says_nothing_was_sent(self):
+        for push_code, sent in ((2, False), (1, True), (17, True)):
+            with self.subTest(push_code=push_code):
+                self.push.return_value = push_code
+                with mock.patch("sys.stdout"), mock.patch("sys.stderr") as stderr:
+                    self.assertEqual(manage.cmd_set("dock_band", "true", str(self.theme)), push_code)
+                message = "".join(call.args[0] for call in stderr.write.call_args_list)
+                self.assertIn(f"theme push failed (exit {push_code})", message)
+                self.assertIn("local edit was kept", message)
+                self.assertEqual("partly updated" in message, sent)
+                self.assertEqual("nothing was sent to the TV" in message, not sent)
+
+    def test_cleanup_failure_before_replacement_remains_a_write_refusal(self):
+        class CleanupFails(tempfile.TemporaryDirectory):
+            def __exit__(self, *args):
+                super().__exit__(*args)
+                raise PermissionError("staging cleanup refused")
+
+        self.config.write_text('{"greeting_name": "Keep me"}\n', encoding="utf-8")
+        original = self.config.read_bytes()
+        with mock.patch.object(manage.tempfile, "TemporaryDirectory", CleanupFails), \
+                mock.patch.object(manage.os, "replace", side_effect=PermissionError("replace refused")), \
+                mock.patch("sys.stderr") as stderr:
+            refusal = self.set_key()
+        self.assertIn("cannot write", refusal)
+        self.assertIn("Nothing was pushed", refusal)
+        self.assertEqual(self.config.read_bytes(), original)
+        stderr.write.assert_not_called()
+        self.push.assert_not_called()
+
+    @unittest.skipIf(sys.platform == "win32", "POSIX write permissions")
+    def test_a_read_only_config_is_not_replaced(self):
+        self.config.write_text('{"greeting_name": "Keep me"}\n', encoding="utf-8")
+        original = self.config.read_bytes()
+        self.config.chmod(0o444)
+        self.addCleanup(self.config.chmod, 0o644)
+        if manage.os.access(self.config, manage.os.W_OK):
+            self.skipTest("process can write read-only files")
+        self.assertIsNotNone(self.set_key())
+        self.assertEqual(self.config.read_bytes(), original)
+        self.assertEqual(list(self.theme.iterdir()), [self.config])
         self.push.assert_not_called()
 
     def test_a_folder_this_checkout_ships_is_refused(self):

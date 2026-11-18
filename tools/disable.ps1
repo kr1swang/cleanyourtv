@@ -3,6 +3,7 @@
 # Undo with tools\restore.ps1 <same file>.
 #
 # Usage: tools\disable.ps1 -TvHost 192.168.1.50 examples\xiaomi-mi-tv-4a\debloat.txt
+# The list path is taken as typed: a folder like "tv [old]" needs no backtick escaping.
 param(
     [Parameter(Mandatory = $true, Position = 0)][string]$List,
     [string]$TvHost = $env:TV_HOST
@@ -11,9 +12,9 @@ $ErrorActionPreference = 'Stop'
 # Pipe plain UTF-8 to native commands; the default here prepends a BOM that corrupts the first command.
 $OutputEncoding = New-Object System.Text.UTF8Encoding $false
 $repo = Split-Path -Parent $PSScriptRoot
-$List = (Resolve-Path $List).Path
+$List = (Resolve-Path -LiteralPath $List).Path
 $py = Join-Path $repo 'tools\venv\Scripts\python.exe'
-if (-not (Test-Path $py)) { throw 'run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt' }
+if (-not (Test-Path -LiteralPath $py)) { throw 'run: python -m venv tools\venv; tools\venv\Scripts\python.exe -m pip install -r tools\requirements.txt' }
 if (-not $TvHost) { throw 'pass -TvHost <tv ip> or set $env:TV_HOST' }
 $env:TV_HOST = $TvHost
 
@@ -42,7 +43,7 @@ foreach ($name in $overrideCost.Keys) {
     Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
 }
 
-$pkgs = Get-Content $List | ForEach-Object { ($_ -replace '#.*$', '').Trim() } | Where-Object { $_ } | ForEach-Object { ($_ -split '\s+')[0] }
+$pkgs = Get-Content -LiteralPath $List | ForEach-Object { ($_ -replace '#.*$', '').Trim() } | Where-Object { $_ } | ForEach-Object { ($_ -split '\s+')[0] }
 # Lists come from contributors and each name is pasted into a shell command on the TV (#165).
 $bad = @($pkgs | Where-Object { $_ -notmatch '^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$' })
 if ($bad.Count -gt 0) {
@@ -61,7 +62,7 @@ if (-not $pkgs -or $pkgs.Count -eq 0) {
 # (com.cltv.mal, com.mediatek.tis / tv.service / tv.agent) is guarded too (#1578, a Haier boot loop).
 # Protect the exact SDK sandbox package (#2557); the reported boot-failure cause is unconfirmed.
 # And com.android.location.fused: a TCL 43S5400A (V325) boot-looped into recovery with only it off (#2803).
-$coreRe = '^(android|android\.ext\.(services|shared)|com\.android\.sdksandbox|com\.android\.location\.fused|com\.android\.systemui|com\.android\.shell|com\.android\.phone|com\.android\.settings|com\.android\.tv\.settings|com\.(google\.)?android\.(permissioncontroller|packageinstaller|ext\.services|ext\.shared|modulemetadata)|com\.google\.android\.overlay\.modules.*|com\.android\.providers\..*|com\.cltv\.mal|com\.mediatek\.(tis|tv\.service|tv\.agent))$'
+$coreRe = '^(android|android\.ext\.(services|shared)|com\.(google\.)?android\.sdksandbox|com\.android\.location\.fused|com\.android\.systemui|com\.android\.shell|com\.android\.phone|com\.android\.settings|com\.android\.tv\.settings|com\.(google\.)?android\.(permissioncontroller|packageinstaller|ext\.services|ext\.shared|modulemetadata)|com\.google\.android\.overlay\.modules.*|com\.android\.providers\..*|com\.cltv\.mal|com\.mediatek\.(tis|tv\.service|tv\.agent))$'
 $coreOk = '^com\.android\.providers\.(calendar|contacts|userdictionary|blockednumber)$'
 $core = @($pkgs | Where-Object { $_ -cmatch $coreRe -and $_ -cnotmatch $coreOk })
 if ($core.Count -gt 0) {

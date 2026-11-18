@@ -2,7 +2,7 @@
 plains, desert, a snowy forest, jungle, ocean, a blossom grove, a cave and a lava cavern), as 1920x1080 PNG,
 from code, so the collection is this repo's own work and can be changed or extended here.
 
-    python3 tools/blocky_wallpapers.py <folder>     # writes 01-meadow-day.png ... 11-lava-cavern.png
+    tools/venv/bin/python -I tools/blocky_wallpapers.py <folder>   # writes 01-meadow-day.png ... 11-lava-cavern.png
 
 Needs Pillow (tools/requirements-perf.txt). Every block is 40 px with a 4x4 shaded texture. The sky things (sun,
 moon, clouds, stars) are drawn before the terrain, so hills and trees stand in front of them; nothing is drawn in
@@ -15,7 +15,10 @@ wallpaper_moods; tests/test_blocky_wallpapers.py fails until both have it.
 """
 import os
 import random
+import shutil
+import stat
 import sys
+import tempfile
 
 W, H, BS = 1920, 1080, 40
 COLS, ROWS = W // BS, H // BS          # 48 x 27
@@ -298,7 +301,22 @@ def target(argv):
 
 
 def write(out):
-    """The 11 PNGs into `out`; a missing Pillow, a folder it cannot create or a file it cannot write is named."""
+    """The 11 PNGs into `out`; a missing Pillow, a folder it cannot create or a file it cannot write is named.
+
+    Each picture is drawn and encoded into a staging folder beside the file it replaces, then renamed into
+    place, as tools/scenes_wallpapers.py and tools/wallpaper_prep.py do. Saving straight to the destination
+    meant a full disk, a failing encoder or a read-only file was answered by whatever the encoder had already
+    written: the run said the scenes were "left in {out} as they are", while the one file that was hit was a
+    truncated PNG under the name the theme ships, so themes/blocky showed a broken wallpaper until it was
+    redrawn. Nothing is published until a complete file is ready, and a renamed file keeps the mode an earlier
+    one had.
+    """
+    # A console code page such as cp1252 cannot print every name; print a replacement character instead of stopping.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     try:
         import PIL  # noqa: F401
     except ImportError:
@@ -312,11 +330,35 @@ def write(out):
         sys.exit(2)
     for done, (name, draw) in enumerate(SCENES):
         path = os.path.join(out, f"{name}.png")
-        cv = Canvas(done + 1)
-        draw(cv)
+        published = False
         try:
-            cv.img.save(path, optimize=True)
+            cv = Canvas(done + 1)
+            draw(cv)
+            target = os.path.realpath(path)   # Follow destination symlinks as img.save(path) did.
+            try:
+                previous = os.stat(target)
+            except FileNotFoundError:
+                previous = None
+            if previous is not None:
+                if not stat.S_ISREG(previous.st_mode):
+                    raise OSError("the destination is not a regular file")
+                if previous.st_nlink > 1:
+                    raise OSError("cannot safely replace a hard-linked destination")
+                # Rename alone can bypass a read-only file; check write access without truncating it.
+                os.close(os.open(target, os.O_WRONLY))
+            with tempfile.TemporaryDirectory(prefix=".blocky-", dir=os.path.dirname(target)) as staging:
+                # The scene is a PNG even if its symlink points to a differently named file.
+                part = os.path.join(staging, os.path.basename(path))
+                cv.img.save(part, optimize=True)
+                if previous is not None:
+                    shutil.copymode(target, part)
+                os.replace(part, target)
+                published = True
         except OSError as e:
+            if published:
+                print(f"warning: {path} was written, but staging cleanup failed: {e.strerror or e}",
+                      file=sys.stderr)
+                continue
             print(f"blocky_wallpapers.py: cannot write {path}: {e.strerror or e}", file=sys.stderr)
             print(f"stopped after {done} of {len(SCENES)} scenes, which are left in {out} as they are.",
                   file=sys.stderr)

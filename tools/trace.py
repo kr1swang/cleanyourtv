@@ -10,23 +10,25 @@ tools/trace.md first: it says which scenario to use and what can mislead.
 Recording needs nothing beyond tools/requirements.txt; the perfetto client already ships on Android 9
 and later. Set TV_HOST to the TV's IP (and TV_PORT if it is not 5555). Usage:
 
-    tools/trace.py home --runs 5 --out traces/before
-    tools/trace.py cold|coldsys|home|nav --runs N --out DIR [--package PKG] [--app COMPONENT]
-    tools/trace.py custom --setup 'input keyevent KEYCODE_HOME' --setup 'sleep 2' \\
-                          --step 'input keyevent KEYCODE_DPAD_RIGHT' --step 'sleep 1' --out DIR
+    tools/venv/bin/python -I tools/trace.py home --runs 5 --out traces/before
+    tools/venv/bin/python -I tools/trace.py cold|coldsys|home|nav --runs N --out DIR [--package PKG] [--app COMPONENT]
+    tools/venv/bin/python -I tools/trace.py custom --setup 'input keyevent KEYCODE_HOME' --setup 'sleep 2' \
+                                         --step 'input keyevent KEYCODE_DPAD_RIGHT' --step 'sleep 1' --out DIR
 
 --out DIR is the folder the traces go into; it is created if it is not there. A file where the folder
-goes, a path through a file, and an empty --out are refused as argument errors (exit 2) before the TV is
-asked anything, so a typo cannot read as a recording that failed. Started with a Python that lacks the
-packages, it runs again under tools/venv's Python, or says how to make that venv, the way tools/bench.py
-does.
+goes, a path through a file, an empty --out, and a name the filesystem will not look at are refused as
+argument errors (exit 2) before the TV is asked anything, so a typo cannot read as a recording that
+failed. Started with a Python that lacks the packages, it runs again under tools/venv's Python, or says
+how to make that venv, the way tools/bench.py does.
 
 Exit status: 0 every run is recorded and written; 2 an argument this run cannot use (an --out that is a
-file or passes through one, an empty --out, a --package or --app that is not one, --runs outside 1 to 50)
+file or passes through one, an empty --out, a name the filesystem will not look at, a --package or --app
+that is not one, --runs outside 1 to 50)
 and a TV that cannot be reached - tools/tv.py's own sentence is printed, whether it refused the target as
 it was imported (no TV_HOST, a TV_PORT that is not a port number) or connect_error() worded the failure -
 both judged before anything is recorded, so nothing was written and --out was not made; 1 a recording that
-started and then failed.
+started and then failed. A recording still running after 60 completion checks is not pulled or published;
+any previous local trace is kept, and the remote recording is left alone.
 
 Scenarios (setup runs before the recording starts, so it stays out of the trace):
     cold     another app in front, the launcher force-stopped, then started with `am start -W`
@@ -37,12 +39,16 @@ Scenarios (setup runs before the recording starts, so it stays out of the trace)
 """
 import argparse
 import base64
+import errno
 import importlib.util
 import json
 import os
 from pathlib import Path
 import re
+import shutil
+import stat
 import sys
+import tempfile
 import time
 
 PACKAGE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$")
@@ -128,6 +134,27 @@ def scenario(name, launcher_component, other_component, setup=(), steps=()):
     return list(setup), list(steps)
 
 
+def looked_at(path):
+    """Which of four things a path the reader typed is, and why the filesystem would not say.
+
+    ('folder' | 'other' | 'missing', None), or ('refused', why). Path.exists() and .is_dir() re-raise the
+    OSError for a name the filesystem will not stat - a name over NAME_MAX, a folder this user may not
+    traverse - so --out of that shape came out of argparse's type call as a traceback with exit 1, the status
+    this file keeps for a recording that started and then failed, on 3.11, 3.12, 3.13 and 3.14 alike. Judged
+    once, with the reason, both shapes below become the argument error they were meant to be.
+    """
+    try:
+        info = os.stat(path)
+    except OSError as error:
+        # What Path.exists() answers with False for: nothing is there, or nothing that is a folder.
+        if error.errno in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EBADF):
+            return "missing", None
+        return "refused", (error.strerror or str(error))
+    except ValueError:      # a NUL in the name, which os.stat refuses before the filesystem sees it
+        return "missing", None
+    return ("folder" if stat.S_ISDIR(info.st_mode) else "other"), None
+
+
 def traces_folder(value):
     """--out as the folder the traces go into, judged before anything is asked of the TV.
 
@@ -136,16 +163,27 @@ def traces_folder(value):
     thrown from main() after the TV has answered the Home query and the model was read, so the reader
     cannot tell their argument from a recording that failed. Refusing here makes it an argument error
     like --runs or --app, with the run never reaching the TV. A folder that does not exist yet is fine:
-    makedirs() creates it, as the default traces/ always has.
+    makedirs() creates it, as the default traces/ always has. A name the filesystem will not look at - the
+    fourth shape, seen on a 280-character folder and on one this user may not traverse - is refused here
+    too, since exists()/is_dir() re-raise that OSError from argparse's own type call.
     """
     if not value:
         raise argparse.ArgumentTypeError("--out is empty: name the folder for the traces, e.g. --out traces/before")
     path = Path(value)
-    if path.exists() and not path.is_dir():
+    answer, why = looked_at(path)
+    if why:
+        raise argparse.ArgumentTypeError(f"{value} cannot be looked at ({why}), and --out is the folder the "
+                                         f"traces go into: nothing was recorded and the TV was not asked")
+    if answer == "other":
         raise argparse.ArgumentTypeError(f"{value} is a file, and --out is the folder the traces go into: "
                                          f"nothing could be recorded into it")
     for parent in path.parents:
-        if parent.exists() and not parent.is_dir():
+        answer, why = looked_at(parent)
+        if why:
+            raise argparse.ArgumentTypeError(f"{value} cannot be looked at: {parent} is a folder the filesystem "
+                                             f"will not look at ({why}), so the folder the traces go into cannot "
+                                             f"be made")
+        if answer == "other":
             raise argparse.ArgumentTypeError(f"{value} passes through the file {parent}, so the folder the "
                                              f"traces go into cannot be made")
     return value
@@ -197,12 +235,21 @@ def record_one(dev, setup, steps, package, out_path, run_shell=None):
         if run_shell(alive).strip() != "running":
             break
         time.sleep(1)
-    dev.pull(REMOTE, out_path, transport_timeout_s=300.0, read_timeout_s=300.0)
-    run_shell(f"rm -f {REMOTE}")
-    size = os.path.getsize(out_path)
-    if size == 0:
-        os.remove(out_path)
-        raise RuntimeError("perfetto wrote an empty trace; run with --runs 1 and see tools/trace.md")
+    else:
+        raise RuntimeError("perfetto is still running after the completion wait; no trace was pulled")
+    # A failed or empty pull must not truncate an earlier recording. Stage on the same filesystem so
+    # the completed trace replaces it only after the download and remote cleanup both succeed.
+    folder, name = os.path.split(os.path.abspath(out_path))
+    with tempfile.TemporaryDirectory(prefix=".trace-", dir=folder) as staging:
+        part = os.path.join(staging, name)
+        dev.pull(REMOTE, part, transport_timeout_s=300.0, read_timeout_s=300.0)
+        run_shell(f"rm -f {REMOTE}")
+        size = os.path.getsize(part)
+        if size == 0:
+            raise RuntimeError("perfetto wrote an empty trace; run with --runs 1 and see tools/trace.md")
+        if os.path.isfile(out_path):
+            shutil.copymode(out_path, part)
+        os.replace(part, out_path)
     return size
 
 
@@ -269,6 +316,12 @@ def client_python_or_exit():
 
 
 def main(argv=None):
+    # A console code page such as cp1252 cannot print every name; print a replacement character instead of stopping.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     args = parse(sys.argv[1:] if argv is None else argv)
     # Imported only now, so --help and argument errors work without TV_HOST set.
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -336,10 +389,16 @@ def main(argv=None):
             for run in range(1, args.runs + 1):
                 path = os.path.join(args.out, f"{args.scenario}-{run}.pftrace")
                 size = record_one(dev, setup, steps, args.package, path, shell)
-                with open(path[:-len(".pftrace")] + ".json", "w") as f:
-                    json.dump({"scenario": args.scenario, "run": run, "package": args.package,
-                               "launcher": launcher, "other_app": other, "setup": setup, "steps": steps,
-                               "tv": about, "recorded": time.strftime("%Y-%m-%dT%H:%M:%S")}, f, indent=1)
+                sidecar = path[:-len(".pftrace")] + ".json"
+                with tempfile.TemporaryDirectory(prefix=".trace-", dir=os.path.dirname(path)) as staging:
+                    part = os.path.join(staging, os.path.basename(sidecar))
+                    with open(part, "w") as f:
+                        json.dump({"scenario": args.scenario, "run": run, "package": args.package,
+                                   "launcher": launcher, "other_app": other, "setup": setup, "steps": steps,
+                                   "tv": about, "recorded": time.strftime("%Y-%m-%dT%H:%M:%S")}, f, indent=1)
+                    if os.path.isfile(sidecar):
+                        shutil.copymode(sidecar, part)
+                    os.replace(part, sidecar)
                 print(f"{path}: {size} bytes")
         finally:
             if helpers:

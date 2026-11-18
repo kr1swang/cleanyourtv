@@ -12,6 +12,7 @@
     <string-array name="settings_fallback_components" translatable="false">
         <item>com.xiaomi.mitv.settings/com.xiaomi.mitv.settings.entry.MainActivity</item>
         <item>com.tcl.settings/com.tcl.settings.ui.MainActivity</item>
+        <item>com.tcl.settings/com.tcl.settings.MainActivity</item>
         <item>com.amazon.tv.launcher/com.amazon.tv.launcher.ui.MainSettingsActivity</item>
     </string-array>
 
@@ -38,7 +39,9 @@
 
     <!-- Open the Live TV app above the first time Home comes up after the TV is switched on, for sets that are
          mostly used for broadcast TV. Once per boot: Home after that stays Home. Can also be set with
-         "boot_to_live_tv": true in a theme's config.json. -->
+         "boot_to_live_tv": true in a theme's config.json. When launch_actions below gives live_tv_package an
+         "input:<id>" target, that input opens instead, as the tile does: for a Live TV app that starts on the
+         empty tuner at every boot ("please scan channels") while the set is used on an HDMI input. -->
     <bool name="boot_to_live_tv">false</bool>
 
     <!-- An "Open on start" row in Launcher settings: pick any app on the TV, and the first time Home comes up
@@ -77,7 +80,7 @@
     <!-- Tiles that open a screen of the app instead of its start screen: "package=action", sent to that package.
          A tile whose action no longer resolves opens the app normally. MagentaTV's program guide:
          com.telekom.onetv.tv.pl=com.telekom.onetv.tv.pl.action.PROGRAM_GUIDE. "package=input:<input id>" makes
-         the tile switch to that TV input instead (ids from dumpsys tv_input), e.g. a Live TV tile straight to
+         the tile (and a top_bar_apps button) switch to that TV input instead (ids from dumpsys tv_input), e.g. a Live TV tile straight to
          HDMI 1: com.mediatek.wwtv.tvcenter=input:com.mediatek.tvinput/.hdmi.HDMIInputService/HW5. "package=view:uri"
          opens that URI in the package instead (ACTION_VIEW): Bbox TV's live channels are
          fr.bouyguestelecom.tv.bbui=view:bbox://live. -->
@@ -141,6 +144,20 @@
          the helper's own. Leave it off where a tap is one step. A theme can set it ("consume_volume_keys"). -->
     <bool name="consume_volume_keys">false</bool>
 
+    <!-- With key_filter on, a volume change stops HomeKeyService and InputKeyService filtering keys for 4 s. For
+         firmware that changes volume once per press while any service filters keys, so a held volume key never
+         repeats, and the helpers never see the volume keys (Xiaomi MOEU0, Google TV 14): the first press steps
+         once, a press or hold within those 4 s repeats as usual, and the remote buttons below work again once the
+         pause ends. With gamepad_passthrough on too, filtering stays off while a gamepad is connected. A theme can
+         set it ("volume_pauses_filter"). -->
+    <bool name="volume_pauses_filter">false</bool>
+
+    <!-- true: Channel Up/Down do nothing while Home is in front. Unhandled, they open the TV's Live TV app (Sony
+         BRAVIA, Android 9: com.sony.dtv.tvx), which is a stray press on a set nobody watches broadcast on. Inside any
+         other app the keys go on as before, and no key helper is needed. A theme can set it
+         ("home_ignore_channel_keys"). -->
+    <bool name="home_ignore_channel_keys">false</bool>
+
     <!-- Vendor source numbers for the Inputs menu, "HW<n>=<number>" by the framework input id's last part
          (`tools/tv.py 'dumpsys tv_input'` lists them). A mapped input opens by sending input_action with the
          number as the int extra "input"; "HW<n>=-" leaves a port the board reports but the set does not have
@@ -153,9 +170,11 @@
     <!-- Remote buttons that open Settings, by Linux scancode (HOME_KEY_SERVICE=1 build-and-install.sh). Remotes
          that send KEYCODE_SETTINGS need no entry. Some send a code Android does not map: the Xiaomi/Fengmi
          projector remote's gear button is scancode 384 (KEY_TAPE). Find yours with
-         `tools/tv.py 'getevent -lt'` while pressing the button - but a HID consumer-control usage prints an
-         evdev MSC_SCAN there, which is not always the scanCode the framework reports, so a number that takes
-         nothing is no proof the press never arrived. Leave empty to omit. -->
+         `tools/tv.py 'getevent -t'` while pressing the button: the hex number after 0001 on the press's line,
+         written in decimal (0180 is 384), since -l prints the key's name in place of that number. A HID
+         consumer-control usage also prints an evdev MSC_SCAN (a 0004 0004 line), which is not always the scanCode
+         the framework reports, so a number that takes nothing is no proof the press never arrived. Leave empty
+         to omit. -->
     <integer-array name="settings_key_scancodes">
     </integer-array>
     <!-- The same by Android keycode, for buttons whose scancode is shared. TCL Google TV remotes send their
@@ -171,6 +190,11 @@
          with TV settings, Display, Network, Apps (re-enable an app) and Launcher settings, over whatever is on screen.
          Both keys can also be set from a theme's config.json ("settings_key_keycodes": [83]). -->
     <bool name="settings_key_panel">false</bool>
+    <!-- true: those Settings buttons clear the TV Settings task before opening Settings (with settings_key_panel off).
+         On some MediaTek boards KEYCODE_SETTINGS is also a global key: com.mediatek.tv.service opens Display & Sound in
+         the same task before the helper sees the press, so Settings stacked on it and Back landed there (Skyworth
+         2K NSTV, Google TV 14). Also "settings_key_clear_task" in a theme's config.json. -->
+    <bool name="settings_key_clear_task">false</bool>
 
     <!-- A force stop of the launcher (Settings, a cleaner app, am force-stop) takes HomeKeyService and InputKeyService
          off the enabled list. true: Home puts the helpers that were running back when it starts; one turned off in
@@ -198,8 +222,9 @@
          it back. The KTC LUMIO VISION remote (Realtek Google TV) sends Netflix 191, YouTube 190, Prime Video 195
          and TL;DR 200. Some remotes send several app buttons as one keycode and tell them apart only by scancode
          (Sony BRAVIA: YouTube, Prime Video and Disney+ are all keycode 196, scancodes 485, 490 and 491); list those
-         as "scan:scancode:package", e.g. scan:490:com.wbd.hbomax, found with `tools/tv.py 'getevent -lt'` (the
-         EV_KEY code, in hex). A scancode entry wins over a keycode. In place of a package, "input:<input id>"
+         as "scan:scancode:package", e.g. scan:490:com.wbd.hbomax, found with `tools/tv.py 'getevent -t'` (the
+         EV_KEY code: the hex number after 0001 on the button's line, written in decimal, so 01ea is 490). A
+         scancode entry wins over a keycode. In place of a package, "input:<input id>"
          switches to that TV input, e.g. scan:227:input:com.tcl.tvinput/.passthroughinput.TvPassThroughService/HW1413744640
          for HDMI 3 on a TCL Smart TV Pro; the ids are in `tools/tv.py 'dumpsys tv_input'` (hdmi_port=N under
          TvInputHardwareInfo). An action word in place of a package runs that action instead: back, home, recents,

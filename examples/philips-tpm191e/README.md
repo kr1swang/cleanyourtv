@@ -130,6 +130,34 @@ unit" note; this section covers the launcher side. One session with two restarts
   (`KEY_ONSCREEN_KEYBOARD`), the same scancodes as the 50PUS7354. `app_keys` `scan:779:<package>` and
   `scan:632:com.google.android.youtube.tv` opened the chosen apps from the real remote.
 
+## Philips 50PUS7304/12: single-session notes
+
+Checked on a Philips 50PUS7304/12, same TPM191E / `PH9M_EA_5599` board and Android TV 12 / API 31 firmware
+`STT2.230526.001` as the units above. One session on 15 November 2026; this is not a several-day test, and the
+shared `debloat.txt` list was not applied in full.
+
+- Owner-selected disables were `com.google.android.feedback`, `com.google.android.partnersetup`,
+  `com.google.android.onetimeinitializer`, `com.google.android.syncadapters.calendar`,
+  `org.droidtv.nettvrecommender`, `com.vewd.core.browserui`, `org.droidtv.nettv.market`,
+  `org.droidtv.demome`, `org.droidtv.amazonalexa`, `com.phorus.playfi.softap` and
+  `com.google.android.katniss`. `com.google.android.videos` was not installed. This records one owner's choices;
+  it does not add them to the shared list for every TPM191E TV.
+- `org.droidtv.candeebug`, `org.droidtv.gel`, `org.droidtv.usagelogger` and `org.droidtv.demome` requested
+  `TV_INPUT_HARDWARE`. The owner kept the first three. `demome` alone was disabled with `TVINPUT_ALLOW=1` after
+  checking its package and the input registry. `dumpsys tv_input` still listed the MediaTek tuner and HDMI 1–4
+  services after the launcher install; playback through the tuner and HDMI was not retested.
+- The unit's launcher used `org.droidtv.playtv` for Live TV and a dock of Netflix, Prime Video, YouTube and NOW.
+  Crunchyroll, Mediaset Infinity, Play Store and RaiPlay appeared in the app grid. App playback was not tested;
+  YouTube troubleshooting was explicitly left aside.
+- `com.phorus.playfi.tv` re-enabled itself after reboot, as on other TPM191E units. The launcher hid that tile,
+  plus the `org.droidtv.channels` Guide tile and `org.droidtv.eum` How-to tile; those three packages stayed enabled.
+  The App Gallery package `org.droidtv.nettv.market` was disabled, so its remote shortcut no longer works.
+- `launcher/build-and-install.sh` started `com.gathin.tvhome/.MainActivity` before disabling the stock launcher,
+  then set the new launcher as Home. The Home screen and app grid were captured. The user revoked ADB
+  authorizations before restarting; port 5555 was closed after the restart, so Home was not queried again over ADB.
+- With USB debugging enabled while `adb_wifi_enabled` was `0`, TCP port 5555 answered. After disabling ADB and
+  restarting, `tools/adb-closed.py` reported it closed. Do not leave debugging enabled for this TV.
+
 ## Philips 65PUS8204/12: single-session notes
 
 Checked on a Philips 65PUS8204/12 (LED, 2019, UK, on Ethernet), same TP Vision TPM191E board and firmware as the
@@ -181,3 +209,29 @@ note; this section covers the launcher side.
 - The remote's Netflix (632), Rakuten TV (779) and App Gallery (695) buttons, the same scancodes as the sixth to
   eighth units, opened the chosen apps with `app_keys` `scan:632:<package>`, `scan:779:<package>` and
   `scan:695:<package>`.
+
+## Philips 58PUS8505/12: notes after two weeks
+
+Checked on a Philips 58PUS8505/12 (LED, Spain, on Wi-Fi), same TP Vision TPM191E board and firmware as the lead
+unit (`STT2.230526.001`), with its original Philips remote (Bluetooth, with a microphone). Applied 21 October,
+checked again 7 November 2026. The household watches broadcast TV through an app, not the tuner.
+
+- The lead list with Prime Video and YouTube Music commented out, the Assistant (`katniss`) off by choice.
+  The Windows disable script skipped `org.droidtv.usagelogger` and `org.droidtv.demome` (TV_INPUT_HARDWARE), as on the
+  65PUS9435, and `com.google.android.tvrecommendations` went last, after the launcher had Home. Everything stayed
+  disabled through a reboot and the two weeks; a 30 s idle log showed no retry loop.
+- `launcher/build-and-install.ps1` ran through on its own: cold start in 2.3 s, and 2.7 s for a reinstall with
+  `-InputKeyService`.
+- A held Home press did nothing, as on the fifth and sixth units: `getevent -lt` showed the press that failed held
+  for 0.42 s against `long_press_timeout` 400, and it logged
+  `START u0 {act=android.intent.action.ALL_APPS pkg=com.android.tv.settings}`. This unit was set up before
+  `home_long_press_home` existed, so it uses `app_keys` `KEYCODE_HOME:com.gathin.tvhome` with `-InputKeyService`
+  instead; a held Home has opened Home on the real remote since.
+- The remote's TV button sends `KEYCODE_TV` (`key=170,scan=170`). With `-InputKeyService` it opens the sources
+  drawer by default; `app_keys` `KEYCODE_TV:<package>` opened an app instead, checked on the real remote. Rakuten
+  TV is 779, as on the sixth to ninth units, and `scan:779:<package>` worked too.
+- The remote's microphone button cannot be remapped on this unit. Each press comes in over Bluetooth as HID
+  `0x0c0221`, is re-sent as `KEY_SEARCH` on the `TPV_SMTRC` input device, and the firmware logs
+  `scanCode = 217` and `NettvLoggerLocalSvc: LogKeyEvent: key=602,scan=217`. With `katniss` disabled nothing
+  opens, and none of `app_keys` `scan:217:<package>`, `KEYCODE_SEARCH:<package>`, `KEYCODE_VOICE_ASSIST:<package>`,
+  `KEYCODE_ASSIST:<package>` or `602:<package>` reached `InputKeyService`: no start was logged for any of them.

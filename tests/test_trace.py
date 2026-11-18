@@ -12,11 +12,16 @@ Run from the repository root: python3 -m unittest discover -s tests -v
 """
 import base64
 import contextlib
+import errno
+import hashlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import re
+import shutil
+import stat
 import sys
 import tempfile
 import types
@@ -142,6 +147,32 @@ class ArgumentTest(unittest.TestCase):
             self.assertIn("passes through the file", err)
         self.assertIn("--out is empty", self.parse_error(["home", "--out", ""]))
 
+    def test_an_out_the_filesystem_will_not_look_at_is_the_argument_error(self):
+        # Path.exists() re-raises every OSError except ENOENT and ENOTDIR, so a --out whose own name is
+        # longer than NAME_MAX - or one under a folder this user may not open - came out of argparse's
+        # type call as an OSError traceback with exit 1, the status this file keeps for a recording that
+        # started and then failed. The docstring promises exit 2 for a --out the run cannot use, before
+        # the TV is asked anything, and four interpreters (3.11 to 3.14) all answered the traceback.
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / ("a" * 300)
+            try:
+                os.stat(out)
+            except OSError:
+                pass
+            else:
+                self.skipTest("this filesystem stats a 300-character name")
+            err = self.parse_error(["nav", "--out", str(out)])
+            self.assertIn(str(out), err)
+            self.assertIn("cannot be looked at", err)
+            self.assertIn("nothing was recorded and the TV was not asked", err)
+            self.assertNotIn("Traceback", err)
+            # The same name one level up, the shape a reader reaches by appending a run's folder: the
+            # parent is judged before makedirs() is asked to create the child under it.
+            err = self.parse_error(["nav", "--out", str(out / "before")])
+            self.assertIn(str(out), err)
+            self.assertIn("cannot be looked at", err)
+            self.assertIn("File name too long", err)
+
     def test_a_folder_or_a_new_folder_is_still_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
             existing = Path(tmp) / "before"
@@ -168,6 +199,37 @@ class ArgumentTest(unittest.TestCase):
             self.assertEqual(caught.exception.code, 2)
             self.assertEqual(connects, [], "the TV was never opened")
             self.assertIn("is a file", err.getvalue())
+
+
+class OutLookedAtTest(unittest.TestCase):
+    """The four shapes a --out path is, without a filesystem that refuses one to hand.
+
+    A permission refusal and a device error take the same branch as the over-long name, and this is the
+    half that runs on a filesystem whose NAME_MAX is generous, or as a root user who may traverse
+    everything; the platform-shaped case next door needs the real refusal.
+    """
+
+    def test_a_path_that_is_not_there_is_the_new_folder_case(self):
+        # What Path.exists() answered False for before, so a --out a reader means as "make this" stays one.
+        for kind in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EBADF):
+            with self.subTest(errno=errno.errorcode[kind]), \
+                 mock.patch.object(os, "stat", side_effect=OSError(kind, os.strerror(kind))):
+                self.assertEqual(trace.looked_at(Path("/traces")), ("missing", None))
+
+    def test_any_other_refusal_keeps_the_reason_the_filesystem_gave(self):
+        for kind in (errno.ENAMETOOLONG, errno.EACCES, errno.EIO):
+            with self.subTest(errno=errno.errorcode[kind]), \
+                 mock.patch.object(os, "stat", side_effect=OSError(kind, os.strerror(kind))):
+                self.assertEqual(trace.looked_at(Path("/traces")), ("refused", os.strerror(kind)))
+
+    def test_a_folder_and_a_file_are_told_apart_by_the_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "traces"
+            folder.mkdir()
+            self.assertEqual(trace.looked_at(folder), ("folder", None))
+            target = Path(tmp) / "traces.txt"
+            target.write_text("not a folder")
+            self.assertEqual(trace.looked_at(target), ("other", None))
 
 
 class ReachTest(unittest.TestCase):
@@ -298,6 +360,46 @@ class RecordTest(unittest.TestCase):
         self.record(device, [], ["sleep 1"])
         self.assertIn(("shell", "[ -d /proc/1234 ] && echo running"), device.calls)
 
+    def test_a_recording_still_running_after_the_wait_is_not_pulled_or_published(self):
+        # Cover a reported PID and Android 9's pidof fallback, with and without an older local trace.
+        for started in ("1234\n", ""):
+            for existing in (False, True):
+                with self.subTest(pid=bool(started), existing=existing), tempfile.TemporaryDirectory() as tmp:
+                    device = FakeDevice(started)
+                    shell = device.shell
+
+                    def still_recording(command, read_timeout_s=None):
+                        answer = shell(command, read_timeout_s)
+                        return "running\n" if command.endswith("&& echo running") else answer
+
+                    device.shell = still_recording
+                    path = Path(tmp) / "nav-1.pftrace"
+                    if existing:
+                        path.write_bytes(b"previous complete recording")
+                    with mock.patch.object(trace.time, "sleep"), self.assertRaisesRegex(RuntimeError, "still running"):
+                        trace.record_one(device, [], ["sleep 1"], "com.gathin.tvhome", str(path))
+                    self.assertFalse(any(c[0] == "pull" for c in device.calls))
+                    self.assertNotIn(("shell", f"rm -f {trace.REMOTE}"), device.calls)
+                    if existing:
+                        self.assertEqual(path.read_bytes(), b"previous complete recording")
+                    else:
+                        self.assertFalse(path.exists())
+                    self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), [path.name] if existing else [])
+
+    def test_a_recording_that_finishes_on_the_last_poll_is_published(self):
+        device = FakeDevice()
+        shell = device.shell
+        answers = iter(["running\n"] * 59 + [""])
+
+        def finishing(command, read_timeout_s=None):
+            answer = shell(command, read_timeout_s)
+            return next(answers) if command.endswith("&& echo running") else answer
+
+        device.shell = finishing
+        size, _ = self.record(device, [], ["sleep 1"])
+        self.assertEqual(size, len(b"trace"))
+        self.assertEqual(sum(c[1].endswith("&& echo running") for c in device.calls if c[0] == "shell"), 60)
+
     def test_an_empty_trace_is_an_error_not_a_file(self):
         device = FakeDevice()
         device.pull = lambda remote, local, **kw: Path(local).write_bytes(b"")
@@ -312,6 +414,285 @@ class RecordTest(unittest.TestCase):
         with self.assertRaises(RuntimeError) as caught:
             self.record(FakeDevice("/system/bin/sh: perfetto: not found\n"), [], ["sleep 1"])
         self.assertIn("Android 9 and later", str(caught.exception))
+
+
+class RecordPreservationTest(unittest.TestCase):
+    OLD = b"existing complete recording\n"
+    SIDECAR = b'{"scenario":"home","run":1,"fixture":"old"}\n'
+
+    @contextlib.contextmanager
+    def files(self, existing=True):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            path = folder / "home-1.pftrace"
+            if existing:
+                path.write_bytes(self.OLD)
+                path.with_suffix(".json").write_bytes(self.SIDECAR)
+            (folder / "unrelated.txt").write_bytes(b"keep this too")
+            yield path, self.snapshot(folder)
+
+    def snapshot(self, folder):
+        return {str(p.relative_to(folder)): "directory" if p.is_dir() else
+                hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.rglob("*")}
+
+    def device(self, how="ok"):
+        class DownloadDevice(FakeDevice):
+            closed = False
+
+            def shell(self, command, read_timeout_s=None):
+                answer = super().shell(command, read_timeout_s)
+                if how == "cleanup" and command == f"rm -f {trace.REMOTE}":
+                    raise ConnectionResetError("remote cleanup failed")
+                return answer
+
+            def pull(self, remote, local, **kwargs):
+                self.calls.append(("pull", remote, local))
+                with open(local, "wb") as stream:
+                    if how == "partial":
+                        stream.write(b"partial")
+                    if how in ("before", "partial"):
+                        raise ConnectionResetError("download interrupted")
+                    if how != "empty":
+                        stream.write(b"trace")
+
+            def close(self):
+                self.closed = True
+
+        return DownloadDevice("perfetto: not found\n" if how == "startup" else "1234\n")
+
+    def record(self, device, path):
+        with mock.patch.object(trace.time, "sleep"):
+            return trace.record_one(device, [], ["sleep 1"], "com.gathin.tvhome", str(path))
+
+    def test_success_creates_or_replaces_the_final_recording(self):
+        for existing in (False, True):
+            with self.subTest(existing=existing), self.files(existing) as (path, before):
+                device = self.device()
+                self.assertEqual(self.record(device, path), len(b"trace"))
+                self.assertEqual(path.read_bytes(), b"trace")
+                before[path.name] = hashlib.sha256(b"trace").hexdigest()
+                self.assertEqual(self.snapshot(path.parent), before, "only the recording changes")
+                self.assertEqual([c[0] for c in device.calls[-2:]], ["pull", "shell"])
+                self.assertEqual(device.calls[-1][1], f"rm -f {trace.REMOTE}")
+
+    def test_failed_downloads_preserve_existing_files_or_leave_no_new_file(self):
+        for how in ("before", "partial", "empty", "startup", "cleanup"):
+            for existing in (False, True):
+                with self.subTest(how=how, existing=existing), self.files(existing) as (path, before):
+                    device = self.device(how)
+                    error = RuntimeError if how in ("empty", "startup") else ConnectionResetError
+                    with contextlib.redirect_stdout(io.StringIO()) as output, self.assertRaises(error) as caught:
+                        self.record(device, path)
+                    self.assertEqual(output.getvalue(), "", "failed recordings never report success")
+                    if how == "empty":
+                        self.assertEqual(str(caught.exception), "perfetto wrote an empty trace; "
+                                         "run with --runs 1 and see tools/trace.md")
+                    pulls = [c for c in device.calls if c[0] == "pull"]
+                    self.assertEqual(len(pulls), 0 if how == "startup" else 1)
+                    cleanup = ("shell", f"rm -f {trace.REMOTE}") in device.calls
+                    self.assertEqual(cleanup, how in ("empty", "cleanup"))
+                    self.assertEqual(self.snapshot(path.parent), before,
+                                     "trace and sidecar hashes must match, with no staged files left")
+
+    def test_publication_failure_preserves_existing_files_or_leaves_no_new_file(self):
+        for existing in (False, True):
+            with self.subTest(existing=existing), self.files(existing) as (path, before):
+                with mock.patch.object(os, "replace", side_effect=PermissionError("cannot replace")) as replace:
+                    with self.assertRaisesRegex(PermissionError, "cannot replace"):
+                        self.record(self.device(), path)
+                replace.assert_called_once()
+                self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_permission_copy_failure_preserves_the_recording(self):
+        with self.files() as (path, before):
+            with mock.patch.object(shutil, "copymode", side_effect=PermissionError("cannot copy mode")):
+                with self.assertRaisesRegex(PermissionError, "cannot copy mode"):
+                    self.record(self.device(), path)
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    @unittest.skipIf(os.name == "nt", "Windows chmod does not support POSIX permission bits")
+    def test_replacement_preserves_existing_permission_bits(self):
+        with self.files() as (path, before):
+            path.chmod(0o640)
+            self.record(self.device(), path)
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o640)
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    @unittest.skipUnless(os.name == "nt", "Windows refuses replacement of an open or read-only target")
+    def test_windows_locked_or_readonly_target_is_preserved(self):
+        for how in ("locked", "readonly"):
+            with self.subTest(how=how), self.files() as (path, before):
+                try:
+                    if how == "readonly":
+                        path.chmod(stat.S_IREAD)
+                    opened = path.open("rb") if how == "locked" else contextlib.nullcontext()
+                    with opened, self.assertRaises(PermissionError):
+                        self.record(self.device(), path)
+                    self.assertEqual(self.snapshot(path.parent), before)
+                finally:
+                    path.chmod(stat.S_IREAD | stat.S_IWRITE)
+
+    def test_missing_parent_is_not_created(self):
+        with self.files() as (path, before):
+            with self.assertRaises(FileNotFoundError):
+                self.record(self.device(), path.parent / "missing" / path.name)
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_pull_uses_a_unique_sibling_staging_directory_and_original_basename(self):
+        with self.files() as (path, before):
+            destinations = []
+            device = self.device()
+
+            def pull(remote, local, **kwargs):
+                staged = Path(local)
+                self.assertEqual(remote, trace.REMOTE)
+                self.assertEqual(kwargs, {"transport_timeout_s": 300.0, "read_timeout_s": 300.0})
+                self.assertEqual(staged.name, path.name)
+                self.assertEqual(staged.parent.parent, path.parent)
+                self.assertNotEqual(staged.parent, path.parent)
+                self.assertEqual(path.read_bytes(), self.OLD, "final file stays untouched during the pull")
+                destinations.append(staged)
+                staged.write_bytes(b"trace")
+
+            device.pull = pull
+            for _ in range(2):
+                path.write_bytes(self.OLD)
+                self.assertEqual(self.record(device, path), 5)
+            self.assertNotEqual(destinations[0].parent, destinations[1].parent)
+            self.assertTrue(all(not p.parent.exists() for p in destinations))
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_success_replaces_a_hardlink_entry_without_changing_its_alias(self):
+        with self.files() as (path, before):
+            alias = path.with_name("alias.pftrace")
+            try:
+                os.link(path, alias)
+            except (OSError, NotImplementedError) as error:
+                self.skipTest(f"hardlinks unavailable: {error}")
+            self.record(self.device(), path)
+            self.assertEqual(alias.read_bytes(), self.OLD)
+            self.assertEqual(path.read_bytes(), b"trace")
+            self.assertFalse(os.path.samefile(path, alias))
+            before[alias.name] = before[path.name]
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_success_replaces_a_symlink_entry_without_writing_through_it(self):
+        with self.files() as (path, before):
+            source = path.with_name("source.pftrace")
+            path.rename(source)
+            try:
+                path.symlink_to(source.name)
+            except (OSError, NotImplementedError) as error:
+                self.skipTest(f"symlinks unavailable: {error}")
+            self.record(self.device(), path)
+            self.assertFalse(path.is_symlink())
+            self.assertEqual(source.read_bytes(), self.OLD)
+            self.assertEqual(path.read_bytes(), b"trace")
+            before[source.name] = before[path.name]
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    def main_modules(self, device):
+        fake_tv = types.ModuleType("tv")
+        fake_tv.connect = lambda: device
+        fake_bench = types.ModuleType("bench")
+        return mock.patch.dict(sys.modules, {"tv": fake_tv, "bench": fake_bench})
+
+    def main(self, path):
+        return trace.main(["home", "--app", OTHER, "--runs", "1", "--out", str(path.parent)])
+
+    def test_main_preserves_trace_and_sidecar_and_closes_device_after_failures(self):
+        for how in ("before", "partial", "empty", "startup", "cleanup", "replace", "copymode"):
+            with self.subTest(how=how), self.files() as (path, before), contextlib.ExitStack() as stack:
+                device = self.device(how)
+                stack.enter_context(self.main_modules(device))
+                stack.enter_context(mock.patch.object(trace.time, "sleep"))
+                if how == "replace":
+                    stack.enter_context(mock.patch.object(os, "replace", side_effect=PermissionError("replace")))
+                if how == "copymode":
+                    stack.enter_context(mock.patch.object(shutil, "copymode", side_effect=PermissionError("mode")))
+                error = (RuntimeError if how in ("empty", "startup") else
+                         PermissionError if how in ("replace", "copymode") else ConnectionResetError)
+                with contextlib.redirect_stdout(io.StringIO()) as output, self.assertRaises(error):
+                    self.main(path)
+                self.assertTrue(device.closed)
+                self.assertEqual(output.getvalue(), "")
+                self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_main_keeps_the_old_sidecar_when_writing_the_new_one_fails(self):
+        with self.files() as (path, before):
+            device = self.device()
+
+            def half(value, stream, **kwargs):
+                stream.write('{"scenario": "ho')
+                raise OSError(28, "No space left on device")
+
+            with self.main_modules(device), mock.patch.object(trace.time, "sleep"),                  mock.patch.object(trace.json, "dump", side_effect=half),                  contextlib.redirect_stdout(io.StringIO()), self.assertRaises(OSError):
+                self.main(path)
+            self.assertTrue(device.closed)
+            self.assertEqual(path.with_suffix(".json").read_bytes(), self.SIDECAR)
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+    def test_main_writes_metadata_after_successful_replacement_and_reports_size(self):
+        with self.files() as (path, before):
+            device = self.device()
+            dump = json.dump
+
+            def metadata(value, stream, **kwargs):
+                self.assertEqual(path.read_bytes(), b"trace", "publish trace before writing metadata")
+                return dump(value, stream, **kwargs)
+
+            with self.main_modules(device), mock.patch.object(trace.time, "sleep"), \
+                 mock.patch.object(trace.json, "dump", side_effect=metadata), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                self.assertIsNone(self.main(path))
+            self.assertTrue(device.closed)
+            sidecar = path.with_suffix(".json")
+            info = json.loads(sidecar.read_text())
+            self.assertEqual((info["scenario"], info["run"], info["package"]), ("home", 1, "com.gathin.tvhome"))
+            self.assertEqual(info["steps"], ["input keyevent KEYCODE_HOME", "sleep 4"])
+            self.assertEqual(output.getvalue(), f"{path}: 5 bytes\nnext: tools/venv/bin/python -I "
+                             f"tools/trace_report.py {path.parent}   (see tools/trace.md)\n")
+            before[path.name] = hashlib.sha256(b"trace").hexdigest()
+            before[sidecar.name] = hashlib.sha256(sidecar.read_bytes()).hexdigest()
+            self.assertEqual(self.snapshot(path.parent), before)
+
+
+    def test_a_folder_name_the_console_cannot_encode_is_printed_with_replacement_characters(self):
+        """docs/workflows/perf-ab.md has a reader compare `traces/before` with `traces/after`.
+
+        Named in the reader's own language - `trước` and `sau` - those folders are what the last two lines
+        of a run print, and the name went to stdout as it is: a cp1252 window, which is what a Windows
+        console hands a script that does not ask for UTF-8, raised UnicodeEncodeError after every trace had
+        been recorded and pulled. The exit status was 1, the one this file keeps for a recording that
+        failed, while the trace and its sidecar sat on disk.
+        """
+        device = self.device()
+        with tempfile.TemporaryDirectory() as tmp, self.main_modules(device), \
+             mock.patch.object(trace.time, "sleep"):
+            folder = Path(tmp) / "đô-trước"
+            folder.mkdir()
+            path = folder / "home-1.pftrace"
+            raw = io.BytesIO()
+            console = io.TextIOWrapper(raw, encoding="cp1252", newline="")
+            real = sys.stdout
+            self.addCleanup(setattr, sys, "stdout", real)
+            sys.stdout = console
+            try:
+                self.assertIsNone(self.main(path))
+            finally:
+                console.flush()
+                sys.stdout = real
+            self.assertTrue(path.exists(), "the trace was recorded before its name was printed")
+        printed = raw.getvalue().decode("cp1252")
+        expected = str(path).encode("cp1252", "replace").decode("cp1252")
+        self.assertIn(f"{expected}: {len(b'trace')} bytes", printed)
+        where = str(folder).encode("cp1252", "replace").decode("cp1252")
+        self.assertIn(f"trace_report.py {where}   (see tools/trace.md)", printed)
 
 
 class OtherAppTest(unittest.TestCase):

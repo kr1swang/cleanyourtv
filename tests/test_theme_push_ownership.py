@@ -72,6 +72,11 @@ if args and args[0] == "--push":
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     with open(src, "rb") as f, open(dst, "wb") as g:
         g.write(f.read())
+elif args == ["--batch"]:
+    for line in sys.stdin:
+        line = line.strip()
+        if line:
+            sys.stdout.write(f"$ {line}\n" + Device().shell(line))
 else:
     Device().shell(" ".join(args))
 '''
@@ -133,7 +138,13 @@ class ThemePushTest(unittest.TestCase):
         (self.tools / "tv.py").write_text(FAKE_TV)
         venv = self.tools / "venv" / "bin"
         venv.mkdir(parents=True)
-        (venv / "python").symlink_to(sys.executable)
+        try:
+            (venv / "python").symlink_to(sys.executable)
+        except OSError:
+            # Windows without the symlink privilege (WinError 1314). Only the theme.sh runs use this
+            # python, and they skip there; the checks of theme.ps1 still run.
+            if os.name != "nt":
+                raise
         self.bin = self.base / "bin"
         self.bin.mkdir()
         content = self.bin / "content"

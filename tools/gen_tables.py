@@ -33,16 +33,30 @@ gets the short table there too. Everything outside the markers is hand-written.
 The counts are the card's alt text ("N TV models · B brands · L languages · "), the "| **L languages** |"
 feature row and STATS in tools/readme_stats.py. Exit codes: 0 up to date (or written), 1 out of date
 (--check), or a count moved and --font could not draw one of the pictures (the tables are written; the
-picture is not - redraw it before committing), 2 what it was given cannot be read: a tv.json, a marker, or
-the path in --root or --adopt (nothing is written then), or an --adopt row main has changed since the PR
-was written: the tv.json files the patch did apply are on disk and the message names them, the tables are
-not regenerated, so that row is moved into its tv.json by hand and the script run again.
+picture is not - redraw it before committing). --font draws with the checkout's venv - tools/venv/bin/python
+when that venv has Pillow, tools/venv/Scripts/python.exe on Windows - the interpreter docs/workflows/press.md
+installs Pillow into and the one the two card scripts' own usage lines name; a checkout with no such venv - or
+one whose venv interpreter cannot be started at all - uses the Python that ran this script, and an interpreter
+that starts for the Pillow probe but not for the picture is reported as a picture that was not drawn, not as a
+traceback.
+2 what it was given cannot be read: a tv.json, a marker, or the path in --root or --adopt (nothing is written
+then), or a page or a tv.json it cannot write: the pages
+are written beside themselves and replaced only once all of them are, so such a run leaves every page with
+the text it had and names the one that stopped it (the tv.json files an --adopt run already wrote stay
+written), or an --adopt row main has changed since the PR was written: the tv.json files the patch did
+apply are on disk and the message names them, the tables are not regenerated, so that row is moved into
+its tv.json by hand and the script run again.
 """
 import argparse
+import errno
 import json
+import os
 import re
+import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from urllib.parse import quote
 
@@ -62,7 +76,7 @@ LINK = re.compile(r"\]\(([^)\s]+)\)")
 
 
 class Problem(Exception):
-    """A tv.json or a marker the script cannot work with; the message says which and why."""
+    """A tv.json, a marker or a page the script cannot work with or write; the message says which and why."""
 
 
 def folders(root):
@@ -73,7 +87,10 @@ def check_cell(where, key, value):
     if not isinstance(value, str) or not value.strip():
         return [f"{where}: \"{key}\" must be a non-empty string"]
     out = []
-    if value != value.strip() or "\n" in value:
+    # A CR is a line ending to a Markdown reader, and `read_text` reads the table back with universal
+    # newlines, so a written CR would come back as an LF and `--check` would never agree with the run
+    # that had just written it. Both line endings are refused; a CRLF already carries the LF.
+    if value != value.strip() or "\n" in value or "\r" in value:
         out.append(f"{where}: \"{key}\" must be one line with no space at either end")
     if re.search(r"(?<!\\)\|", value):
         out.append(f"{where}: \"{key}\" has a | that would split the table cell; write \\| instead")
@@ -100,6 +117,9 @@ def load(root, allow_missing=False):
             continue
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
+        except OSError as e:
+            problems.append(f"{where}: cannot read ({e.strerror or e})")
+            continue
         except ValueError as e:
             problems.append(f"{where}: not valid JSON ({e})")
             continue
@@ -322,8 +342,64 @@ def guess_brand(folder, tv, known):
     return re.split(r"[\s,(]", tv)[0]
 
 
-def write_json(path, data):
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+def publish(root, pages):
+    """Replace every (name relative to root, text) in `pages` as one set, or leave all of them as they were.
+
+    Path.write_text() opens the file before it writes, so a page it cannot finish - a full disk, a
+    read-only checkout, a file another process holds open - is left cut short under the name the
+    repository ships it at. On README.md that is the front page cut to whatever the write got to, a
+    traceback and exit 1, the code --check keeps for "the tables are out of date"; the page then has to
+    be restored from git before the run can even be read. A write that stopped halfway through the set
+    was the other half of it: the pages before it held the new counts, the ones after it the old ones,
+    so a --check answer was about a tree no single run wrote.
+
+    So each page is written beside itself first and the pages are replaced only once all of them are
+    written: a run that cannot finish leaves the checkout byte for byte as it was and names the page that
+    stopped it. A page that is a symlink keeps its link (the file it points at is replaced, as
+    write_text did through it), an existing page keeps its mode, and a fresh one gets what write_text
+    would have left it (0666 less the umask, which open() applies to the staging file).
+    """
+    staged, folders, name = [], [], None
+    try:
+        for name, text in pages:
+            target = Path(os.path.realpath(root / name))
+            if target.exists():
+                # Rename can replace a read-only file; check write access without truncating it.
+                os.close(os.open(target, os.O_WRONLY))
+            folder = Path(tempfile.mkdtemp(prefix="." + target.name + "-", dir=target.parent))
+            folders.append(folder)
+            pending = folder / target.name
+            pending.write_text(text, encoding="utf-8")
+            if target.exists():
+                shutil.copymode(target, pending)
+            staged.append((name, pending, target))
+    except OSError as e:
+        for folder in folders:
+            shutil.rmtree(folder, ignore_errors=True)
+        raise Problem(f"cannot write {name}: {e.strerror or e}. Nothing was written: every page this "
+                      f"run had to write keeps the text it had, so --check still answers for the tree "
+                      f"that is there.")
+    written = []
+    try:
+        for name, pending, target in staged:
+            os.replace(pending, target)
+            written.append(name)
+    except OSError as e:
+        # Almost unreachable (the staging folder is beside the page, so a folder that refuses the
+        # rename refused the staging file first), but the message must not claim the checkout is
+        # untouched once some of it is not.
+        raise Problem(f"cannot write {name}: {e.strerror or e}. These pages are written: "
+                      f"{', '.join(written) or 'none'}; these are not: "
+                      f"{', '.join(n for n, _, _ in staged[len(written):])}. Run it again once that is fixed.")
+    finally:
+        for folder in folders:
+            shutil.rmtree(folder, ignore_errors=True)
+    return written
+
+
+def write_json(root, name, data):
+    """`examples/<name>/tv.json`, published by rename: a write that stops leaves the file it was."""
+    publish(root, [(name, json.dumps(data, indent=2, ensure_ascii=False) + "\n")])
 
 
 def adopt(root, patch_text):
@@ -358,6 +434,21 @@ def adopt(root, patch_text):
     have = dict(load(root, allow_missing=True))
     known = sorted({d.get("brand", "") for d in have.values()} - {""})
     out, stale_rows = [], []
+
+    def wrote():
+        """The lines saying which tv.json files this run has written: nothing may read as 'nothing happened'."""
+        written = [f"examples/{n}/tv.json: {what}" for n, what in out]
+        return (["These tv.json files are written and stay written:"] + written) if written \
+            else ["No tv.json was written."]
+
+    def save(name, data):
+        """write_json, or stop: the message says which file failed and what the run left behind."""
+        try:
+            write_json(root, f"examples/{name}/tv.json", data)
+        except Problem as e:
+            raise Problem("\n".join([str(e)] + wrote() + ["The tables were not regenerated, so a later "
+                                                          "--check still answers for them."]))
+
     for name, (tv, os_cell, notes) in sorted(rows.items()):
         folder = root / "examples" / name
         if not folder.is_dir():
@@ -370,28 +461,46 @@ def adopt(root, patch_text):
                 stale_rows.append(f"examples/{name}/tv.json: the row this PR edits has changed on main since; "
                                   f"move the PR's change into tv.json by hand")
                 continue
-            write_json(folder / "tv.json", dict(have[name], tv=tv, os=os_cell, notes=notes))
+            save(name, dict(have[name], tv=tv, os=os_cell, notes=notes))
             out.append((name, "updated tv, os and notes from the PR's row"))
             continue
         brand = guess_brand(name, tv, known)
         data = {"tv": tv, "os": os_cell, "brand": brand, "notes": notes}
         if readme_os.get(tv, os_cell) != os_cell:
             data["readme_os"] = readme_os[tv]
-        write_json(folder / "tv.json", data)
+        save(name, data)
         out.append((name, f"new, brand {brand}" + ("" if brand in known else " (a new brand: check the spelling)")))
     if stale_rows:
         # The files this run did write are said as written, above the rows it did not apply: a maintainer
         # who reads the whole block as "nothing happened" leaves those tv.json files uncommitted, or
         # commits them beside tables that were never regenerated - and the next --check run is the one
         # that says so.
-        written = [f"examples/{n}/tv.json: {what}" for n, what in out]
-        head = (["These tv.json files are written and stay written:"] + written) if written \
-            else ["No tv.json was written."]
+        head = wrote()
         raise Problem("\n".join(head + ["These rows were not applied:"] + stale_rows + [
             "The tables were not regenerated, so README.md and examples/README.md still hold the rows they "
-            "had" + (" and this checkout now answers --check with 1" if written else "") + ". Move that row's change into its tv.json by "
+            "had" + (" and this checkout now answers --check with 1" if out else "") + ". Move that row's change into its tv.json by "
             "hand, then run python3 tools/gen_tables.py again."]))
     return out
+
+
+def stat_folder(path):
+    """(it is a folder, why the filesystem would not look at it or None) for one path.
+
+    The four errnos here are the answers `Path.is_dir()` itself gave before Python 3.14: ENOENT and
+    ENOTDIR, the two ordinary ways a path is not a folder, and ELOOP and EBADF, which it also read as
+    "no". Every other refusal to look - ENAMETOOLONG for a name over NAME_MAX, EACCES under a folder
+    this user may not traverse, EINVAL, EIO - came out of is_dir() as an OSError, and the caller below
+    names it. On 3.14 is_dir() answers False for those too (it swallows every OSError), so asking it
+    alone would put "not a folder" - the sentence for a typo - over a path that is there and could not
+    be read, and the refusal this file grew for that case (#4032) would not be printed at all.
+    """
+    try:
+        info = path.stat()
+    except OSError as e:
+        if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EBADF):
+            return False, None
+        return False, (e.strerror or e)
+    return stat.S_ISDIR(info.st_mode), None
 
 
 def read_inputs(root, patch):
@@ -403,7 +512,17 @@ def read_inputs(root, patch):
     not there both ended in a FileNotFoundError traceback before, which is exit 1 - the one answer that
     says the generated files are stale when in fact nothing was read at all.
     """
-    if not root.is_dir():
+    # A `--root` the filesystem refuses to stat - a name longer than NAME_MAX, or a path under a folder
+    # this user may not traverse - used to end the run in an OSError as a traceback, exit 1: the answer
+    # this docstring keeps for tables that are out of date, over a run that read nothing. Both are the
+    # "cannot be read" case the exit paragraph names, and the sentence quotes the path either way.
+    # stat_folder() asks the filesystem rather than `Path.is_dir()`, which stopped raising for those on
+    # Python 3.14 and would answer "not a folder" for a path it never looked at.
+    is_folder, refused = stat_folder(root)
+    if refused:
+        return None, (f"--root '{root}': cannot be looked at ({refused}). "
+                      f"Nothing was read or written.")
+    if not is_folder:
         return None, f"--root '{root}': not a folder. Nothing was read or written."
     # examples/ is what it reads; the three OWNED files are the parts of the checkout it writes.
     needs = ["examples"] + list(OWNED)
@@ -414,11 +533,68 @@ def read_inputs(root, patch):
     if patch is None:
         return None, None
     try:
-        return Path(patch).read_text(encoding="utf-8"), None
+        data = Path(patch).read_bytes()
+        # PowerShell 5.1 redirection writes UTF-16; its BOM identifies the byte order.
+        encoding = "utf-16" if data.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig"
+        return data.decode(encoding).replace("\r\n", "\n").replace("\r", "\n"), None
     except OSError as e:
         # A path that is a directory is OSError too (IsADirectoryError), so this covers a patch folder.
         # The path is quoted so an empty --adopt ('' or a stray pair of quotes) is visible in the line.
         return None, f"--adopt: cannot read '{patch}': {e.strerror}. Nothing was written."
+    except UnicodeDecodeError:
+        return None, f"--adopt: '{patch}' is not UTF-8 or UTF-16 text. Nothing was written."
+
+
+def venv_python(root):
+    """The checkout's venv interpreter, at the path that venv has: `bin/python`, or `Scripts/python.exe`.
+
+    A venv made by `python -m venv` on macOS or Linux keeps `tools/venv/bin/python`; the one Windows makes keeps
+    `tools/venv/Scripts/python.exe`. Asking only for the first meant a Windows checkout's venv, Pillow and all,
+    was never the interpreter the two card scripts were handed: the redraw fell back to the Python that ran this
+    script and answered with the Pillow line while the venv that could draw sat beside it (#3897). tools/bench.py
+    already asks both paths, so a checkout either way round is read here too.
+    """
+    for candidate in (root / "tools" / "venv" / "bin" / "python",
+                      root / "tools" / "venv" / "Scripts" / "python.exe"):
+        if candidate.is_file():
+            return candidate
+    return root / "tools" / "venv" / "bin" / "python"
+
+
+def card_python(root):
+    """The interpreter the two card scripts are run with, as a path: the checkout's venv when it has Pillow.
+
+    The scripts need Pillow, and requirements.txt has none: docs/workflows/press.md installs
+    requirements-perf.txt into tools/venv, which is the interpreter both scripts' own usage lines name
+    (`tools/venv/bin/python -I tools/readme_stats.py ...`, or `tools/venv/Scripts/python.exe` on Windows -
+    see venv_python()). sys.executable is whatever ran this script, and the run this script asks for in its own
+    messages - and CI's, and docs/workflows/tv-list.md's - is
+    `python3 tools/gen_tables.py`, i.e. the system Python: on a stock Ubuntu 24.04 that is
+    /usr/bin/python3, which has no Pillow and cannot pip install one (PEP 668, EXTERNALLY-MANAGED). So a
+    maintainer who installed Pillow exactly as PRESS.md says, and ran the command this script prints, got
+    "docs/stats.png was not redrawn ... python3 tools/readme_stats.py" twice over, with a venv that could
+    have drawn it sitting beside the list. A checkout with no venv - a contributor's own virtualenv, CI's
+    setup-python - keeps sys.executable, which is how every existing run works. So does a checkout whose
+    venv interpreter is there and executable but cannot be started: an optional interpreter this machine
+    cannot run is an optional interpreter it does not have.
+    """
+    venv = venv_python(root)
+    if venv.is_file() and os.access(venv, os.X_OK):
+        # `-I` so a PYTHON* variable in the caller's shell cannot shadow the venv's own site-packages.
+        try:
+            probe = subprocess.run([str(venv), "-I", "-c", "import PIL"], capture_output=True)
+        except OSError:
+            # A file that is there and executable can still be one this machine cannot start: a venv copied
+            # from another platform, a `bin/python` symlink to an interpreter that was since removed, a
+            # shebang naming a path that does not exist here. That is one more way the optional venv is
+            # unusable, and the answer to an unusable venv is the one below it - the Python that ran this
+            # script. Letting the OSError out would end the run in a traceback after publish() has already
+            # written the tables, so the one run that should have said "drawn with this Python instead"
+            # reads as exit 1, which is the code that means the generated files are stale.
+            return sys.executable
+        if probe.returncode == 0:
+            return str(venv)
+    return sys.executable
 
 
 def redraw(root, font):
@@ -429,15 +605,34 @@ def redraw(root, font):
     without Pillow (requirements.txt has none; docs/workflows/press.md installs requirements-perf.txt) with
     its own line and exit 1. With check=True that line was then followed by a CalledProcessError traceback
     that named the font path as a command, after the tables had already been rewritten: a run that read like
-    "nothing was drawn" had changed two files, and the pictures it promised were not there.
+    "nothing was drawn" had changed two files, and the pictures it promised were not there. An interpreter
+    that cannot be started at all is the same answer for the same reason: an OSError raised here would be a
+    traceback with the tables already written, and exit 1 from a traceback is what --check answers when the
+    generated files are stale.
+
+    The interpreter is card_python()'s - the checkout's venv when it has Pillow, else this one - and the
+    remedy names it, since a `python3` that lacks Pillow answers the retry with the same line: the command
+    the reader copies has to be one that can draw.
     """
+    python = card_python(root)
+    shown = os.path.relpath(python, root) if python != sys.executable else python
     for script, out in (("tools/readme_stats.py", "docs/stats.png"),
                         ("tools/readme_card.py", "docs/card.jpg")):
-        done = subprocess.run([sys.executable, script, font, out], cwd=root)
+        try:
+            done = subprocess.run([python, script, font, out], cwd=root)
+        except OSError as e:
+            # The interpreter answered the Pillow probe and could not be started for the script itself: the
+            # venv's Python removed or replaced between the two calls, a mount that stopped answering. main()
+            # has written the tables by now, so this is the same answer as a script that exited non-zero -
+            # name the picture, say the tables are written, and hand over a command that can draw it (the
+            # interpreter that failed is not one, so the remedy names the Python that ran this script).
+            return (f"{out} was not redrawn: cannot start {shown} ({e.strerror}). The tables are written; "
+                    f"draw the picture with an interpreter that runs, then commit it with the tables: "
+                    f"{sys.executable} {script} <Fredoka.ttf> {out}")
         if done.returncode:
             return (f"{out} was not redrawn: {script} exited {done.returncode} and its line above says why. "
                     f"The tables are written; redraw the picture once that is fixed, with "
-                    f"python3 {script} <Fredoka.ttf> {out}, and commit it with the tables.")
+                    f"{shown} {script} <Fredoka.ttf> {out}, and commit it with the tables.")
     return None
 
 
@@ -451,10 +646,10 @@ def main(argv=None):
     a = ap.parse_args(argv)
     if a.check and a.adopt is not None:
         ap.error("--check and --adopt cannot be used together")
-    if a.font and not Path(a.font).is_file():
+    if a.font is not None and not Path(a.font).is_file():
         # The scripts this hands the font to exit with their own line, but subprocess.run(check=True) would
         # then turn that into a CalledProcessError traceback, which names neither the file nor where it is.
-        ap.error(f"cannot open the font at {a.font}: Fredoka (variable TTF, Google Fonts) is not in this repo")
+        ap.error(f"cannot open the font at {a.font!r}: Fredoka (variable TTF, Google Fonts) is not in this repo")
     root = Path(a.root)
     patch, problem = read_inputs(root, a.adopt)
     if problem:
@@ -471,11 +666,9 @@ def main(argv=None):
                       f"a maintainer runs python3 tools/gen_tables.py after merging and commits the result.")
                 return 1
             return 0
-        changed = []
-        for path, text in render(root).items():
-            if (root / path).read_text(encoding="utf-8") != text:
-                (root / path).write_text(text, encoding="utf-8")
-                changed.append(path)
+        pages = [(path, text) for path, text in render(root).items()
+                 if (root / path).read_text(encoding="utf-8") != text]
+        changed = publish(root, pages)
     except Problem as e:
         print(e, file=sys.stderr)
         return 2

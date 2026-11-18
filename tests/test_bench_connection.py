@@ -4,7 +4,7 @@ It used to start tools/tv.py for every shell command: a new Python, a new TCP co
 ADB handshake, several times per key, plus the whole main log pulled back for every key (about
 100 MB on a TCL C755, 41 s a read). Through a
 relay one full run took over 45 minutes. Now the TV class connects once with tools/tv.py's client
-and reuses it, reopening it once if it drops; only the log's newest lines are read, filtered on the
+and reuses it, reopening it once for a safe query; only the log's newest lines are read, filtered on the
 TV, and not at all once the first keys show the TV doesn't log them; and the key loop looks up Home once. --host also has to reach the client: the old subprocesses only read TV_HOST. It reaches it as TV_HOST/TV_PORT, and the target the run keeps is the one tools/tv.py made of those two (it splits `host:port` and checks the range), not the arguments again.
 
 A TV that cannot be reached is the other half, and the run's first connect is also the one it reopens
@@ -38,6 +38,34 @@ import test_tv_connect_errors as connect_errors  # noqa: E402  (a module, so its
 from tools import bench
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# The two variables bench.TV hands the tools/tv.py it imports: tools/tv.py reads them at import, which
+# is how --host and --port reach the client.
+TV_TARGET = ("TV_HOST", "TV_PORT")
+
+
+def target_in_environment():
+    return {key: os.environ.get(key) for key in TV_TARGET}
+
+
+def put_target_back(before):
+    """Put the pair back to what `before` recorded, so a case's target is not the next case's.
+
+    bench.TV._connect() sets TV_HOST/TV_PORT for the client it imports, and nothing puts them back.
+    With the stand-in client below - whose HOST and PORT are None, as a client is until it resolves an
+    address - the reopen after a dropped connection writes the word `None` into both. A case that runs
+    later and builds its child environment from os.environ then hands tools/tv.py a TV_PORT of `None`,
+    which it refuses at import ("not a port number: 'None'"): three cases, in
+    tests/test_adb_key_created_private.py and tests/test_adb_key_fallback.py, answered exit 1 where
+    they assert 0 for exactly that reason, and only when the suite ran in an order discovery does not
+    use. Restoring here rather than in bench.py keeps bench.py's hand-over - the one the client reads -
+    as it is.
+    """
+    for key, value in before.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
 
 
 class FakeDevice:
@@ -84,6 +112,9 @@ class OneConnectionTest(unittest.TestCase):
         patcher = mock.patch.dict(sys.modules, {"tv": client})
         patcher.start()
         self.addCleanup(patcher.stop)
+        # bench.py writes TV_HOST/TV_PORT for the client; see put_target_back() for what a pair left
+        # behind does to a later case.
+        self.addCleanup(put_target_back, target_in_environment())
         return bench.TV("192.0.2.7", 15555), client
 
     def test_many_commands_share_one_connection(self):
@@ -100,6 +131,24 @@ class OneConnectionTest(unittest.TestCase):
         # what this can check; the read-back is the test below.
         self.assertEqual((os.environ["TV_HOST"], os.environ["TV_PORT"]), ("192.0.2.7", "15555"))
 
+    def test_a_case_puts_the_target_back_when_it_ends(self):
+        """The target bench.py writes for its client is this case's, and no later case's.
+
+        os.environ is one dictionary for the whole run. Read under the runner's own cleanup rather
+        than in a fresh process, because that is where the leak was: a case that ends with the pair
+        still set hands the next case a TV_PORT of `None`, and tools/tv.py refuses that at import.
+        """
+        before = target_in_environment()
+        tv, _ = self.tv_with(FakeDevice())
+        tv.shell("true")
+        self.assertEqual((os.environ["TV_HOST"], os.environ["TV_PORT"]), ("192.0.2.7", "15555"),
+                         "bench.py did not hand the target to the client through TV_HOST/TV_PORT, so "
+                         "the pair this case is about to check was never written")
+        self.doCleanups()
+        self.assertEqual(target_in_environment(), before,
+                         "the target bench.py wrote outlived the case: the next case's child "
+                         "environment starts from it, and tools/tv.py refuses a TV_PORT of `None`")
+
     def test_the_target_the_client_resolved_is_the_one_the_run_keeps(self):
         # tools/tv.py splits `host:port` out of the address and refuses a port outside 1..65535.
         # bench.py used to put the arguments back over that (tv_client.HOST, PORT = self.host,
@@ -112,7 +161,7 @@ class OneConnectionTest(unittest.TestCase):
     def test_a_dropped_connection_is_reopened_once(self):
         first, second = FakeDevice(fail_first=True), FakeDevice({"echo": b"ok"})
         tv, client = self.tv_with(first, second)
-        self.assertEqual(tv.shell("echo ok"), "ok")
+        self.assertEqual(tv.shell("echo ok", retry=True), "ok")
         self.assertEqual(client.connects, 2)
         self.assertTrue(first.closed)
 
@@ -135,7 +184,7 @@ class FakeTV:
         self.log = log
         self.commands = []
 
-    def shell(self, command):
+    def shell(self, command, *, retry=False):
         self.commands.append(command)
         if "framestats" in command:
             return "Uptime: 2000\n"

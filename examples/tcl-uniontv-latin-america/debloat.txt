@@ -37,6 +37,36 @@
 # AV, Live TV) and D-pad edges checked. Tested the same day. It adds com.tcl.dashboard and
 # com.tcl.tv.tclhome_passive below, and two off-by-choice apps, commented out.
 #
+# Also confirmed 2026-11-08 on a TCL UnionTV with persist.tcl.client_type TCL-LA-RT41KB-S1 (as the 32S6500S and
+# L40S6500 above), the same build (builder.20201115), Wi-Fi only, in Argentina. Applied with tools/disable.ps1 in
+# four batches with screenshots between them; a reboot after the first three batches (21 packages) left every one
+# of them disabled, com.tcl.usercenter included. com.tcl.dashboard, com.tcl.tv.tclhome_passive,
+# com.tcl.waterfall.overseas, Red Bull TV and Twitch were not installed. The owner kept katniss, speech.pumpkin and
+# com.google.android.tts (Assistant wanted) and com.google.android.backdrop (Ambient Mode with Google Photos; the
+# Spanish screen-saver list names it "Fondo de pantalla"). launcher/ installed, Home confirmed with
+# mResumedActivity. Tested the same day. Two things seen on this unit:
+# - The remote's Apps button (TCL_RC802VEM) sends vendor keycode 4082, and the firmware answers it by starting
+#   com.google.android.tvlauncher/.appsview.AppsViewActivity from uid 1000. Once the stock launcher is disabled
+#   that start fails without a word, so the button does nothing. The key still reaches the focused window
+#   (WindowManager logs "Unhandled key ... keyCode=4082" on Home), so a launcher can handle it there; a
+#   personal build that opens the App library on 4082 worked, while an `app_keys` entry for it was not tried.
+#   Inside apps the button stays dead.
+# - /vendor/bin/tmmgr (libtmmgr_tm.so) crashes with SIGSEGV about every 5 seconds from boot (`logcat -b crash`,
+#   init.svc.tmmgr reads "restarting"). It kept crashing with every package in this list re-enabled, so the list
+#   does not cause it: a firmware bug, and nothing the shell can change.
+#
+# Also confirmed 2026-11-13 on a TCL 32S5209K (32", UK), the first EU unit here: Settings > About reads "UnionTV",
+# persist.tcl.client_type TCL-EU-RT2841-S1, the builder.20210125 build (as the RT41KA unit above), Wi-Fi only.
+# Applied with tools/disable.sh in four batches with screenshots between them: every active line here that was
+# installed (com.google.android.music, Red Bull TV and Twitch were not; com.tcl.dashboard and
+# com.tcl.tv.tclhome_passive were), both TVINPUT_ALLOW lines included, which disabled cleanly. After two reboots
+# every disabled package stayed disabled, com.tcl.usercenter included. Kept by choice: the streaming apps (Netflix,
+# Prime Video, Disney+, NOW, YouTube, YouTube Music), Chromecast and the firmware updater. launcher/ installed,
+# Home confirmed with mResumedActivity; D-pad edges, the Inputs menu (HDMI 1/2, AV, Live TV) and a YouTube launch
+# checked, and the owner reported no remote button stopped working. It opens com.tcl.tv at every boot too; the
+# owner chose power_on_home with HOME_KEY_SERVICE=1, which landed on Home after a reboot, and accepted the cost
+# seen on the L40S6500 above: holding Volume Up moves one step per press. Tested the same day.
+#
 # Apply:   TV_HOST=<tv ip> tools/disable.sh examples/tcl-uniontv-latin-america/debloat.txt
 # Undo:    TV_HOST=<tv ip> tools/restore.sh examples/tcl-uniontv-latin-america/debloat.txt
 # Everything is DISABLED, not uninstalled. Comment out any line you want to keep.

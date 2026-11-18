@@ -18,16 +18,22 @@ publishing needs that case (and its two strings) there too, and tests/test_race_
 until both sides name the same sessions.
 
 Exit status: 0 the calendar is in the theme, 1 the season has no race left to show, 2 this run could not do
-its job - the folder is not there (or was left empty), its config.json is not the JSON object a theme has (or
-cannot be read or written), --season is not a year, or the fetch failed - and says why on stderr. Nothing is
-written on 1 or 2: the theme stays as it was.
+its job - the folder is not there (or was left empty, or the filesystem cannot be asked about it at all),
+its config.json is not the JSON object a theme has (or cannot be read or written), --season is not a year,
+or the fetch failed - and says why on stderr. Nothing is written on 1 or 2: the theme stays as it was.
 """
 import argparse
 import datetime
+import errno
 import http.client
 import json
+import os
 from pathlib import Path
+import re
+import shutil
+import stat
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 
@@ -74,6 +80,14 @@ def calendar(races, now):
         # The launcher keeps a weekend on screen for four hours after the start; a day covers that.
         if datetime.datetime.fromisoformat(start.replace("Z", "+00:00")) < now - datetime.timedelta(days=1):
             continue
+        # Strict checks apply only to exported sessions; the race was already parsed for the cutoff.
+        for session in sessions:
+            value = session["start"]
+            if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+                                r"(?:\.[0-9]{1,9})?Z", value):
+                raise ValueError(f"invalid UTC session timestamp: {value!r}")
+            if session is not sessions[-1]:
+                datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
         try:
             number = int(race["round"])
         except (TypeError, ValueError, OverflowError):
@@ -117,7 +131,38 @@ def refuse(message):
     return 2
 
 
+def stat_folder(path):
+    """(it is a folder, why the filesystem would not look at it or None) for one path.
+
+    The four errnos here are the answers `Path.is_dir()` itself gave before Python 3.14: ENOENT and
+    ENOTDIR, the two ordinary ways a path is not a folder, and ELOOP and EBADF, which it also read as
+    "no". Every other refusal to look - ENAMETOOLONG for a name over NAME_MAX, EACCES under a folder
+    this user may not traverse, EINVAL, EIO - came out of is_dir() as an OSError, and main() names it.
+    On 3.14 is_dir() answers False for those too (it swallows every OSError), so asking it alone would
+    put "there is no theme folder at" - the sentence for a typo - over a theme that is there and could
+    not be read, and the refusal this file grew for that case (#4032) would not be printed at all.
+    """
+    try:
+        info = path.stat()
+    except OSError as e:
+        if e.errno in (errno.ENOENT, errno.ENOTDIR, errno.ELOOP, errno.EBADF):
+            return False, None
+        return False, (e.strerror or e)
+    return stat.S_ISDIR(info.st_mode), None
+
+
 def main():
+    # A console code page such as cp1252 cannot print every name; print a replacement character instead of stopping.
+    # The theme folder is the argument the reader types, and it is on the last line of a run that has already
+    # written config.json: a folder named with a character the console cannot encode ended that run in a
+    # UnicodeEncodeError traceback and the exit status 1 this file's docstring gives "the season has no race left
+    # to show" - the theme was updated and the run said otherwise. tools/tv.py, match.py and the picture scripts
+    # set the same two streams for their own output; this tool's last line is the one name nothing else covers.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     parser = argparse.ArgumentParser(description="Put this season's F1 calendar into a theme.")
     parser.add_argument("theme", help="theme folder that already exists; its config.json is created if "
                                      "missing")
@@ -139,7 +184,18 @@ def main():
     # that folder and put a calendar in it: the author then pushed, or debugged, a theme that is not the
     # one they meant. The config.json inside is still created for a folder that does exist.
     folder = Path(args.theme)
-    if not folder.is_dir():
+    # A theme path whose name is longer than NAME_MAX, or one under a folder this user may not
+    # traverse, went straight past this check as a traceback with exit 1 - the code this script keeps
+    # for "no race left this season". Both are a run that could not do its job, which the docstring's 2
+    # covers, and the sentence says the theme was left alone. stat_folder() asks the filesystem rather
+    # than `Path.is_dir()`, which stopped raising for those on Python 3.14 (see its docstring).
+    is_folder, refused = stat_folder(folder)
+    if refused:
+        return refuse(f"could not look at {args.theme} ({refused}). Nothing was written: a "
+                      f"theme is a folder of its own under themes/, so check the path you passed - a "
+                      f"name too long for this filesystem, or a folder your user cannot open, is what "
+                      f"this run cannot read.")
+    if not is_folder:
         return refuse(f"there is no theme folder at {args.theme}. Nothing was written: a theme is a "
                       f"folder of its own under themes/, so check the name you passed - this run will not "
                       f"create one for you.")
@@ -178,7 +234,13 @@ def main():
         with urllib.request.urlopen(request, timeout=30) as response:
             payload = json.load(response)
     except urllib.error.HTTPError as e:
-        return refuse(f"Jolpica answered {e.code} {e.reason} for {endpoint}. Nothing was written: try "
+        # The error is the answer itself, body still attached: refusing without closing it leaves the
+        # connection to the garbage collector, and Python 3.14's addbase then prints `ResourceWarning:
+        # Implicitly cleaning up <HTTPError 503: 'Service Unavailable'>` right after this refusal
+        # (3.12 prints nothing, which is why this is not a status the docstring changes).
+        code, reason = e.code, e.reason
+        e.close()
+        return refuse(f"Jolpica answered {code} {reason} for {endpoint}. Nothing was written: try "
                       f"again later, or pass --season with a year it serves.")
     except (urllib.error.URLError, TimeoutError) as e:
         return refuse(f"could not reach Jolpica at {endpoint} ({getattr(e, 'reason', e)}). Nothing was "
@@ -232,16 +294,37 @@ def main():
         return 1
     theme["race_calendar"] = races
     text = json.dumps(theme, indent=2, ensure_ascii=False) + "\n"
-    # The write is the other half of the same file, and a write that could not start (a read-only
-    # checkout, a folder of another user's, config.json a symlink into a folder that is not there) used
-    # to be an OSError traceback with exit 1, after the fetch - so a run that did nothing reported the
-    # code this script keeps for an answer.
+    # Stage beside the actual target: a failed write must leave the theme alone, and a symlinked
+    # config.json must still update its target without replacing the link itself.
+    published = False
     try:
-        config.write_text(text, encoding="utf-8")
+        try:
+            target = config
+            if config.is_symlink():
+                try:
+                    target = config.resolve(strict=True)
+                except FileNotFoundError:
+                    target = config.resolve()
+        except RuntimeError as e:   # Path.resolve() reports symlink loops this way before Python 3.13.
+            raise OSError(str(e)) from e
+        if target.is_file():
+            # Check write permission without truncation; rename alone can bypass a read-only file.
+            with target.open("r+", encoding="utf-8"):
+                pass
+        with tempfile.TemporaryDirectory(prefix=".race-calendar-", dir=target.parent) as staging:
+            part = Path(staging) / target.name
+            part.write_text(text, encoding="utf-8")
+            if target.is_file():
+                shutil.copymode(target, part)
+            os.replace(part, target)
+            published = True
     except OSError as e:
-        return refuse(f"could not write {config} ({e.strerror or e}). The {response_season} calendar was "
-                      f"fetched but is not in the theme: check the folder's permissions, or move what is "
-                      f"at that path aside, and run it again.")
+        if not published:
+            return refuse(f"could not write {config} ({e.strerror or e}). The {response_season} calendar was "
+                          f"fetched but is not in the theme: check the folder's permissions, or move what is "
+                          f"at that path aside, and run it again.")
+        print(f"warning: the {response_season} calendar is in {config}, but its staging folder {staging} "
+              f"could not be cleaned up ({e.strerror or e}).", file=sys.stderr)
     first = races[0]
     print(f"{len(races)} races from the {response_season} season -> {config}")
     print(f"next: round {first['round']} {first['name']}, race {first['sessions'][-1]['start']}")

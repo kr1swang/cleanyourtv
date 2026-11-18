@@ -2,10 +2,12 @@
 """Check that a Philips TV's JointSpace control API still answers, before and after a debloat.
 
     philips-api.py [tv ip]      the IP defaults to TV_HOST
+    philips-api.py --help       this text; needs no TV
 
-Exits 0 when the API answers; 1 when a port answered and it is not the JointSpace API (the package to
-check is named); and 2 when this run could not tell - nothing answered on either port, so the TV may be
-off, asleep, at another address or out of reach from here - or the command line was not one address:
+Exits 0 when the API answers, or when --help printed this text; 1 when a port answered and it is not
+the JointSpace API (the package to check is named); and 2 when this run could not tell - nothing
+answered on either port, so the TV may be off, asleep, at another address or out of reach from here -
+or the command line was not one address:
 a URL; an address carrying a port of its own; one whose colon has nothing after it, or something that
 is not a port number; or an IPv6 written without its brackets. The two ports this asks are the ones
 below, and they go after an address and nothing else.
@@ -60,9 +62,11 @@ PROBE = ("ambilight/topology", "ambilight/power", "ambilight/mode", "ambilight/c
 # EINVAL is the address rather than the route - a bracketed link-local IPv6 with no zone index, an
 # address family this computer does not have - and it is answered here too, because it comes from the
 # local socket layer and never from the set: what the port said in those cases is about the route, not
-# the TV.
+# the TV. Descriptor limits and socket memory/buffer exhaustion also fail here, before a connection
+# can reach the set; they must not suggest that org.droidtv.xtv was disabled.
 UNREACHED = (errno.EHOSTUNREACH, errno.ENETUNREACH, errno.EHOSTDOWN, errno.ENETDOWN, errno.ETIMEDOUT,
-             errno.ECONNABORTED, errno.EACCES, errno.EPERM, errno.EINVAL)
+             errno.ECONNABORTED, errno.EACCES, errno.EPERM, errno.EINVAL,
+             errno.EMFILE, errno.ENFILE, errno.ENOMEM, errno.ENOBUFS)
 
 
 def answered(failure):
@@ -91,7 +95,13 @@ def get(url, timeout=8):
         with urllib.request.urlopen(url, timeout=timeout, context=ctx) as r:
             return r.status, r.read().decode("utf-8", "replace"), None
     except urllib.error.HTTPError as e:
-        return e.code, "", None
+        # The error *is* the answer: urllib hands back the response - status line, headers and body -
+        # as the exception. Returning the code without closing it leaves the connection to the garbage
+        # collector, and Python 3.14's addbase then prints `ResourceWarning: Implicitly cleaning up
+        # <HTTPError 404: ...>` at exit, next to the report this tool printed (3.12 says nothing).
+        status = e.code
+        e.close()
+        return status, "", None
     except Exception as failure:
         return None, str(failure), failure
 
@@ -182,7 +192,27 @@ def address_problem(host):
 
 
 def main(argv):
+    # A console code page such as cp1252 cannot print every name; print a replacement character instead of
+    # stopping. The report is printed as the set's own API answers it, and `name` is what the owner called the
+    # TV in its settings: a Chinese or Japanese name ended the run in a UnicodeEncodeError traceback after the
+    # four requests had already been answered, and every line after it - the version, the ambilight features and
+    # the endpoints - was lost. The tools that talk to a TV over ADB inherit this from tools/tv.py, which sets
+    # the same two streams when it is imported; this one speaks HTTP and never loads it.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     args = argv[1:]
+    # -h/--help is a reader asking what the tool does, not an address it cannot use: the other tools
+    # in tools/ answer it at 0 with the note on stdout (adb-closed.py is the exception, pinned by
+    # tests/test_adb_closed_address_words.py). This one read `--help` as a host, found a leading dash
+    # and printed the second paragraph of this note on stderr with 2 - the status above for "this run
+    # could not tell" - so `tools/philips-api.py --help | less` showed nothing, and neither the exit
+    # codes nor the 1926-versus-1925 paragraph reached the reader who asked.
+    if args[:1] in (["-h"], ["--help"]):
+        print((__doc__ or "").strip())
+        return 0
     host = args[0] if args else os.environ.get("TV_HOST", "")
     if len(args) > 1 or not host or host.startswith("-"):
         print(__doc__.split("\n\n")[1], file=sys.stderr)
