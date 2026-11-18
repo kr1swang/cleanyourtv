@@ -96,18 +96,19 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
     }
 
-    static final float FOCUS_SCALE = 1.20f;
+    static final float FOCUS_SCALE = 1.10f;
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 180f * 74f / 124f;
+    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 101f;
 
     /**
-     * Tile width leaves 17% of each cell for spacing and the focused card's zoom.
+     * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
+     * highlight, capped at the design size so 4 columns on a 1080p TV look exactly as before.
      */
     static int tileWidthPx(int innerWidthPx, int columns, float density) {
         int design = Math.round(DESIGN_W_DP * density);
         if (innerWidthPx <= 0 || columns <= 0) return design;
         int cell = innerWidthPx / columns;
-        int fit = Math.round(cell * 0.83f);
+        int fit = (int) ((cell - 12 * density) / FOCUS_SCALE);
         return Math.max(Math.round(80 * density), Math.min(design, fit));
     }
 
@@ -153,13 +154,18 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      */
     static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
                            boolean dockRow, float density) {
-        int w = tileWidthPx(innerWidthPx, columns, density);
+        return tileWidthPx(innerWidthPx, gridHeightPx, columns, rowsBelowDock, dockTitle, dockRow, density, TileStyle.DEFAULT);
+    }
+
+    static int tileWidthPx(int innerWidthPx, int gridHeightPx, int columns, int rowsBelowDock, boolean dockTitle,
+                           boolean dockRow, float density, TileStyle style) {
+        int w = style.width(innerWidthPx, columns, density);
         if (gridHeightPx <= 0 || rowsBelowDock <= 0) return w;
         float reserved = (dockRow ? DOCK_EXTRA_DP + BOTTOM_ROOM_DP + (dockTitle ? TITLE_ROOM_DP : 0)
                 : TOP_ROOM_DP + COMPACT_BOTTOM_ROOM_DP) * density;
         float perItem = (gridHeightPx - reserved) / (rowsBelowDock + 1);
         float tileH = perItem - (dockRow ? ITEM_EXTRA_DP : COMPACT_ITEM_EXTRA_DP) * density;
-        int byHeight = Math.round(tileH * DESIGN_W_DP / DESIGN_H_DP);
+        int byHeight = Math.round(tileH * DESIGN_W_DP / style.designHeight());
         // Shrink at most to MIN_HEIGHT_FIT of the width-only size. Below that the tiles look lost in their wide
         // columns (2 rows under a titled dock came out at 80dp); the rows that still don't fit run off the bottom
         // and scroll, and MainActivity keeps the title's room above the dock.
@@ -201,6 +207,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final boolean animations;
     private final boolean advancedEffects;
     private final String glassStyle;
+    private final TileStyle tileStyle;
     private final boolean showLibrary;
     /** Packages with a leanback entry at the last reload(): their tiles launch with the leanback category. */
     private Set<String> leanbackPackages = new HashSet<>();
@@ -232,6 +239,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.animations = cfg.animations;
         this.advancedEffects = cfg.animations && cfg.advancedEffects;
         this.glassStyle = cfg.glassStyle;
+        this.tileStyle = TileStyle.from(cfg.homeLayout);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.showLibrary = LibraryApps.showPill(cfg.appLibrary, cfg.libraryButton, cfg.showLibraryPill);
         this.reducedMotion = cfg.reducedMotion;
@@ -415,7 +423,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         float density = parent.getResources().getDisplayMetrics().density;
         int width = parent.getWidth() > 0 ? parent.getWidth() : parent.getMeasuredWidth();
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
-        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density), h = tileHeightPx(w);
+        int w = tileWidthPx(inner, parent.getHeight(), dockSize, rowsBelowDock, dockTitle, dockRow, density, tileStyle), h = tileStyle.height(w);
         View card = v.findViewById(R.id.card);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;
@@ -441,19 +449,19 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             iconLp.width = iconLp.height = Math.round(h * ICON_SHARE);
             iconLp.bottomMargin = 0;
             icon.setLayoutParams(iconLp);
-        } else if (h < Math.round(DESIGN_H_DP * density)) {
+        } else if (h < Math.round(tileStyle.designHeight() * density)) {
             // Shrunk tiles (e.g. 5 or 6 columns): scale icon and bottom margin proportionally with tile height so the label does not overlap the icon.
             View icon = v.findViewById(R.id.icon);
             FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) icon.getLayoutParams();
-            float scale = (float) h / (DESIGN_H_DP * density);
+            float scale = (float) h / (tileStyle.designHeight() * density);
             iconLp.width = iconLp.height = Math.round(48f * density * scale);
             iconLp.bottomMargin = Math.round(14f * density * scale);
             icon.setLayoutParams(iconLp);
             View label = v.findViewById(R.id.label);
             label.setPadding(label.getPaddingLeft(), label.getPaddingTop(), label.getPaddingRight(), Math.round(4f * density));
         }
-        ((AppTileLayout) v).setFocusStyle(glassStyle);
-        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot);
+        ((AppTileLayout) v).setFocusStyle(glassStyle, tileStyle, tileStyle.focusScale(advancedEffects));
+        return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot, tileStyle);
     }
 
     @Override
@@ -465,7 +473,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         ViewGroup.LayoutParams itemLp = h.itemView.getLayoutParams();
         float density = ctx.getResources().getDisplayMetrics().density;
         int rowHeight = itemHeightPx(h.card.getLayoutParams().height, dockRow, density);
-        if (dockRow && (singleRow || position < dockSize)) rowHeight -= Math.round(16 * density);
+        if (dockRow && (singleRow || position < dockSize)) rowHeight -= tileStyle.dockInset(density);
         if (itemLp.height != rowHeight) {
             itemLp.height = rowHeight;
             h.itemView.setLayoutParams(itemLp);
@@ -537,10 +545,11 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
     @SuppressWarnings("deprecation")
     private void launch(Entry e) {
-        // Start immediately with a short fade; card press feedback runs independently.
-        Bundle options = animations && !reducedMotion
+        // Apple uses a short fade; upstream opening effects still require advanced_effects.
+        Bundle options = animations && !reducedMotion && (tileStyle == TileStyle.APPLE || advancedEffects)
                 ? ActivityOptions.makeCustomAnimation(ctx,
-                        R.anim.app_open_enter, R.anim.app_open_exit).toBundle()
+                        tileStyle == TileStyle.APPLE ? R.anim.apple_app_open_enter : R.anim.app_open_enter,
+                        tileStyle == TileStyle.APPLE ? R.anim.apple_app_open_exit : R.anim.app_open_exit).toBundle()
                 : null;
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
@@ -688,7 +697,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     float focusScale() {
-        return animations ? FOCUS_SCALE : 1f;
+        return animations ? tileStyle.focusScale(advancedEffects) : 1f;
     }
 
     /** A vivid colour sampled from the app's banner (or icon), cached per entry; a card's accent when it set one. */
@@ -906,9 +915,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         return Color.HSVToColor(hsv);
     }
 
-    /** Keep the same rounded shape as tiles scale with the column count. */
+    /** Corner radius for a tile of this width: 16dp at the design width, proportionally less when smaller. */
     static float cornerRadius(int tileWidthPx, float density) {
-        return 15f * density * Math.min(1f, tileWidthPx / (124f * density));
+        return 16f * density * Math.min(1f, tileWidthPx / (DESIGN_W_DP * density));
     }
 
     static final class Holder extends RecyclerView.ViewHolder {
@@ -924,10 +933,9 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final boolean reducedMotion;
         /** Alpha of the name while the tile is not focused (always_show_names). */
         final float restNameAlpha;
-        final boolean overshoot;
 
         Holder(View v, TileListener listener, boolean animations, boolean advancedEffects,
-               boolean reducedMotion, float restNameAlpha, boolean overshoot) {
+               boolean reducedMotion, float restNameAlpha, boolean overshoot, TileStyle tileStyle) {
             super(v);
             card = v.findViewById(R.id.card);
             cardBackground = card.getBackground();
@@ -938,16 +946,16 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             this.animations = animations;
             this.advancedEffects = advancedEffects;
             this.reducedMotion = reducedMotion;
-            card.configureMotion(animations, reducedMotion);
+            card.configureMotion(animations, reducedMotion, tileStyle.focusScale(advancedEffects),
+                    overshoot ? (advancedEffects ? 0.7f : 1.6f) : 0f);
             this.restNameAlpha = restNameAlpha;
-            this.overshoot = overshoot;
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
                     // The shadow and artwork share the same rounded outline.
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius(view.getWidth(), density));
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), tileStyle.radius(view.getWidth(), density));
                 }
             });
             card.setClipToOutline(true);

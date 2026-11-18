@@ -15,6 +15,11 @@ The theme also selects `home_layout: "apple"`, `tile_menu_style: "panel"` and
 `reorder_single_drop: true`. The resource defaults are `default`, `default` and `false`, but this APK
 overlays them with the bundled theme. Invalid layout/menu values use `default`.
 The Apple layout lives in `activity_main_apple.xml`; `activity_main.xml` remains the upstream layout.
+`home_layout` also selects the card geometry through `TileStyle`: Apple keeps its 1.20x zoom,
+card proportions and concentric Dock corners; `default` uses upstream dimensions and zoom factors.
+Both share upstream row fitting. The Apple theme sets `focus_overshoot: false` to keep its smooth
+zoom; explicitly enabling it adds bounce to the card, except in reduced motion. Apple app launches
+keep the 120ms fade. The default layout uses upstream opening effects when `advanced_effects` is on.
 These switches are independent of `action_style` and `glass_style`. Dock expansion requires
 `dock_row: true`, `single_row: false` and `dock_title: false`.
 
@@ -32,7 +37,8 @@ overrides in the external config:
   "action_style": "buttons",
   "tile_menu_style": "default",
   "reorder_single_drop": false,
-  "glass_style": "glass"
+  "glass_style": "glass",
+  "focus_overshoot": true
 }
 ```
 

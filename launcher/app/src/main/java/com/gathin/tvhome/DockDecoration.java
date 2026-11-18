@@ -34,6 +34,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean singleRow;
     /** dock_band_all: in a single row, the band runs behind every app instead of the dock apps only. */
     private final boolean bandAll;
+    private final TileStyle tileStyle;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -46,7 +47,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param bandAll     with singleRow, the band runs behind every app in the row (dock_band_all).
      */
     DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
-                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll) {
+                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll, TileStyle tileStyle) {
+        this.tileStyle = tileStyle;
         this.dockSize = dockSize;
         this.singleRow = singleRow;
         this.bandAll = singleRow && bandAll;
@@ -118,7 +120,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         // outwards and still keeps about the band's top margin from its rounded end.
         float sidePad = 22 * density;
         float side = Math.max(0f, Math.min(sidePad, Math.min(rect.left, parent.getWidth() - rect.right) - density));
-        float radius = AppAdapter.cornerRadius(cardWidth, density);
+        float radius = tileStyle.radius(cardWidth, density);
         if (evenPadding) {
             // The same padding on all four sides, so the band's corners are concentric with the tiles' everywhere.
             int inner = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();

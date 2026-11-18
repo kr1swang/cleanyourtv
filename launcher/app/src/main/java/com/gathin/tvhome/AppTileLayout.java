@@ -13,13 +13,18 @@ import android.widget.FrameLayout;
 public final class AppTileLayout extends FrameLayout {
     private static Bitmap shadow;
     private static int cachedWidth, cachedHeight, cachedPadding;
+    private static float cachedRadius, highlightRadius;
     private String focusStyle = Config.GLASS_DEFAULT;
+    private TileStyle tileStyle = TileStyle.DEFAULT;
+    private float focusScale = AppAdapter.FOCUS_SCALE;
     private static Bitmap highlight;
     private static String cachedStyle;
     private static int highlightWidth, highlightHeight;
 
-    void setFocusStyle(String style) {
+    void setFocusStyle(String style, TileStyle tileStyle, float focusScale) {
         focusStyle = style;
+        this.tileStyle = tileStyle;
+        this.focusScale = focusScale;
         invalidate();
     }
 
@@ -34,22 +39,24 @@ public final class AppTileLayout extends FrameLayout {
         View card = findViewById(R.id.card);
         if (card != null && card.getVisibility() == VISIBLE && card.getWidth() > 0) {
             float scale = card.getScaleX();
-            float strength = Math.max(0f, Math.min(1f, (scale - 1f) / (AppAdapter.FOCUS_SCALE - 1f)));
+            float strength = Math.max(0f, Math.min(1f, (scale - 1f) / (focusScale - 1f)));
             if (card.isActivated()) strength = 1f;
             if (strength > 0f && Config.GLASS_SHADOW.equals(focusStyle)) {
                 float density = getResources().getDisplayMetrics().density;
                 int padding = Math.round(24 * density);
                 int width = card.getWidth(), height = card.getHeight();
-                if (shadow == null || cachedWidth != width || cachedHeight != height || cachedPadding != padding) {
+                float radius = tileStyle.radius(width, density);
+                if (shadow == null || cachedWidth != width || cachedHeight != height || cachedPadding != padding
+                        || cachedRadius != radius) {
                     shadow = Bitmap.createBitmap(width + padding * 2, height + padding * 2, Bitmap.Config.ARGB_8888);
                     Paint blur = new Paint(Paint.ANTI_ALIAS_FLAG);
                     blur.setColor(0x99000000);
                     blur.setShadowLayer(10 * density, 0, 6 * density, 0xBB000000);
-                    float radius = AppAdapter.cornerRadius(width, density);
                     new Canvas(shadow).drawRoundRect(padding, padding, padding + width, padding + height, radius, radius, blur);
                     cachedWidth = width;
                     cachedHeight = height;
                     cachedPadding = padding;
+                    cachedRadius = radius;
                 }
                 float cx = card.getLeft() + width / 2f;
                 float cy = card.getTop() + height / 2f;
@@ -65,24 +72,26 @@ public final class AppTileLayout extends FrameLayout {
                 || card.getWidth() == 0) return;
         float scale = card.getScaleX();
         float strength = card.isActivated() ? 1f
-                : Math.max(0f, Math.min(1f, (scale - 1f) / (AppAdapter.FOCUS_SCALE - 1f)));
+                : Math.max(0f, Math.min(1f, (scale - 1f) / (focusScale - 1f)));
         if (strength == 0f) return;
         float density = getResources().getDisplayMetrics().density;
         int padding = Math.round(6 * density);
         int width = card.getWidth() + padding * 2, height = card.getHeight() + padding * 2;
+        float radius = tileStyle.radius(card.getWidth(), density);
         if (highlight == null || highlightWidth != width || highlightHeight != height
-                || !focusStyle.equals(cachedStyle)) {
+                || highlightRadius != radius || !focusStyle.equals(cachedStyle)) {
             // Reuse upstream drawing, rasterized only when geometry/style changes, never per animation frame.
             GlassView glass = new GlassView(getContext(), null);
             glass.setLayerType(View.LAYER_TYPE_NONE, null);
             glass.setStyle(focusStyle);
-            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density));
+            glass.setRadius(radius);
             glass.layout(0, 0, width, height);
             highlight = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
             glass.draw(new Canvas(highlight));
             highlightWidth = width;
             highlightHeight = height;
             cachedStyle = focusStyle;
+            highlightRadius = radius;
         }
         float cx = card.getLeft() + card.getWidth() / 2f;
         float cy = card.getTop() + card.getHeight() / 2f;

@@ -4,26 +4,32 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
 
 /** One scale animation owns both focus and press feedback, including long presses. */
 public final class AppCardView extends FrameLayout {
     private static final DecelerateInterpolator EASING = new DecelerateInterpolator(1.5f);
     private boolean motion, reducedMotion;
+    private float focusScale = AppAdapter.FOCUS_SCALE;
+    private Interpolator focusEasing = EASING;
 
     public AppCardView(Context context, AttributeSet attrs) {
         super(context, attrs);
     }
 
-    void configureMotion(boolean enabled, boolean reduced) {
+    void configureMotion(boolean enabled, boolean reduced, float scale, float overshoot) {
         motion = enabled;
         reducedMotion = reduced;
+        focusScale = scale;
+        focusEasing = overshoot > 0 && !reduced ? new OvershootInterpolator(overshoot) : EASING;
         // Reuse the card texture across focus changes instead of rebuilding it per zoom.
         setLayerType(enabled && !reduced ? LAYER_TYPE_HARDWARE : LAYER_TYPE_NONE, null);
     }
 
     private float targetScale() {
-        float focus = motion && isFocused() ? AppAdapter.FOCUS_SCALE : 1f;
+        float focus = motion && isFocused() ? focusScale : 1f;
         return motion && !reducedMotion && isPressed() ? focus * 0.94f : focus;
     }
 
@@ -36,7 +42,7 @@ public final class AppCardView extends FrameLayout {
             invalidateShadow();
         } else {
             animate().scaleX(scale).scaleY(scale).setDuration(duration)
-                    .setInterpolator(EASING)
+                    .setInterpolator(isFocused() && !isPressed() ? focusEasing : EASING)
                     .setUpdateListener(a -> invalidateShadow());
             animate().start();
         }

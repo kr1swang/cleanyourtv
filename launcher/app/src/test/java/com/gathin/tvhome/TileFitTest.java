@@ -60,15 +60,8 @@ public class TileFitTest {
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(w), false, D);
         int needed = itemH * 4 + Math.round((AppAdapter.TOP_ROOM_DP + AppAdapter.COMPACT_BOTTOM_ROOM_DP) * D);
         assertTrue(needed + " > " + GRID_H, needed <= GRID_H + 2);
-        // Taller custom cards may need to shrink vertically even at six columns.
-        assertTrue(w <= AppAdapter.tileWidthPx(INNER, 6, D));
-    }
-
-    @Test
-    public void customDockKeepsItsSixColumnCardSize() {
-        int w = AppAdapter.tileWidthPx(1920 - 2 * 64, 896, 6, 0, false, true, D);
-        assertEquals(247, w);
-        assertEquals(147, AppAdapter.tileHeightPx(w));
+        // With the compact spacing the width limit decides, not the height: no extra whitespace between tiles.
+        assertEquals(AppAdapter.tileWidthPx(INNER, 6, D), w);
     }
 
     @Test

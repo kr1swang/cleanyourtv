@@ -479,6 +479,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onCreate(savedInstanceState);
         Config cfg = Config.load(this);
         appleLayout = "apple".equals(cfg.homeLayout);
+        TileStyle tileStyle = TileStyle.from(cfg.homeLayout);
         panelTileMenu = "panel".equals(cfg.tileMenuStyle);
         reorderSingleDrop = cfg.reorderSingleDrop;
         setContentView(appleLayout ? R.layout.activity_main_apple : R.layout.activity_main);
@@ -718,7 +719,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
-                singleRow, cfg.dockBandAll));
+                singleRow, cfg.dockBandAll, tileStyle));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -739,9 +740,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             int h = b - t;
             // Item height follows the tile size, which follows the columns and the rows that must fit (AppAdapter.tileWidthPx).
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
-            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
-            int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
-            int dockRow = itemH - Math.round(16 * density)
+            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density, tileStyle);
+            int itemH = AppAdapter.itemHeightPx(tileStyle.height(tileW), density);
+            int dockRow = itemH - tileStyle.dockInset(density)
                     + (int) (AppAdapter.DOCK_EXTRA_DP * density); // Dock has no name label.
             int gridRows = itemH * rowsBelowDock;
             // Keep the hero below the header when the library is enabled on a short screen,

@@ -12,6 +12,7 @@
   "show_greeting": false,
   "dock_title": false,
   "glass_style": "shadow",
+  "focus_overshoot": false,
   "dock_apps": [
     "com.google.android.youtube.tv",
     "com.netflix.ninja",
